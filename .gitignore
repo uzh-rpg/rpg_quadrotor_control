@@ -1,0 +1,43 @@
+# python 
+*.pyc
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+
+# Eclipse files
+.project
+.cproject
+.pydevproject
+.settings
+cmake_install.cmake
+
+# Temporary files
+*~
+
+# Build Folders
+build
+bin
+lib
+srv_gen
+msg_gen
+*.cfgc
+
+# Log files
+log
+*.log
+
+ROS_NOBUILD
+
+# Matlab msgs gen
+matlab_gen
