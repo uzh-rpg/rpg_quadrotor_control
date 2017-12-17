@@ -7,6 +7,6 @@ add_compile_options(-std=c++11)
 find_package(catkin_simple REQUIRED)
 catkin_simple()
 
-cs_add_executable(sbus_bridge src/sbus_bridge.cpp src/serial_port.cpp src/sbus_msg.cpp)
+cs_add_executable(sbus_bridge src/sbus_bridge.cpp src/sbus_serial_port.cpp src/sbus_msg.cpp)
 
 cs_export()

@@ -1,4 +1,4 @@
-#include "sbus_bridge/serial_port.h"
+#include "sbus_bridge/sbus_serial_port.h"
 
 #include <asm/ioctls.h>
 #include <asm/termbits.h>
@@ -20,20 +20,30 @@ SBusSerialPort::SBusSerialPort() :
 SBusSerialPort::SBusSerialPort(const std::string port, const bool start_receiver_thread) :
     receiver_thread_(), receiver_thread_should_exit_(false), serial_port_fd_(0)
 {
-  if (!connectSerialPort(port))
-  {
-    return;
-  }
-
-  if (start_receiver_thread)
-  {
-    startReceiverThread();
-  }
+  setUpSBusSerialPort(port, start_receiver_thread);
 }
 
 SBusSerialPort::~SBusSerialPort()
 {
   disconnectSerialPort();
+}
+
+bool SBusSerialPort::setUpSBusSerialPort(const std::string port, const bool start_receiver_thread)
+{
+  if (!connectSerialPort(port))
+  {
+    return false;
+  }
+
+  if (start_receiver_thread)
+  {
+    if (!startReceiverThread())
+    {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 bool SBusSerialPort::connectSerialPort(const std::string port)
@@ -89,7 +99,7 @@ bool SBusSerialPort::stopReceiverThread()
 
   receiver_thread_should_exit_ = true;
 
-  // Wait for serial thread to finish
+  // Wait for receiver thread to finish
   receiver_thread_.join();
 
   return true;
@@ -159,7 +169,7 @@ bool SBusSerialPort::configureSerialPortForSBus() const
   return true;
 }
 
-void SBusSerialPort::sendSBusMessage(const SBusMsg& sbus_msg) const
+void SBusSerialPort::transmitSerialSBusMessage(const SBusMsg& sbus_msg) const
 {
   static uint8_t buffer[kSbusFrameLengh_];
 
@@ -230,7 +240,7 @@ void SBusSerialPort::sendSBusMessage(const SBusMsg& sbus_msg) const
   }
 }
 
-void SBusSerialPort::serialPortReceiveThread() const
+void SBusSerialPort::serialPortReceiveThread()
 {
   struct pollfd fds[1];
   fds[0].fd = serial_port_fd_;
