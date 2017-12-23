@@ -195,14 +195,14 @@ void SBusBridge::handleReceivedSbusMessage(const SBusMsg& received_sbus_msg)
 
 void SBusBridge::controlCommandCallback(const quad_msgs::ControlCommand::ConstPtr& msg)
 {
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
   if (destructor_invoked_)
   {
-    // This ensures that if the constructor was invoked we do not try to write to the serial port anymore
+    // This ensures that if the destructor was invoked we do not try to write to the serial port anymore
     // because of receiving a control command
     return;
   }
-
-  std::lock_guard<std::mutex> main_lock(main_mutex_);
 
   if (!msg->off)
   {
@@ -372,6 +372,12 @@ SBusMsg SBusBridge::generateSBusMessageFromControlCommand(
 void SBusBridge::armBridgeCallback(const std_msgs::BoolConstPtr& msg)
 {
   std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+  if (destructor_invoked_)
+  {
+    // On shut down we do not allow to arm (or disarm) the bridge anymore
+    return;
+  }
 
   if (msg->data)
   {
