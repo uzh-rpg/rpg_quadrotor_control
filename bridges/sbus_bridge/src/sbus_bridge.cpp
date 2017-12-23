@@ -77,6 +77,8 @@ SBusBridge::~SBusBridge()
   // Wait for watchdog thread to finish
   watchdog_thread_.join();
 
+  // Now only one thread (the ROS thread) is remaining
+
   setBridgeState(BridgeState::OFF);
 
   // Send disarming SBus message for safety
@@ -154,7 +156,7 @@ void SBusBridge::watchdogThread()
       }
     }
 
-    // mutexes are unlocked because they go out of scope here
+    // Mutexes are unlocked because they go out of scope here
   }
 }
 
@@ -194,7 +196,7 @@ void SBusBridge::handleReceivedSbusMessage(const SBusMsg& received_sbus_msg)
       }
     }
 
-    // Mutex is unlocked here because it goes out of scope
+    // Main mutex is unlocked here because it goes out of scope
   }
 
   received_sbus_msg_pub_.publish(received_sbus_msg.toRosMessage());
@@ -263,6 +265,8 @@ void SBusBridge::controlCommandCallback(const quad_msgs::ControlCommand::ConstPt
   {
     control_mode_ = ControlMode::RATE;
   }
+
+  // Main mutex is unlocked because it goes out of scope here
 }
 
 void SBusBridge::sendSBusMessageToSerialPort(const SBusMsg& sbus_msg)
@@ -508,7 +512,7 @@ void SBusBridge::publishOnboardStatus(const ros::TimerEvent& time) const
       onboard_status_msg.control_mode = onboard_status_msg.ATTITUDE_MODE;
     }
 
-    // Mutex is unlocked here since it goes out of scope
+    // Mutexes are unlocked here since they go out of scope
   }
 
   onboard_status_pub_.publish(onboard_status_msg);

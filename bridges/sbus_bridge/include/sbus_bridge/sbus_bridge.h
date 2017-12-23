@@ -56,11 +56,20 @@ private:
   ros::NodeHandle pnh_;
 
   // Mutex for:
-  // TODO:
+  // - bridge_state_
+  // - control_mode_
+  // - bridge_armed_
+  // - time_last_active_control_command_received_
+  // - time_last_rc_msg_received_
+  // - arming_counter_
+  // - off_msg_sent_counter_
+  // - time_last_sbus_msg_sent_
+  // Also "setBridgeState" and "sendSBusMessageToSerialPort" should only be called when "main_mutex_" is locked
   mutable std::mutex main_mutex_;
   // Mutex for:
   // - battery_voltage_
   // - time_last_battery_voltage_received_
+  // Also "generateSBusMessageFromControlCommand" should only be called when "battery_voltage_mutex_" is locked
   mutable std::mutex battery_voltage_mutex_;
 
   // Publishers
