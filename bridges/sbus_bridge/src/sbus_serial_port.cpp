@@ -252,8 +252,8 @@ void SBusSerialPort::serialPortReceiveThread()
   uint8_t init_buf[10];
   while (read(serial_port_fd_, init_buf, sizeof(init_buf)) > 0)
   {
-    // As long as we receive something, we keep reading to ensure that the first byte of the first poll is the start
-    // of an SBUS message and not some arbitrary byte.
+    // On startup, as long as we receive something, we keep reading to ensure that the first byte of the first poll
+    // is the start of an SBUS message and not some arbitrary byte.
     // This should help to get the framing in sync in the beginning.
     usleep(100);
   }
@@ -278,7 +278,7 @@ void SBusSerialPort::serialPortReceiveThread()
         }
 
         bool valid_sbus_message_received = false;
-        SBusMsg received_sbus_msg;
+        uint8_t sbus_msg_bytes[kSbusFrameLength_];
         while (bytes_buf.size() >= kSbusFrameLength_)
         {
           // Check if we have a potentially valid SBUS message
@@ -287,14 +287,13 @@ void SBusSerialPort::serialPortReceiveThread()
           if (bytes_buf.front() == kSbusHeaderByte_ && !(bytes_buf[kSbusFrameLength_ - 2] & 0xF0)
               && bytes_buf[kSbusFrameLength_ - 1] == kSbusFooterByte_)
           {
-            uint8_t sbus_msg_bytes[kSbusFrameLength_];
+
             for (uint8_t i = 0; i < kSbusFrameLength_; i++)
             {
               sbus_msg_bytes[i] = bytes_buf.front();
               bytes_buf.pop_front();
             }
 
-            received_sbus_msg = parseSbusMessage(sbus_msg_bytes);
             valid_sbus_message_received = true;
           }
           else
@@ -317,6 +316,7 @@ void SBusSerialPort::serialPortReceiveThread()
           // Sometimes we read more than one sbus message at the same time
           // By running the loop above for as long as possible before handling the received sbus message
           // we achieve to only process the latest one.
+          const SBusMsg received_sbus_msg = parseSbusMessage(sbus_msg_bytes);
           handleReceivedSbusMessage(received_sbus_msg);
         }
       }
