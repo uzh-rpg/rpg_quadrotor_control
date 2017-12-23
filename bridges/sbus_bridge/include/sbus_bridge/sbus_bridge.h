@@ -44,6 +44,8 @@ private:
 
   SBusMsg generateSBusMessageFromControlCommand(const quad_msgs::ControlCommand::ConstPtr& control_command) const;
 
+  void setBridgeState(const BridgeState& desired_bridge_state);
+
   void armBridgeCallback(const std_msgs::BoolConstPtr& msg);
   void batteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg);
   void publishOnboardStatus(const ros::TimerEvent& time) const;
@@ -85,6 +87,7 @@ private:
   bool bridge_armed_;
   ControlMode control_mode_;
   int arming_counter_;
+  int off_msg_sent_counter_;
   double battery_voltage_;
 
   std::atomic_bool destructor_invoked_;
