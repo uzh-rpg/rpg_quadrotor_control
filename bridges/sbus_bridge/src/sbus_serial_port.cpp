@@ -81,10 +81,12 @@ void SBusSerialPort::disconnectSerialPort()
 
 bool SBusSerialPort::startReceiverThread()
 {
-  // TODO: check whether exception occurred upon creating thread
-  receiver_thread_ = std::thread(&SBusSerialPort::serialPortReceiveThread, this);
-
-  if (!receiver_thread_.joinable())
+  // Start watchdog thread
+  try
+  {
+    receiver_thread_ = std::thread(&SBusSerialPort::serialPortReceiveThread, this);
+  }
+  catch (...)
   {
     ROS_ERROR("[%s] Could not successfully start SBUS receiver thread.", ros::this_node::getName().c_str());
     return false;

@@ -51,10 +51,11 @@ SBusBridge::SBusBridge(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
   }
 
   // Start watchdog thread
-  // TODO: check whether exception occurred upon creating thread
-  watchdog_thread_ = std::thread(&SBusBridge::watchdogThread, this);
-
-  if (!watchdog_thread_.joinable())
+  try
+  {
+    watchdog_thread_ = std::thread(&SBusBridge::watchdogThread, this);
+  }
+  catch (...)
   {
     ROS_ERROR("[%s] Could not successfully start watchdog thread.", pnh_.getNamespace().c_str());
     ros::shutdown();
