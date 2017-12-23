@@ -137,8 +137,6 @@ void SBusBridge::watchdogThread()
         SBusMsg off_msg;
         off_msg.setArmStateDisarmed();
         sendSBusMessageToSerialPort(off_msg);
-
-        off_msg_sent_counter_++;
       }
     }
 
@@ -276,6 +274,7 @@ void SBusBridge::sendSBusMessageToSerialPort(const SBusMsg& sbus_msg)
     case BridgeState::OFF:
       // Disarm vehicle
       sbus_message_to_send.setArmStateDisarmed();
+      off_msg_sent_counter_++;
       break;
 
     case BridgeState::ARMING:
@@ -283,8 +282,7 @@ void SBusBridge::sendSBusMessageToSerialPort(const SBusMsg& sbus_msg)
       // the messages with minimum throttle and arming command multiple times. 5 times seems to work robustly.
       if (arming_counter_ >= kSmoothingFailRepetitions_)
       {
-        bridge_state_ == BridgeState::AUTONOMOUS_FLIGHT;
-        arming_counter_ = 0;
+        setBridgeState(BridgeState::AUTONOMOUS_FLIGHT);
       }
       else
       {
@@ -302,6 +300,12 @@ void SBusBridge::sendSBusMessageToSerialPort(const SBusMsg& sbus_msg)
     case BridgeState::RC_FLIGHT:
       // Passing RC command straight through
       break;
+
+    default:
+      // Disarm the vehicle because this code must be terribly wrong
+      sbus_message_to_send.setArmStateDisarmed();
+      ROS_WARN("[%s] Bridge is in unknown state, vehicle will be disarmed", pnh_.getNamespace().c_str());
+      break;
   }
 
   if ((ros::Time::now() - time_last_sbus_msg_sent_).toSec() <= 0.006)
@@ -314,6 +318,11 @@ void SBusBridge::sendSBusMessageToSerialPort(const SBusMsg& sbus_msg)
       // flight controller. Since this check prevents the message from being sent out we reduce the counter that
       // was incremented above assuming the message would actually be sent.
       arming_counter_--;
+    }
+    if (bridge_state_ == BridgeState::OFF)
+    {
+      // Same as previous check
+      off_msg_sent_counter_--;
     }
     return;
   }
