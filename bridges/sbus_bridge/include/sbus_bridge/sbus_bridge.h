@@ -123,15 +123,16 @@ private:
 
   double alpha_vbat_filter_;
   bool perform_thrust_voltage_compensation_;
+  int n_lipo_cells_;
 
   // Constants
   static constexpr double kOnboardStatusPublishFrequency_ = 50.0;
 
   static constexpr int kSmoothingFailRepetitions_ = 5;
 
-  static constexpr double kBatteryLowVoltage_ = 10.7;
-  static constexpr double kBatteryCriticalVoltage_ = 10.5;
-  static constexpr double kBatteryInvalidVoltage_ = 9.0;
+  static constexpr double kBatteryLowVoltagePerCell_ = 3.6;
+  static constexpr double kBatteryCriticalVoltagePerCell_ = 3.4;
+  static constexpr double kBatteryInvalidVoltagePerCell_ = 3.0;
   static constexpr double kBatteryVoltageTimeout_ = 1.0;
 };
 

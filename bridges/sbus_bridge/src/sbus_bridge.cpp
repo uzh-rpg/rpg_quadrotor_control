@@ -480,15 +480,15 @@ void SBusBridge::publishOnboardStatus(const ros::TimerEvent& time) const
     // Publish an onboard status message
     onboard_status_msg.header.stamp = ros::Time::now();
     onboard_status_msg.battery_voltage = battery_voltage_;
-    if (battery_voltage_ > kBatteryLowVoltage_)
+    if (battery_voltage_ > n_lipo_cells_ * kBatteryLowVoltagePerCell_)
     {
       onboard_status_msg.battery_state = onboard_status_msg.GOOD;
     }
-    else if (battery_voltage_ > kBatteryCriticalVoltage_)
+    else if (battery_voltage_ > n_lipo_cells_ * kBatteryCriticalVoltagePerCell_)
     {
       onboard_status_msg.battery_state = onboard_status_msg.LOW;
     }
-    else if (battery_voltage_ > kBatteryInvalidVoltage_)
+    else if (battery_voltage_ > n_lipo_cells_ * kBatteryInvalidVoltagePerCell_)
     {
       onboard_status_msg.battery_state = onboard_status_msg.CRITICAL;
     }
@@ -549,6 +549,7 @@ if (!quad_common::getParam(#name, name ## _, pnh_)) \
 
   GET_PARAM(alpha_vbat_filter);
   GET_PARAM(perform_thrust_voltage_compensation);
+  GET_PARAM(n_lipo_cells);
 
   if (!thrust_mapping_.loadParameters())
   {
