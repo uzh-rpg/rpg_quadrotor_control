@@ -1,0 +1,3 @@
+[submodule "controllers/rpg_mpc"]
+	path = controllers/rpg_mpc
+	url = git@github.com:uzh-rpg/rpg_mpc.git
