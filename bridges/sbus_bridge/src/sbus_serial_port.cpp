@@ -9,16 +9,18 @@
 #include <sys/poll.h>
 #include <sys/ioctl.h>
 
+#include <ros/ros.h>
+
 namespace sbus_bridge
 {
 
 SBusSerialPort::SBusSerialPort() :
-    receiver_thread_(), receiver_thread_should_exit_(false), serial_port_fd_(0)
+    receiver_thread_(), receiver_thread_should_exit_(false), serial_port_fd_(-1)
 {
 }
 
-SBusSerialPort::SBusSerialPort(const std::string port, const bool start_receiver_thread) :
-    receiver_thread_(), receiver_thread_should_exit_(false), serial_port_fd_(0)
+SBusSerialPort::SBusSerialPort(const std::string& port, const bool start_receiver_thread) :
+    receiver_thread_(), receiver_thread_should_exit_(false), serial_port_fd_(-1)
 {
   setUpSBusSerialPort(port, start_receiver_thread);
 }
@@ -28,7 +30,7 @@ SBusSerialPort::~SBusSerialPort()
   disconnectSerialPort();
 }
 
-bool SBusSerialPort::setUpSBusSerialPort(const std::string port, const bool start_receiver_thread)
+bool SBusSerialPort::setUpSBusSerialPort(const std::string& port, const bool start_receiver_thread)
 {
   if (!connectSerialPort(port))
   {
@@ -46,7 +48,7 @@ bool SBusSerialPort::setUpSBusSerialPort(const std::string port, const bool star
   return true;
 }
 
-bool SBusSerialPort::connectSerialPort(const std::string port)
+bool SBusSerialPort::connectSerialPort(const std::string& port)
 {
   // Open serial port
   // O_RDWR - Read and write
@@ -79,9 +81,12 @@ void SBusSerialPort::disconnectSerialPort()
 
 bool SBusSerialPort::startReceiverThread()
 {
-  receiver_thread_ = std::thread(&SBusSerialPort::serialPortReceiveThread, this);
-
-  if (!receiver_thread_.joinable())
+  // Start watchdog thread
+  try
+  {
+    receiver_thread_ = std::thread(&SBusSerialPort::serialPortReceiveThread, this);
+  }
+  catch (...)
   {
     ROS_ERROR("[%s] Could not successfully start SBUS receiver thread.", ros::this_node::getName().c_str());
     return false;
@@ -171,7 +176,7 @@ bool SBusSerialPort::configureSerialPortForSBus() const
 
 void SBusSerialPort::transmitSerialSBusMessage(const SBusMsg& sbus_msg) const
 {
-  static uint8_t buffer[kSbusFrameLengh_];
+  static uint8_t buffer[kSbusFrameLength_];
 
   // SBUS header
   buffer[0] = kSbusHeaderByte_;
@@ -231,12 +236,12 @@ void SBusSerialPort::transmitSerialSBusMessage(const SBusMsg& sbus_msg) const
   // SBUS footer
   buffer[24] = kSbusFooterByte_;
 
-  const int written = write(serial_port_fd_, (char*)buffer, kSbusFrameLengh_);
-  // tcflush(serial_port_fd_, TCOFLUSH);
-  if (written != kSbusFrameLengh_)
+  const int written = write(serial_port_fd_, (char*)buffer, kSbusFrameLength_);
+  // tcflush(serial_port_fd_, TCOFLUSH); // There were rumors that this might not work on Odroids...
+  if (written != kSbusFrameLength_)
   {
     ROS_ERROR("[%s] Wrote %d bytes but should have written %d", ros::this_node::getName().c_str(), written,
-              kSbusFrameLengh_);
+              kSbusFrameLength_);
   }
 }
 
@@ -249,19 +254,21 @@ void SBusSerialPort::serialPortReceiveThread()
   uint8_t init_buf[10];
   while (read(serial_port_fd_, init_buf, sizeof(init_buf)) > 0)
   {
-    // As long as we receive something, we keep reading to ensure that the first byte of the first poll is the start
-    // of an SBUS message and not some arbitrary byte.
+    // On startup, as long as we receive something, we keep reading to ensure that the first byte of the first poll
+    // is the start of an SBUS message and not some arbitrary byte.
     // This should help to get the framing in sync in the beginning.
     usleep(100);
   }
 
   std::deque<uint8_t> bytes_buf;
 
-  while (!receiver_thread_should_exit_ && ros::ok())
+  while (!receiver_thread_should_exit_)
   {
-    uint8_t read_buf[4 * kSbusFrameLengh_];
+    // Buffer to read bytes from serial port. We make it large enough to potentially contain 4 sbus messages
+    // but its actual size probably does not matter too much
+    uint8_t read_buf[4 * kSbusFrameLength_];
 
-    if (poll(fds, 1, 500) > 0)
+    if (poll(fds, 1, kPollTimeoutMilliSeconds_) > 0)
     {
       if (fds[0].revents & POLLIN)
       {
@@ -273,23 +280,22 @@ void SBusSerialPort::serialPortReceiveThread()
         }
 
         bool valid_sbus_message_received = false;
-        SBusMsg received_sbus_msg;
-        while (bytes_buf.size() >= kSbusFrameLengh_)
+        uint8_t sbus_msg_bytes[kSbusFrameLength_];
+        while (bytes_buf.size() >= kSbusFrameLength_)
         {
           // Check if we have a potentially valid SBUS message
           // A valid SBUS message must have to correct header and footer byte as well as zeros in the four
           // most significant bytes of the flag byte (byte 23)
-          if (bytes_buf.front() == kSbusHeaderByte_ && !(bytes_buf[kSbusFrameLengh_ - 2] & 0xF0)
-              && bytes_buf[kSbusFrameLengh_ - 1] == kSbusFooterByte_)
+          if (bytes_buf.front() == kSbusHeaderByte_ && !(bytes_buf[kSbusFrameLength_ - 2] & 0xF0)
+              && bytes_buf[kSbusFrameLength_ - 1] == kSbusFooterByte_)
           {
-            uint8_t sbus_msg_bytes[kSbusFrameLengh_];
-            for (uint8_t i = 0; i < kSbusFrameLengh_; i++)
+
+            for (uint8_t i = 0; i < kSbusFrameLength_; i++)
             {
               sbus_msg_bytes[i] = bytes_buf.front();
               bytes_buf.pop_front();
             }
 
-            received_sbus_msg = parseSbusMessage(sbus_msg_bytes);
             valid_sbus_message_received = true;
           }
           else
@@ -312,6 +318,7 @@ void SBusSerialPort::serialPortReceiveThread()
           // Sometimes we read more than one sbus message at the same time
           // By running the loop above for as long as possible before handling the received sbus message
           // we achieve to only process the latest one.
+          const SBusMsg received_sbus_msg = parseSbusMessage(sbus_msg_bytes);
           handleReceivedSbusMessage(received_sbus_msg);
         }
       }
@@ -321,7 +328,7 @@ void SBusSerialPort::serialPortReceiveThread()
   return;
 }
 
-SBusMsg SBusSerialPort::parseSbusMessage(uint8_t sbus_msg_bytes[kSbusFrameLengh_]) const
+SBusMsg SBusSerialPort::parseSbusMessage(uint8_t sbus_msg_bytes[kSbusFrameLength_]) const
 {
   SBusMsg sbus_msg;
 

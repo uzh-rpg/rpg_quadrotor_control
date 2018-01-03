@@ -1,14 +1,17 @@
 #pragma once
 
+#include <atomic>
 #include <mutex>
 #include <thread>
 
 #include <quad_msgs/ControlCommand.h>
+#include <ros/ros.h>
 #include <sbus_bridge/sbus_serial_port.h>
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float32.h>
 
 #include "sbus_bridge/sbus_msg.h"
+#include "sbus_bridge/thrust_mapping.h"
 
 namespace sbus_bridge
 {
@@ -16,16 +19,6 @@ namespace sbus_bridge
 enum class BridgeState
 {
   OFF, ARMING, AUTONOMOUS_FLIGHT, RC_FLIGHT
-};
-
-enum class ControlMode
-{
-  RATE, ANGLE
-};
-
-enum class ArmState
-{
-  DISARMED, ARMED
 };
 
 class SBusBridge : public SBusSerialPort
@@ -45,37 +38,39 @@ private:
 
   void watchdogThread();
 
-  void handleReceivedSbusMessage(const SBusMsg& received_sbus_msg);
+  void handleReceivedSbusMessage(const SBusMsg& received_sbus_msg) override;
   void controlCommandCallback(const quad_msgs::ControlCommand::ConstPtr& msg);
   void sendSBusMessageToSerialPort(const SBusMsg& sbus_msg);
+
+  SBusMsg generateSBusMessageFromControlCommand(const quad_msgs::ControlCommand::ConstPtr& control_command) const;
+
+  void setBridgeState(const BridgeState& desired_bridge_state);
 
   void armBridgeCallback(const std_msgs::BoolConstPtr& msg);
   void batteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg);
   void publishOnboardStatus(const ros::TimerEvent& time) const;
-
-  uint16_t inverseThrustMapping(const double thrust) const;
-  void limitAllChannelsFeasible(SBusMsg* sbus_msg) const;
-  void limitSbusChannel(uint16_t* channel_value) const;
-
-  // Setting sbus command helpers
-  void setThrottleCommand(const uint16_t throttle_cmd, SBusMsg* sbus_msg) const;
-  void enforceSpinningThrottleCommand(SBusMsg* sbus_msg) const;
-  void setRollCommand(const uint16_t roll_cmd, SBusMsg* sbus_msg) const;
-  void setPitchCommand(const uint16_t pitch_cmd, SBusMsg* sbus_msg) const;
-  void setYawCommand(const uint16_t yaw_cmd, SBusMsg* sbus_msg) const;
-  void setControlMode(const ControlMode& mode, SBusMsg* sbus_msg) const;
-  void setArmState(const ArmState& arm_state, SBusMsg* sbus_msg) const;
-
-  // Sbus message check helpers
-  bool isArmed(const SBusMsg& sbus_msg) const;
-  ControlMode getControlModeFromSBusMessage(const SBusMsg& sbus_msg) const;
 
   bool loadParameters();
 
   ros::NodeHandle nh_;
   ros::NodeHandle pnh_;
 
-  mutable std::mutex mutex_;
+  // Mutex for:
+  // - bridge_state_
+  // - control_mode_
+  // - bridge_armed_
+  // - time_last_active_control_command_received_
+  // - time_last_rc_msg_received_
+  // - arming_counter_
+  // - off_msg_sent_counter_
+  // - time_last_sbus_msg_sent_
+  // Also "setBridgeState" and "sendSBusMessageToSerialPort" should only be called when "main_mutex_" is locked
+  mutable std::mutex main_mutex_;
+  // Mutex for:
+  // - battery_voltage_
+  // - time_last_battery_voltage_received_
+  // Also "generateSBusMessageFromControlCommand" should only be called when "battery_voltage_mutex_" is locked
+  mutable std::mutex battery_voltage_mutex_;
 
   // Publishers
   ros::Publisher onboard_status_pub_;
@@ -91,7 +86,7 @@ private:
 
   // Watchdog
   std::thread watchdog_thread_;
-  bool stop_watchdog_thread_;
+  std::atomic_bool stop_watchdog_thread_;
   ros::Time time_last_rc_msg_received_;
   ros::Time time_last_sbus_msg_sent_;
   ros::Time time_last_battery_voltage_received_;
@@ -101,7 +96,12 @@ private:
   bool bridge_armed_;
   ControlMode control_mode_;
   int arming_counter_;
+  int off_msg_sent_counter_;
   double battery_voltage_;
+
+  std::atomic_bool destructor_invoked_;
+
+  thrust_mapping::CollectiveThrustMapping thrust_mapping_;
 
   // Parameters
   std::string port_name_;
@@ -113,9 +113,6 @@ private:
   double mass_;
 
   bool disable_thrust_mapping_;
-  double thrust_map_a_;
-  double thrust_map_b_;
-  double thrust_map_c_;
 
   double max_roll_rate_;
   double max_pitch_rate_;
@@ -126,19 +123,16 @@ private:
 
   double alpha_vbat_filter_;
   bool perform_thrust_voltage_compensation_;
-  double thrust_ratio_voltage_map_a_;
-  double thrust_ratio_voltage_map_b_;
+  int n_lipo_cells_;
 
   // Constants
   static constexpr double kOnboardStatusPublishFrequency_ = 50.0;
 
   static constexpr int kSmoothingFailRepetitions_ = 5;
 
-  static constexpr double kBatteryLowVoltage_ = 10.7;
-  static constexpr double kBatteryCriticalVoltage_ = 10.5;
-  static constexpr double kBatteryInvalidVoltage_ = 9.0;
-  static constexpr double kMinBatteryCompensationVoltage_ = 10.6;
-  static constexpr double kMaxBatteryCompensationVoltage_ = 12.6;
+  static constexpr double kBatteryLowVoltagePerCell_ = 3.6;
+  static constexpr double kBatteryCriticalVoltagePerCell_ = 3.4;
+  static constexpr double kBatteryInvalidVoltagePerCell_ = 3.0;
   static constexpr double kBatteryVoltageTimeout_ = 1.0;
 };
 
