@@ -13,8 +13,7 @@ namespace sbus_bridge
 
 SBusBridge::SBusBridge(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     nh_(nh), pnh_(pnh), stop_watchdog_thread_(false), bridge_state_(BridgeState::OFF), bridge_armed_(false), control_mode_(
-        ControlMode::RATE), arming_counter_(0), off_msg_sent_counter_(0), battery_voltage_(0.0), destructor_invoked_(
-        false)
+        ControlMode::RATE), arming_counter_(0), battery_voltage_(0.0), destructor_invoked_(false)
 {
   if (!loadParameters())
   {
@@ -99,7 +98,7 @@ SBusBridge::~SBusBridge()
 
 void SBusBridge::watchdogThread()
 {
-  ros::Rate watchdog_rate(100.0);
+  ros::Rate watchdog_rate(110.0);
   while (ros::ok() && !stop_watchdog_thread_)
   {
     watchdog_rate.sleep();
@@ -133,14 +132,12 @@ void SBusBridge::watchdogThread()
 
     if (bridge_state_ == BridgeState::OFF)
     {
-      if (off_msg_sent_counter_ < kSmoothingFailRepetitions_)
-      {
-        // Send off message that disarms the vehicle
-        // We repeat it to prevent any possible smoothing of commands on the flight controller to interfere with this
-        SBusMsg off_msg;
-        off_msg.setArmStateDisarmed();
-        sendSBusMessageToSerialPort(off_msg);
-      }
+      // Send off message that disarms the vehicle
+      // We repeat it to prevent any weird behavior that occurs if the flight controller is not receiving
+      // commands for a while
+      SBusMsg off_msg;
+      off_msg.setArmStateDisarmed();
+      sendSBusMessageToSerialPort(off_msg);
     }
 
     // Check battery voltage timeout
@@ -279,7 +276,6 @@ void SBusBridge::sendSBusMessageToSerialPort(const SBusMsg& sbus_msg)
     case BridgeState::OFF:
       // Disarm vehicle
       sbus_message_to_send.setArmStateDisarmed();
-      off_msg_sent_counter_++;
       break;
 
     case BridgeState::ARMING:
@@ -323,11 +319,6 @@ void SBusBridge::sendSBusMessageToSerialPort(const SBusMsg& sbus_msg)
       // flight controller. Since this check prevents the message from being sent out we reduce the counter that
       // was incremented above assuming the message would actually be sent.
       arming_counter_--;
-    }
-    if (bridge_state_ == BridgeState::OFF)
-    {
-      // Same as previous check
-      off_msg_sent_counter_--;
     }
     return;
   }
@@ -407,7 +398,6 @@ void SBusBridge::setBridgeState(const BridgeState& desired_bridge_state)
   {
     case BridgeState::OFF:
       bridge_state_ = desired_bridge_state;
-      off_msg_sent_counter_ = 0;
       break;
 
     case BridgeState::ARMING:

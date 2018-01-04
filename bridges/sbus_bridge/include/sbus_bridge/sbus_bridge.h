@@ -62,7 +62,6 @@ private:
   // - time_last_active_control_command_received_
   // - time_last_rc_msg_received_
   // - arming_counter_
-  // - off_msg_sent_counter_
   // - time_last_sbus_msg_sent_
   // Also "setBridgeState" and "sendSBusMessageToSerialPort" should only be called when "main_mutex_" is locked
   mutable std::mutex main_mutex_;
@@ -96,7 +95,6 @@ private:
   bool bridge_armed_;
   ControlMode control_mode_;
   int arming_counter_;
-  int off_msg_sent_counter_;
   double battery_voltage_;
 
   std::atomic_bool destructor_invoked_;
