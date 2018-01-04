@@ -1,0 +1,19 @@
+<launch>
+
+    <node pkg="sbus_bridge" name="sbus_bridge" type="sbus_bridge" output="screen" >
+        <rosparam file="$(find sbus_bridge)/parameters/default.yaml"/>
+        
+        <param name="port_name" value="/dev/ttyS1" />
+    </node>
+    
+    <node pkg="rpg_single_board_io" type="voltage_reader" name="voltage_reader" output="screen">
+		<param name="board_name" value="odroid" />
+		<param name="adc_id" value="0" />
+		<param name="read_voltage_frequency" value="10" />
+		<param name="voltage_divider_upper_res" value="11.95" />
+		<param name="voltage_divider_lower_res" value="1.21" />
+		
+		<remap from="voltage_reader/voltage" to="battery_voltage" />
+	</node>
+
+</launch>
