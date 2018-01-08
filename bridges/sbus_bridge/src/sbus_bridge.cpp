@@ -225,6 +225,11 @@ void SBusBridge::controlCommandCallback(const quad_msgs::ControlCommand::ConstPt
   {
     // If bridge is not armed we do not allow control commands to be sent
     // RC has priority over control commands for autonomous flying
+    if (!bridge_armed_ && !msg->off)
+    {
+      ROS_WARN_THROTTLE("[%s] Received active control command but sbus bridge is not armed.",
+                        pnh_.getNamespace().c_str());
+    }
     return;
   }
 
