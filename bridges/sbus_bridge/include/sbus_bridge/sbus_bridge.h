@@ -92,12 +92,12 @@ private:
   ros::Time time_last_active_control_command_received_;
 
   BridgeState bridge_state_;
-  bool bridge_armed_;
   ControlMode control_mode_;
   int arming_counter_;
   double battery_voltage_;
 
   // Safety flags
+  bool bridge_armed_;
   bool rc_was_disarmed_once_;
 
   std::atomic_bool destructor_invoked_;

@@ -14,8 +14,8 @@ namespace sbus_bridge
 SBusBridge::SBusBridge(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     nh_(nh), pnh_(pnh), stop_watchdog_thread_(false), time_last_rc_msg_received_(),
         time_last_sbus_msg_sent_(ros::Time::now()), time_last_battery_voltage_received_(ros::Time::now()),
-        time_last_active_control_command_received_(), bridge_state_(BridgeState::OFF), bridge_armed_(false),
-        control_mode_(ControlMode::RATE), arming_counter_(0), battery_voltage_(0.0), rc_was_disarmed_once_(false),
+        time_last_active_control_command_received_(), bridge_state_(BridgeState::OFF), control_mode_(ControlMode::RATE),
+        arming_counter_(0), battery_voltage_(0.0), bridge_armed_(false), rc_was_disarmed_once_(false),
         destructor_invoked_(false)
 {
   if (!loadParameters())
