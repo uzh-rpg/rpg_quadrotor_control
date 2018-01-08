@@ -508,11 +508,11 @@ void SBusBridge::publishOnboardStatus(const ros::TimerEvent& time) const
     }
 
     onboard_status_msg.commander_state = onboard_status_msg.LANDED;
-    if (bridge_state_ != BridgeState::RC_FLIGHT)
+    if (bridge_state_ == BridgeState::RC_FLIGHT)
     {
       onboard_status_msg.commander_state = onboard_status_msg.MANUAL_FLYING;
     }
-    else if (bridge_state_ != BridgeState::AUTONOMOUS_FLIGHT)
+    else if (bridge_state_ == BridgeState::AUTONOMOUS_FLIGHT)
     {
       onboard_status_msg.commander_state = onboard_status_msg.AUTONOMOUS_FLYING;
     }
