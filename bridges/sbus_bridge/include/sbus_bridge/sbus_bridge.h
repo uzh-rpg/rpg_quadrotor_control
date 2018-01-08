@@ -97,6 +97,9 @@ private:
   int arming_counter_;
   double battery_voltage_;
 
+  // Safety flags
+  bool rc_was_disarmed_once_;
+
   std::atomic_bool destructor_invoked_;
 
   thrust_mapping::CollectiveThrustMapping thrust_mapping_;

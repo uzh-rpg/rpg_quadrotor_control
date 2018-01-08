@@ -15,7 +15,8 @@ SBusBridge::SBusBridge(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     nh_(nh), pnh_(pnh), stop_watchdog_thread_(false), time_last_rc_msg_received_(),
         time_last_sbus_msg_sent_(ros::Time::now()), time_last_battery_voltage_received_(ros::Time::now()),
         time_last_active_control_command_received_(), bridge_state_(BridgeState::OFF), bridge_armed_(false),
-        control_mode_(ControlMode::RATE), arming_counter_(0), battery_voltage_(0.0), destructor_invoked_(false)
+        control_mode_(ControlMode::RATE), arming_counter_(0), battery_voltage_(0.0), rc_was_disarmed_once_(false),
+        destructor_invoked_(false)
 {
   if (!loadParameters())
   {
@@ -169,6 +170,14 @@ void SBusBridge::handleReceivedSbusMessage(const SBusMsg& received_sbus_msg)
 
     if (received_sbus_msg.isArmed())
     {
+      if (!rc_was_disarmed_once_)
+      {
+        // This flag prevents that the vehicle can be armed if the RC is armed on startup of the bridge
+        ROS_WARN_THROTTLE(1.0, "[%s] RC needs to be disarmed once before it can take over control",
+                          pnh_.getNamespace().c_str());
+        return;
+      }
+
       // Immediately go into RC_FLIGHT state since RC always has priority
       if (bridge_state_ != BridgeState::RC_FLIGHT)
       {
@@ -191,9 +200,13 @@ void SBusBridge::handleReceivedSbusMessage(const SBusMsg& received_sbus_msg)
       else
       {
         // When switching the bridge state to off, our watchdog ensures that a disarming off message is sent
-        // kSmoothingFailRepetitions_ times.
         setBridgeState(BridgeState::OFF);
       }
+    }
+    else if (!rc_was_disarmed_once_)
+    {
+      ROS_INFO("[%s] RC was disarmed once, now it is allowed to take over control", pnh_.getNamespace().c_str());
+      rc_was_disarmed_once_ = true;
     }
 
     // Main mutex is unlocked here because it goes out of scope
