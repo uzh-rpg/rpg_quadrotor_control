@@ -6,13 +6,13 @@ namespace sbus_bridge
 namespace channel_mapping
 {
 
-static constexpr uint8_t kThrottleChannel = 0;
-static constexpr uint8_t kRollChannel = 1;
-static constexpr uint8_t kPitchChannel = 2;
-static constexpr uint8_t kYawChannel = 3;
-static constexpr uint8_t kArmingChannel = 4;
-static constexpr uint8_t kControlModeChannel = 5;
-static constexpr uint8_t kGamepadModeChannel = 6;
+static constexpr uint8_t kThrottle = 0;
+static constexpr uint8_t kRoll = 1;
+static constexpr uint8_t kPitch = 2;
+static constexpr uint8_t kYaw = 3;
+static constexpr uint8_t kArming = 4;
+static constexpr uint8_t kControlMode = 5;
+static constexpr uint8_t kGamepadMode = 6;
 
 }
 
