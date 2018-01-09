@@ -112,6 +112,7 @@ feature -RX_SPI
 feature -SOFTSPI
 feature -ESC_SENSOR
 feature -FEATURE_ANTI_GRAVITY
+feature VBAT
 feature RX_SERIAL
 feature FAILSAFE
 
@@ -375,8 +376,8 @@ set ibus_report_cell_voltage = OFF
 set bat_capacity = 0
 set vbat_scale = 110
 set vbat_max_cell_voltage = 43
-set vbat_min_cell_voltage = 33
-set vbat_warning_cell_voltage = 35
+set vbat_min_cell_voltage = 35
+set vbat_warning_cell_voltage = 36
 set vbat_hysteresis = 1
 set ibat_scale = 300
 set ibat_offset = 0
