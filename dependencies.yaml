@@ -1,0 +1,9 @@
+repositories:
+  catkin_simple:
+    type: git
+    url: git@github.com:catkin/catkin_simple.git
+    version: master
+  rpg_single_board_io:
+    type: git
+    url: git@github.com:uzh-rpg/rpg_single_board_io.git
+    version: master
