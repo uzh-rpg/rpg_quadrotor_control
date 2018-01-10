@@ -552,14 +552,14 @@ if (!quad_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(max_roll_rate);
   GET_PARAM(max_pitch_rate);
   GET_PARAM(max_yaw_rate);
-  max_roll_rate_ /= 180.0 * M_PI;
-  max_pitch_rate_ /= 180.0 * M_PI;
-  max_yaw_rate_ /= 180.0 * M_PI;
+  max_roll_rate_ /= (180.0 / M_PI);
+  max_pitch_rate_ /= (180.0 / M_PI);
+  max_yaw_rate_ /= (180.0 / M_PI);
 
   GET_PARAM(max_roll_angle);
   GET_PARAM(max_pitch_angle);
-  max_roll_angle_ /= 180.0 * M_PI;
-  max_pitch_angle_ /= 180.0 * M_PI;
+  max_roll_angle_ /= (180.0 / M_PI);
+  max_pitch_angle_ /= (180.0 / M_PI);
 
   GET_PARAM(alpha_vbat_filter);
   GET_PARAM(perform_thrust_voltage_compensation);
