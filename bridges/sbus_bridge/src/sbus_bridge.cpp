@@ -264,7 +264,11 @@ void SBusBridge::controlCommandCallback(const quad_msgs::ControlCommand::ConstPt
   }
   else
   {
-    // Make sure vehicle is disarmed
+    if (bridge_state_ == BridgeState::ARMING || bridge_state_ == BridgeState::AUTONOMOUS_FLIGHT)
+    {
+      setBridgeState(BridgeState::OFF);
+    }
+    // Make sure vehicle is disarmed to immediately switch it off
     sbus_msg_to_send.setArmStateDisarmed();
   }
 
