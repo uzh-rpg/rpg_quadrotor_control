@@ -264,7 +264,11 @@ void SBusBridge::controlCommandCallback(const quad_msgs::ControlCommand::ConstPt
   }
   else
   {
-    // Make sure vehicle is disarmed
+    if (bridge_state_ == BridgeState::ARMING || bridge_state_ == BridgeState::AUTONOMOUS_FLIGHT)
+    {
+      setBridgeState(BridgeState::OFF);
+    }
+    // Make sure vehicle is disarmed to immediately switch it off
     sbus_msg_to_send.setArmStateDisarmed();
   }
 
@@ -548,14 +552,14 @@ if (!quad_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(max_roll_rate);
   GET_PARAM(max_pitch_rate);
   GET_PARAM(max_yaw_rate);
-  max_roll_rate_ /= 180.0 * M_PI;
-  max_pitch_rate_ /= 180.0 * M_PI;
-  max_yaw_rate_ /= 180.0 * M_PI;
+  max_roll_rate_ /= (180.0 / M_PI);
+  max_pitch_rate_ /= (180.0 / M_PI);
+  max_yaw_rate_ /= (180.0 / M_PI);
 
   GET_PARAM(max_roll_angle);
   GET_PARAM(max_pitch_angle);
-  max_roll_angle_ /= 180.0 * M_PI;
-  max_pitch_angle_ /= 180.0 * M_PI;
+  max_roll_angle_ /= (180.0 / M_PI);
+  max_pitch_angle_ /= (180.0 / M_PI);
 
   GET_PARAM(alpha_vbat_filter);
   GET_PARAM(perform_thrust_voltage_compensation);
