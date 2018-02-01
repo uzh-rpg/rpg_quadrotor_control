@@ -7,7 +7,7 @@ int8 state
 time command_execution_time
 
 # Desired state used to compute the control command
-quad_msgs/QuadDesiredState desired_state
+quadrotor_msgs/QuadDesiredState desired_state
 
 # State estimate used to compute the control command
 nav_msgs/Odometry state_estimate
