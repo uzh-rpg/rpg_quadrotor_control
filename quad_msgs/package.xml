@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>quad_msgs</name>
+  <version>0.0.0</version>
+  <description>The quad_msgs package</description>
+
+  <maintainer email="faessler@ifi.uzh.ch">Matthias Faessler</maintainer>
+  <license>TODO</license>
+
+  <author>Matthias Faessler</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>message_generation</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>std_msgs</build_depend>
+
+  <export>
+
+  </export>
+</package>
