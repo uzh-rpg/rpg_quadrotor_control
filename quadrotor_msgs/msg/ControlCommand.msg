@@ -4,7 +4,8 @@
 uint8 NONE=0
 uint8 ATTITUDE=1
 uint8 BODY_RATES=2
-uint8 ROTOR_THRUSTS=3
+uint8 ANGULAR_ACCELERATION=3
+uint8 ROTOR_THRUSTS=4
 
 Header header
 
@@ -15,7 +16,7 @@ uint8 control_mode
 bool armed
 
 # Time at which this command should be executed
-time execution_time
+time expected_execution_time
 
 # Orientation of the body frame with respect to the world frame [-]
 geometry_msgs/Quaternion orientation
