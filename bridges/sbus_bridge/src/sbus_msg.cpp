@@ -6,7 +6,8 @@ namespace sbus_bridge
 {
 
 SBusMsg::SBusMsg() :
-    timestamp(ros::Time::now()), digital_channel_1(false), digital_channel_2(false), frame_lost(false), failsafe(false)
+    timestamp(ros::Time::now()), digital_channel_1(false), digital_channel_2(
+        false), frame_lost(false), failsafe(false)
 {
   for (int i = 0; i < kNChannels; i++)
   {
@@ -134,7 +135,8 @@ void SBusMsg::setArmStateArmed()
 void SBusMsg::setArmStateDisarmed()
 {
   setArmState(ArmState::DISARMED);
-  // Should not be necessary but for safety we also set the throttle command to the minimum
+  // Should not be necessary but for safety we also set the throttle command
+  // to the minimum
   setThrottleCommand(kMinCmd);
 }
 
