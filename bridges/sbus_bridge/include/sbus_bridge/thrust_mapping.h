@@ -9,13 +9,17 @@ class CollectiveThrustMapping
 {
 public:
   CollectiveThrustMapping();
-  CollectiveThrustMapping(const double thrust_map_a, const double thrust_map_b, const double thrust_map_c,
-                          const bool perform_thrust_voltage_compensation, const double thrust_ratio_voltage_map_a,
-                          const double thrust_ratio_voltage_map_b, const int n_lipo_cells);
+  CollectiveThrustMapping(const double thrust_map_a, const double thrust_map_b,
+                          const double thrust_map_c,
+                          const bool perform_thrust_voltage_compensation,
+                          const double thrust_ratio_voltage_map_a,
+                          const double thrust_ratio_voltage_map_b,
+                          const int n_lipo_cells);
 
   virtual ~CollectiveThrustMapping();
 
-  uint16_t inverseThrustMapping(const double thrust, const double battery_voltage) const;
+  uint16_t inverseThrustMapping(const double thrust,
+                                const double battery_voltage) const;
 
   bool loadParameters();
 

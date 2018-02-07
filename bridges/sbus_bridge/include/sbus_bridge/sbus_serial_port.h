@@ -18,7 +18,8 @@ public:
 
 protected:
 
-  bool setUpSBusSerialPort(const std::string& port, const bool start_receiver_thread);
+  bool setUpSBusSerialPort(const std::string& port,
+                           const bool start_receiver_thread);
 
   bool connectSerialPort(const std::string& port);
   void disconnectSerialPort();
@@ -27,7 +28,8 @@ protected:
   bool stopReceiverThread();
 
   void transmitSerialSBusMessage(const SBusMsg& sbus_msg) const;
-  virtual void handleReceivedSbusMessage(const sbus_bridge::SBusMsg& received_sbus_msg) = 0;
+  virtual void handleReceivedSbusMessage(
+      const sbus_bridge::SBusMsg& received_sbus_msg) = 0;
 
 private:
 
@@ -38,7 +40,8 @@ private:
 
   bool configureSerialPortForSBus() const;
   void serialPortReceiveThread();
-  sbus_bridge::SBusMsg parseSbusMessage(uint8_t sbus_msg_bytes[kSbusFrameLength_]) const;
+  sbus_bridge::SBusMsg parseSbusMessage(
+      uint8_t sbus_msg_bytes[kSbusFrameLength_]) const;
 
   std::thread receiver_thread_;
   std::atomic_bool receiver_thread_should_exit_;

@@ -42,7 +42,8 @@ private:
   void controlCommandCallback(const quad_msgs::ControlCommand::ConstPtr& msg);
   void sendSBusMessageToSerialPort(const SBusMsg& sbus_msg);
 
-  SBusMsg generateSBusMessageFromControlCommand(const quad_msgs::ControlCommand::ConstPtr& control_command) const;
+  SBusMsg generateSBusMessageFromControlCommand(
+      const quad_msgs::ControlCommand::ConstPtr& control_command) const;
 
   void setBridgeState(const BridgeState& desired_bridge_state);
 
@@ -63,12 +64,14 @@ private:
   // - time_last_rc_msg_received_
   // - arming_counter_
   // - time_last_sbus_msg_sent_
-  // Also "setBridgeState" and "sendSBusMessageToSerialPort" should only be called when "main_mutex_" is locked
+  // Also "setBridgeState" and "sendSBusMessageToSerialPort" should only be
+  // called when "main_mutex_" is locked
   mutable std::mutex main_mutex_;
   // Mutex for:
   // - battery_voltage_
   // - time_last_battery_voltage_received_
-  // Also "generateSBusMessageFromControlCommand" should only be called when "battery_voltage_mutex_" is locked
+  // Also "generateSBusMessageFromControlCommand" should only be called when
+  // "battery_voltage_mutex_" is locked
   mutable std::mutex battery_voltage_mutex_;
 
   // Publishers
