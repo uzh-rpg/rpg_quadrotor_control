@@ -19,7 +19,8 @@ SBusSerialPort::SBusSerialPort() :
 {
 }
 
-SBusSerialPort::SBusSerialPort(const std::string& port, const bool start_receiver_thread) :
+SBusSerialPort::SBusSerialPort(const std::string& port,
+                               const bool start_receiver_thread) :
     receiver_thread_(), receiver_thread_should_exit_(false), serial_port_fd_(-1)
 {
   setUpSBusSerialPort(port, start_receiver_thread);
@@ -30,7 +31,8 @@ SBusSerialPort::~SBusSerialPort()
   disconnectSerialPort();
 }
 
-bool SBusSerialPort::setUpSBusSerialPort(const std::string& port, const bool start_receiver_thread)
+bool SBusSerialPort::setUpSBusSerialPort(const std::string& port,
+                                         const bool start_receiver_thread)
 {
   if (!connectSerialPort(port))
   {
@@ -58,14 +60,16 @@ bool SBusSerialPort::connectSerialPort(const std::string& port)
 
   if (serial_port_fd_ == -1)
   {
-    ROS_ERROR("[%s] Could not open serial port %s", ros::this_node::getName().c_str(), port.c_str());
+    ROS_ERROR("[%s] Could not open serial port %s",
+              ros::this_node::getName().c_str(), port.c_str());
     return false;
   }
 
   if (!configureSerialPortForSBus())
   {
     close(serial_port_fd_);
-    ROS_ERROR("[%s] Could not set necessary configuration of serial port", ros::this_node::getName().c_str());
+    ROS_ERROR("[%s] Could not set necessary configuration of serial port",
+              ros::this_node::getName().c_str());
     return false;
   }
 
@@ -84,11 +88,13 @@ bool SBusSerialPort::startReceiverThread()
   // Start watchdog thread
   try
   {
-    receiver_thread_ = std::thread(&SBusSerialPort::serialPortReceiveThread, this);
+    receiver_thread_ = std::thread(&SBusSerialPort::serialPortReceiveThread,
+                                   this);
   }
   catch (...)
   {
-    ROS_ERROR("[%s] Could not successfully start SBUS receiver thread.", ros::this_node::getName().c_str());
+    ROS_ERROR("[%s] Could not successfully start SBUS receiver thread.",
+              ros::this_node::getName().c_str());
     return false;
   }
 
@@ -135,7 +141,8 @@ bool SBusSerialPort::configureSerialPortForSBus() const
   // no input parity check, don't strip high bit off,
   // no XON/XOFF software flow control
   //
-  uart_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK | ISTRIP | IXON);
+  uart_config.c_iflag &= ~(IGNBRK | BRKINT | ICRNL | INLCR | PARMRK | INPCK
+      | ISTRIP | IXON);
 
   //
   // No line processing:
@@ -167,7 +174,8 @@ bool SBusSerialPort::configureSerialPortForSBus() const
 
   if (ioctl(serial_port_fd_, TCSETS2, &uart_config) < 0)
   {
-    ROS_ERROR("[%s] could not set configuration of serial port", ros::this_node::getName().c_str());
+    ROS_ERROR("[%s] could not set configuration of serial port",
+              ros::this_node::getName().c_str());
     return false;
   }
 
@@ -183,26 +191,40 @@ void SBusSerialPort::transmitSerialSBusMessage(const SBusMsg& sbus_msg) const
 
   // 16 channels of 11 bit data
   buffer[1] = (uint8_t)((sbus_msg.channels[0] & 0x07FF));
-  buffer[2] = (uint8_t)((sbus_msg.channels[0] & 0x07FF) >> 8 | (sbus_msg.channels[1] & 0x07FF) << 3);
-  buffer[3] = (uint8_t)((sbus_msg.channels[1] & 0x07FF) >> 5 | (sbus_msg.channels[2] & 0x07FF) << 6);
+  buffer[2] = (uint8_t)((sbus_msg.channels[0] & 0x07FF) >> 8
+      | (sbus_msg.channels[1] & 0x07FF) << 3);
+  buffer[3] = (uint8_t)((sbus_msg.channels[1] & 0x07FF) >> 5
+      | (sbus_msg.channels[2] & 0x07FF) << 6);
   buffer[4] = (uint8_t)((sbus_msg.channels[2] & 0x07FF) >> 2);
-  buffer[5] = (uint8_t)((sbus_msg.channels[2] & 0x07FF) >> 10 | (sbus_msg.channels[3] & 0x07FF) << 1);
-  buffer[6] = (uint8_t)((sbus_msg.channels[3] & 0x07FF) >> 7 | (sbus_msg.channels[4] & 0x07FF) << 4);
-  buffer[7] = (uint8_t)((sbus_msg.channels[4] & 0x07FF) >> 4 | (sbus_msg.channels[5] & 0x07FF) << 7);
+  buffer[5] = (uint8_t)((sbus_msg.channels[2] & 0x07FF) >> 10
+      | (sbus_msg.channels[3] & 0x07FF) << 1);
+  buffer[6] = (uint8_t)((sbus_msg.channels[3] & 0x07FF) >> 7
+      | (sbus_msg.channels[4] & 0x07FF) << 4);
+  buffer[7] = (uint8_t)((sbus_msg.channels[4] & 0x07FF) >> 4
+      | (sbus_msg.channels[5] & 0x07FF) << 7);
   buffer[8] = (uint8_t)((sbus_msg.channels[5] & 0x07FF) >> 1);
-  buffer[9] = (uint8_t)((sbus_msg.channels[5] & 0x07FF) >> 9 | (sbus_msg.channels[6] & 0x07FF) << 2);
-  buffer[10] = (uint8_t)((sbus_msg.channels[6] & 0x07FF) >> 6 | (sbus_msg.channels[7] & 0x07FF) << 5);
+  buffer[9] = (uint8_t)((sbus_msg.channels[5] & 0x07FF) >> 9
+      | (sbus_msg.channels[6] & 0x07FF) << 2);
+  buffer[10] = (uint8_t)((sbus_msg.channels[6] & 0x07FF) >> 6
+      | (sbus_msg.channels[7] & 0x07FF) << 5);
   buffer[11] = (uint8_t)((sbus_msg.channels[7] & 0x07FF) >> 3);
   buffer[12] = (uint8_t)((sbus_msg.channels[8] & 0x07FF));
-  buffer[13] = (uint8_t)((sbus_msg.channels[8] & 0x07FF) >> 8 | (sbus_msg.channels[9] & 0x07FF) << 3);
-  buffer[14] = (uint8_t)((sbus_msg.channels[9] & 0x07FF) >> 5 | (sbus_msg.channels[10] & 0x07FF) << 6);
+  buffer[13] = (uint8_t)((sbus_msg.channels[8] & 0x07FF) >> 8
+      | (sbus_msg.channels[9] & 0x07FF) << 3);
+  buffer[14] = (uint8_t)((sbus_msg.channels[9] & 0x07FF) >> 5
+      | (sbus_msg.channels[10] & 0x07FF) << 6);
   buffer[15] = (uint8_t)((sbus_msg.channels[10] & 0x07FF) >> 2);
-  buffer[16] = (uint8_t)((sbus_msg.channels[10] & 0x07FF) >> 10 | (sbus_msg.channels[11] & 0x07FF) << 1);
-  buffer[17] = (uint8_t)((sbus_msg.channels[11] & 0x07FF) >> 7 | (sbus_msg.channels[12] & 0x07FF) << 4);
-  buffer[18] = (uint8_t)((sbus_msg.channels[12] & 0x07FF) >> 4 | (sbus_msg.channels[13] & 0x07FF) << 7);
+  buffer[16] = (uint8_t)((sbus_msg.channels[10] & 0x07FF) >> 10
+      | (sbus_msg.channels[11] & 0x07FF) << 1);
+  buffer[17] = (uint8_t)((sbus_msg.channels[11] & 0x07FF) >> 7
+      | (sbus_msg.channels[12] & 0x07FF) << 4);
+  buffer[18] = (uint8_t)((sbus_msg.channels[12] & 0x07FF) >> 4
+      | (sbus_msg.channels[13] & 0x07FF) << 7);
   buffer[19] = (uint8_t)((sbus_msg.channels[13] & 0x07FF) >> 1);
-  buffer[20] = (uint8_t)((sbus_msg.channels[13] & 0x07FF) >> 9 | (sbus_msg.channels[14] & 0x07FF) << 2);
-  buffer[21] = (uint8_t)((sbus_msg.channels[14] & 0x07FF) >> 6 | (sbus_msg.channels[15] & 0x07FF) << 5);
+  buffer[20] = (uint8_t)((sbus_msg.channels[13] & 0x07FF) >> 9
+      | (sbus_msg.channels[14] & 0x07FF) << 2);
+  buffer[21] = (uint8_t)((sbus_msg.channels[14] & 0x07FF) >> 6
+      | (sbus_msg.channels[15] & 0x07FF) << 5);
   buffer[22] = (uint8_t)((sbus_msg.channels[15] & 0x07FF) >> 3);
 
   // SBUS flags
@@ -237,11 +259,12 @@ void SBusSerialPort::transmitSerialSBusMessage(const SBusMsg& sbus_msg) const
   buffer[24] = kSbusFooterByte_;
 
   const int written = write(serial_port_fd_, (char*)buffer, kSbusFrameLength_);
-  // tcflush(serial_port_fd_, TCOFLUSH); // There were rumors that this might not work on Odroids...
+  // tcflush(serial_port_fd_, TCOFLUSH); // There were rumors that this might
+  // not work on Odroids...
   if (written != kSbusFrameLength_)
   {
-    ROS_ERROR("[%s] Wrote %d bytes but should have written %d", ros::this_node::getName().c_str(), written,
-              kSbusFrameLength_);
+    ROS_ERROR("[%s] Wrote %d bytes but should have written %d",
+              ros::this_node::getName().c_str(), written, kSbusFrameLength_);
   }
 }
 
@@ -254,8 +277,9 @@ void SBusSerialPort::serialPortReceiveThread()
   uint8_t init_buf[10];
   while (read(serial_port_fd_, init_buf, sizeof(init_buf)) > 0)
   {
-    // On startup, as long as we receive something, we keep reading to ensure that the first byte of the first poll
-    // is the start of an SBUS message and not some arbitrary byte.
+    // On startup, as long as we receive something, we keep reading to ensure
+    // that the first byte of the first poll is the start of an SBUS message
+    // and not some arbitrary byte.
     // This should help to get the framing in sync in the beginning.
     usleep(100);
   }
@@ -264,8 +288,9 @@ void SBusSerialPort::serialPortReceiveThread()
 
   while (!receiver_thread_should_exit_)
   {
-    // Buffer to read bytes from serial port. We make it large enough to potentially contain 4 sbus messages
-    // but its actual size probably does not matter too much
+    // Buffer to read bytes from serial port. We make it large enough to
+    // potentially contain 4 sbus messages but its actual size probably does
+    // not matter too much
     uint8_t read_buf[4 * kSbusFrameLength_];
 
     if (poll(fds, 1, kPollTimeoutMilliSeconds_) > 0)
@@ -284,9 +309,11 @@ void SBusSerialPort::serialPortReceiveThread()
         while (bytes_buf.size() >= kSbusFrameLength_)
         {
           // Check if we have a potentially valid SBUS message
-          // A valid SBUS message must have to correct header and footer byte as well as zeros in the four
-          // most significant bytes of the flag byte (byte 23)
-          if (bytes_buf.front() == kSbusHeaderByte_ && !(bytes_buf[kSbusFrameLength_ - 2] & 0xF0)
+          // A valid SBUS message must have to correct header and footer byte
+          // as well as zeros in the four most significant bytes of the flag
+          // byte (byte 23)
+          if (bytes_buf.front() == kSbusHeaderByte_
+              && !(bytes_buf[kSbusFrameLength_ - 2] & 0xF0)
               && bytes_buf[kSbusFrameLength_ - 1] == kSbusFooterByte_)
           {
 
@@ -300,10 +327,11 @@ void SBusSerialPort::serialPortReceiveThread()
           }
           else
           {
-            // If it is not a valid SBUS message but has a correct header byte we need to pop it to prevent
-            // staying in this loop forever
+            // If it is not a valid SBUS message but has a correct header byte
+            // we need to pop it to prevent staying in this loop forever
             bytes_buf.pop_front();
-            ROS_WARN("[%s] SBUS message framing not in sync", ros::this_node::getName().c_str());
+            ROS_WARN("[%s] SBUS message framing not in sync",
+                     ros::this_node::getName().c_str());
           }
 
           // If not, pop front elements until we have a valid header byte
@@ -316,8 +344,8 @@ void SBusSerialPort::serialPortReceiveThread()
         if (valid_sbus_message_received)
         {
           // Sometimes we read more than one sbus message at the same time
-          // By running the loop above for as long as possible before handling the received sbus message
-          // we achieve to only process the latest one.
+          // By running the loop above for as long as possible before handling
+          // the received sbus message we achieve to only process the latest one
           const SBusMsg received_sbus_msg = parseSbusMessage(sbus_msg_bytes);
           handleReceivedSbusMessage(received_sbus_msg);
         }
@@ -328,36 +356,54 @@ void SBusSerialPort::serialPortReceiveThread()
   return;
 }
 
-SBusMsg SBusSerialPort::parseSbusMessage(uint8_t sbus_msg_bytes[kSbusFrameLength_]) const
+SBusMsg SBusSerialPort::parseSbusMessage(
+    uint8_t sbus_msg_bytes[kSbusFrameLength_]) const
 {
   SBusMsg sbus_msg;
 
   sbus_msg.timestamp = ros::Time::now();
 
   // Decode the 16 regular channels
-  sbus_msg.channels[0] = (((uint16_t)sbus_msg_bytes[1]) | ((uint16_t)sbus_msg_bytes[2] << 8)) & 0x07FF;
-  sbus_msg.channels[1] = (((uint16_t)sbus_msg_bytes[2] >> 3) | ((uint16_t)sbus_msg_bytes[3] << 5)) & 0x07FF;
-  sbus_msg.channels[2] = (((uint16_t)sbus_msg_bytes[3] >> 6) | ((uint16_t)sbus_msg_bytes[4] << 2)
-      | ((uint16_t)sbus_msg_bytes[5] << 10)) & 0x07FF;
-  sbus_msg.channels[3] = (((uint16_t)sbus_msg_bytes[5] >> 1) | ((uint16_t)sbus_msg_bytes[6] << 7)) & 0x07FF;
-  sbus_msg.channels[4] = (((uint16_t)sbus_msg_bytes[6] >> 4) | ((uint16_t)sbus_msg_bytes[7] << 4)) & 0x07FF;
-  sbus_msg.channels[5] = (((uint16_t)sbus_msg_bytes[7] >> 7) | ((uint16_t)sbus_msg_bytes[8] << 1)
-      | ((uint16_t)sbus_msg_bytes[9] << 9)) & 0x07FF;
-  sbus_msg.channels[6] = (((uint16_t)sbus_msg_bytes[9] >> 2) | ((uint16_t)sbus_msg_bytes[10] << 6)) & 0x07FF;
-  sbus_msg.channels[7] = (((uint16_t)sbus_msg_bytes[10] >> 5) | ((uint16_t)sbus_msg_bytes[11] << 3)) & 0x07FF;
-  sbus_msg.channels[8] = (((uint16_t)sbus_msg_bytes[12]) | ((uint16_t)sbus_msg_bytes[13] << 8)) & 0x07FF;
-  sbus_msg.channels[9] = (((uint16_t)sbus_msg_bytes[13] >> 3) | ((uint16_t)sbus_msg_bytes[14] << 5)) & 0x07FF;
-  sbus_msg.channels[10] = (((uint16_t)sbus_msg_bytes[14] >> 6) | ((uint16_t)sbus_msg_bytes[15] << 2)
+  sbus_msg.channels[0] = (((uint16_t)sbus_msg_bytes[1])
+      | ((uint16_t)sbus_msg_bytes[2] << 8)) & 0x07FF;
+  sbus_msg.channels[1] = (((uint16_t)sbus_msg_bytes[2] >> 3)
+      | ((uint16_t)sbus_msg_bytes[3] << 5)) & 0x07FF;
+  sbus_msg.channels[2] =
+      (((uint16_t)sbus_msg_bytes[3] >> 6) | ((uint16_t)sbus_msg_bytes[4] << 2)
+          | ((uint16_t)sbus_msg_bytes[5] << 10)) & 0x07FF;
+  sbus_msg.channels[3] = (((uint16_t)sbus_msg_bytes[5] >> 1)
+      | ((uint16_t)sbus_msg_bytes[6] << 7)) & 0x07FF;
+  sbus_msg.channels[4] = (((uint16_t)sbus_msg_bytes[6] >> 4)
+      | ((uint16_t)sbus_msg_bytes[7] << 4)) & 0x07FF;
+  sbus_msg.channels[5] = (((uint16_t)sbus_msg_bytes[7] >> 7)
+      | ((uint16_t)sbus_msg_bytes[8] << 1) | ((uint16_t)sbus_msg_bytes[9] << 9))
+      & 0x07FF;
+  sbus_msg.channels[6] = (((uint16_t)sbus_msg_bytes[9] >> 2)
+      | ((uint16_t)sbus_msg_bytes[10] << 6)) & 0x07FF;
+  sbus_msg.channels[7] = (((uint16_t)sbus_msg_bytes[10] >> 5)
+      | ((uint16_t)sbus_msg_bytes[11] << 3)) & 0x07FF;
+  sbus_msg.channels[8] = (((uint16_t)sbus_msg_bytes[12])
+      | ((uint16_t)sbus_msg_bytes[13] << 8)) & 0x07FF;
+  sbus_msg.channels[9] = (((uint16_t)sbus_msg_bytes[13] >> 3)
+      | ((uint16_t)sbus_msg_bytes[14] << 5)) & 0x07FF;
+  sbus_msg.channels[10] = (((uint16_t)sbus_msg_bytes[14] >> 6)
+      | ((uint16_t)sbus_msg_bytes[15] << 2)
       | ((uint16_t)sbus_msg_bytes[16] << 10)) & 0x07FF;
-  sbus_msg.channels[11] = (((uint16_t)sbus_msg_bytes[16] >> 1) | ((uint16_t)sbus_msg_bytes[17] << 7)) & 0x07FF;
-  sbus_msg.channels[12] = (((uint16_t)sbus_msg_bytes[17] >> 4) | ((uint16_t)sbus_msg_bytes[18] << 4)) & 0x07FF;
-  sbus_msg.channels[13] = (((uint16_t)sbus_msg_bytes[18] >> 7) | ((uint16_t)sbus_msg_bytes[19] << 1)
+  sbus_msg.channels[11] = (((uint16_t)sbus_msg_bytes[16] >> 1)
+      | ((uint16_t)sbus_msg_bytes[17] << 7)) & 0x07FF;
+  sbus_msg.channels[12] = (((uint16_t)sbus_msg_bytes[17] >> 4)
+      | ((uint16_t)sbus_msg_bytes[18] << 4)) & 0x07FF;
+  sbus_msg.channels[13] = (((uint16_t)sbus_msg_bytes[18] >> 7)
+      | ((uint16_t)sbus_msg_bytes[19] << 1)
       | ((uint16_t)sbus_msg_bytes[20] << 9)) & 0x07FF;
-  sbus_msg.channels[14] = (((uint16_t)sbus_msg_bytes[20] >> 2) | ((uint16_t)sbus_msg_bytes[21] << 6)) & 0x07FF;
-  sbus_msg.channels[15] = (((uint16_t)sbus_msg_bytes[21] >> 5) | ((uint16_t)sbus_msg_bytes[22] << 3)) & 0x07FF;
+  sbus_msg.channels[14] = (((uint16_t)sbus_msg_bytes[20] >> 2)
+      | ((uint16_t)sbus_msg_bytes[21] << 6)) & 0x07FF;
+  sbus_msg.channels[15] = (((uint16_t)sbus_msg_bytes[21] >> 5)
+      | ((uint16_t)sbus_msg_bytes[22] << 3)) & 0x07FF;
 
   // Decode flags from byte 23 (see comments in sendSBusMessage function)
-  // By default, flags are set to false in SBusMsg constructor, so we only need to set them true if necessary
+  // By default, flags are set to false in SBusMsg constructor, so we only need
+  // to set them true if necessary
   if (sbus_msg_bytes[23] & (1 << 0))
   {
     sbus_msg.digital_channel_1 = true;

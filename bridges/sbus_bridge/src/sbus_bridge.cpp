@@ -12,11 +12,13 @@ namespace sbus_bridge
 {
 
 SBusBridge::SBusBridge(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
-    nh_(nh), pnh_(pnh), stop_watchdog_thread_(false), time_last_rc_msg_received_(),
-        time_last_sbus_msg_sent_(ros::Time::now()), time_last_battery_voltage_received_(ros::Time::now()),
-        time_last_active_control_command_received_(), bridge_state_(BridgeState::OFF), control_mode_(ControlMode::RATE),
-        arming_counter_(0), battery_voltage_(0.0), bridge_armed_(false), rc_was_disarmed_once_(false),
-        destructor_invoked_(false)
+    nh_(nh), pnh_(pnh), stop_watchdog_thread_(false),
+    time_last_rc_msg_received_(), time_last_sbus_msg_sent_(ros::Time::now()),
+    time_last_battery_voltage_received_(ros::Time::now()),
+    time_last_active_control_command_received_(),
+    bridge_state_(BridgeState::OFF), control_mode_(ControlMode::RATE),
+    arming_counter_(0), battery_voltage_(0.0), bridge_armed_(false),
+    rc_was_disarmed_once_(false), destructor_invoked_(false)
 {
   if (!loadParameters())
   {
@@ -31,21 +33,30 @@ SBusBridge::SBusBridge(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
   }
 
   // Publishers
-  onboard_status_pub_ = nh_.advertise<quad_msgs::OnboardStatus>("onboard_status", 1);
+  onboard_status_pub_ = nh_.advertise<quad_msgs::OnboardStatus>(
+      "onboard_status", 1);
   if (enable_receiving_sbus_messages_)
   {
-    received_sbus_msg_pub_ = nh_.advertise<sbus_bridge::SbusRosMessage>("received_sbus_message", 1);
+    received_sbus_msg_pub_ = nh_.advertise<sbus_bridge::SbusRosMessage>(
+        "received_sbus_message", 1);
   }
 
   // Subscribers
-  arm_bridge_sub_ = nh_.subscribe("sbus_bridge/arm", 1, &SBusBridge::armBridgeCallback, this);
-  control_command_sub_ = nh_.subscribe("control_command", 1, &SBusBridge::controlCommandCallback, this);
-  battery_voltage_sub_ = nh_.subscribe("battery_voltage", 1, &SBusBridge::batteryVoltageCallback, this);
+  arm_bridge_sub_ = nh_.subscribe("sbus_bridge/arm", 1,
+                                  &SBusBridge::armBridgeCallback, this);
+  control_command_sub_ = nh_.subscribe("control_command", 1,
+                                       &SBusBridge::controlCommandCallback,
+                                       this);
+  battery_voltage_sub_ = nh_.subscribe("battery_voltage", 1,
+                                       &SBusBridge::batteryVoltageCallback,
+                                       this);
 
-  onboard_status_pub_timer_ = nh_.createTimer(ros::Duration(1.0 / kOnboardStatusPublishFrequency_),
-                                              &SBusBridge::publishOnboardStatus, this);
+  onboard_status_pub_timer_ = nh_.createTimer(
+      ros::Duration(1.0 / kOnboardStatusPublishFrequency_),
+      &SBusBridge::publishOnboardStatus, this);
 
-  // Start serial port with receiver thread if receiving sbus messages is enabled
+  // Start serial port with receiver thread if receiving sbus messages is
+  // enabled
   if (!setUpSBusSerialPort(port_name_, enable_receiving_sbus_messages_))
   {
     ros::shutdown();
@@ -59,7 +70,8 @@ SBusBridge::SBusBridge(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
   }
   catch (...)
   {
-    ROS_ERROR("[%s] Could not successfully start watchdog thread.", pnh_.getNamespace().c_str());
+    ROS_ERROR("[%s] Could not successfully start watchdog thread.",
+              pnh_.getNamespace().c_str());
     ros::shutdown();
     return;
   }
@@ -85,7 +97,8 @@ SBusBridge::~SBusBridge()
   setBridgeState(BridgeState::OFF);
 
   // Send disarming SBus message for safety
-  // We repeat it to prevent any possible smoothing of commands on the flight controller to interfere with this
+  // We repeat it to prevent any possible smoothing of commands on the flight
+  // controller to interfere with this
   SBusMsg shut_down_message;
   shut_down_message.setArmStateDisarmed();
   ros::Rate loop_rate(110.0);
@@ -110,34 +123,41 @@ void SBusBridge::watchdogThread()
 
     const ros::Time time_now = ros::Time::now();
 
-    if (bridge_state_ == BridgeState::RC_FLIGHT && time_now - time_last_rc_msg_received_ > ros::Duration(rc_timeout_))
+    if (bridge_state_ == BridgeState::RC_FLIGHT
+        && time_now - time_last_rc_msg_received_ > ros::Duration(rc_timeout_))
     {
-      // If the last received RC command was armed but was received longer than rc_timeout ago we switch the bridge
-      // state to AUTONOMOUS_FLIGHT. In case there are no valid control commands the bridge state is set to OFF
-      // in the next check below
-      ROS_WARN("[%s] Remote control was active but no message from it was received within timeout (%f s).",
-               pnh_.getNamespace().c_str(), rc_timeout_);
+      // If the last received RC command was armed but was received longer than
+      // rc_timeout ago we switch the bridge state to AUTONOMOUS_FLIGHT.
+      // In case there are no valid control commands the bridge state is set to
+      // OFF in the next check below
+      ROS_WARN(
+          "[%s] Remote control was active but no message from it was received "
+          "within timeout (%f s).",
+          pnh_.getNamespace().c_str(), rc_timeout_);
       setBridgeState(BridgeState::AUTONOMOUS_FLIGHT);
     }
 
-    if (bridge_state_ == BridgeState::ARMING || bridge_state_ == BridgeState::AUTONOMOUS_FLIGHT)
+    if (bridge_state_ == BridgeState::ARMING
+        || bridge_state_ == BridgeState::AUTONOMOUS_FLIGHT)
     {
-      if (time_now - time_last_active_control_command_received_ > ros::Duration(control_command_timeout_))
+      if (time_now - time_last_active_control_command_received_
+          > ros::Duration(control_command_timeout_))
       {
-        // When switching the bridge state to off, our watchdog ensures that a disarming off message is sent
-        // kSmoothingFailRepetitions_ times.
+        // When switching the bridge state to off, our watchdog ensures that a
+        // disarming off message is repeated.
         setBridgeState(BridgeState::OFF);
-        // Note: Control could theoretically still be taken over by RC but if this happened in flight it might
-        // require super human reaction since in this case the quad can not be armed with non zero throttle
-        // by the remote.
+        // Note: Control could theoretically still be taken over by RC but if
+        // this happened in flight it might require super human reaction since
+        // in this case the quad can not be armed with non zero throttle by
+        // the remote.
       }
     }
 
     if (bridge_state_ == BridgeState::OFF)
     {
       // Send off message that disarms the vehicle
-      // We repeat it to prevent any weird behavior that occurs if the flight controller is not receiving
-      // commands for a while
+      // We repeat it to prevent any weird behavior that occurs if the flight
+      // controller is not receiving commands for a while
       SBusMsg off_msg;
       off_msg.setArmStateDisarmed();
       sendSBusMessageToSerialPort(off_msg);
@@ -145,14 +165,16 @@ void SBusBridge::watchdogThread()
 
     // Check battery voltage timeout
     std::lock_guard<std::mutex> battery_lock(battery_voltage_mutex_);
-    if (time_now - time_last_battery_voltage_received_ > ros::Duration(kBatteryVoltageTimeout_))
+    if (time_now - time_last_battery_voltage_received_
+        > ros::Duration(kBatteryVoltageTimeout_))
     {
       battery_voltage_ = 0.0;
       if (perform_thrust_voltage_compensation_)
       {
         ROS_WARN_THROTTLE(
             1.0,
-            "[%s] Can not perform battery voltage compensation because there is no recent battery voltage measurement",
+            "[%s] Can not perform battery voltage compensation because there "
+            "is no recent battery voltage measurement",
             pnh_.getNamespace().c_str());
       }
     }
@@ -172,9 +194,12 @@ void SBusBridge::handleReceivedSbusMessage(const SBusMsg& received_sbus_msg)
     {
       if (!rc_was_disarmed_once_)
       {
-        // This flag prevents that the vehicle can be armed if the RC is armed on startup of the bridge
-        ROS_WARN_THROTTLE(1.0, "[%s] RC needs to be disarmed once before it can take over control",
-                          pnh_.getNamespace().c_str());
+        // This flag prevents that the vehicle can be armed if the RC is armed
+        // on startup of the bridge
+        ROS_WARN_THROTTLE(
+            1.0,
+            "[%s] RC needs to be disarmed once before it can take over control",
+            pnh_.getNamespace().c_str());
         return;
       }
 
@@ -182,30 +207,36 @@ void SBusBridge::handleReceivedSbusMessage(const SBusMsg& received_sbus_msg)
       if (bridge_state_ != BridgeState::RC_FLIGHT)
       {
         setBridgeState(BridgeState::RC_FLIGHT);
-        ROS_INFO("[%s] Control authority taken over by remote control.", pnh_.getNamespace().c_str());
+        ROS_INFO("[%s] Control authority taken over by remote control.",
+                 pnh_.getNamespace().c_str());
       }
       sendSBusMessageToSerialPort(received_sbus_msg);
       control_mode_ = received_sbus_msg.getControlMode();
     }
     else if (bridge_state_ == BridgeState::RC_FLIGHT)
     {
-      // If the bridge was in state RC_FLIGHT and the RC is disarmed we set the state to AUTONOMOUS_FLIGHT
-      // In case there are valid control commands, the bridge will stay in AUTONOMOUS_FLIGHT, otherwise the watchdog
-      // will set the state to OFF
-      ROS_INFO("[%s] Control authority returned by remote control.", pnh_.getNamespace().c_str());
+      // If the bridge was in state RC_FLIGHT and the RC is disarmed we set the
+      // state to AUTONOMOUS_FLIGHT
+      // In case there are valid control commands, the bridge will stay in
+      // AUTONOMOUS_FLIGHT, otherwise the watchdog will set the state to OFF
+      ROS_INFO("[%s] Control authority returned by remote control.",
+               pnh_.getNamespace().c_str());
       if (bridge_armed_)
       {
         setBridgeState(BridgeState::AUTONOMOUS_FLIGHT);
       }
       else
       {
-        // When switching the bridge state to off, our watchdog ensures that a disarming off message is sent
+        // When switching the bridge state to off, our watchdog ensures that a
+        // disarming off message is sent
         setBridgeState(BridgeState::OFF);
       }
     }
     else if (!rc_was_disarmed_once_)
     {
-      ROS_INFO("[%s] RC was disarmed once, now it is allowed to take over control", pnh_.getNamespace().c_str());
+      ROS_INFO(
+          "[%s] RC was disarmed once, now it is allowed to take over control",
+          pnh_.getNamespace().c_str());
       rc_was_disarmed_once_ = true;
     }
 
@@ -215,21 +246,23 @@ void SBusBridge::handleReceivedSbusMessage(const SBusMsg& received_sbus_msg)
   received_sbus_msg_pub_.publish(received_sbus_msg.toRosMessage());
 }
 
-void SBusBridge::controlCommandCallback(const quad_msgs::ControlCommand::ConstPtr& msg)
+void SBusBridge::controlCommandCallback(
+    const quad_msgs::ControlCommand::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> main_lock(main_mutex_);
 
   if (destructor_invoked_)
   {
-    // This ensures that if the destructor was invoked we do not try to write to the serial port anymore
-    // because of receiving a control command
+    // This ensures that if the destructor was invoked we do not try to write
+    // to the serial port anymore because of receiving a control command
     return;
   }
 
   if (!msg->off)
   {
-    // We only need to know when the last active control command was received. If it is not active, the bridge state
-    // will go to off and we keep sending an off command with every new control command received.
+    // We only need to know when the last active control command was received.
+    // If it is not active, the bridge state will go to off and we keep sending
+    // an off command with every new control command received.
     // This prevents the flight controller from going into failsafe
     time_last_active_control_command_received_ = ros::Time::now();
   }
@@ -240,8 +273,10 @@ void SBusBridge::controlCommandCallback(const quad_msgs::ControlCommand::ConstPt
     // RC has priority over control commands for autonomous flying
     if (!bridge_armed_ && !msg->off && bridge_state_ != BridgeState::RC_FLIGHT)
     {
-      ROS_WARN_THROTTLE(1.0, "[%s] Received active control command but sbus bridge is not armed.",
-                        pnh_.getNamespace().c_str());
+      ROS_WARN_THROTTLE(
+          1.0,
+          "[%s] Received active control command but sbus bridge is not armed.",
+          pnh_.getNamespace().c_str());
     }
     return;
   }
@@ -257,14 +292,16 @@ void SBusBridge::controlCommandCallback(const quad_msgs::ControlCommand::ConstPt
   // Set to arming state or ensure disarmed command if necessary
   if (!msg->off)
   {
-    if (bridge_state_ != BridgeState::ARMING && bridge_state_ != BridgeState::AUTONOMOUS_FLIGHT)
+    if (bridge_state_ != BridgeState::ARMING
+        && bridge_state_ != BridgeState::AUTONOMOUS_FLIGHT)
     {
       setBridgeState(BridgeState::ARMING);
     }
   }
   else
   {
-    if (bridge_state_ == BridgeState::ARMING || bridge_state_ == BridgeState::AUTONOMOUS_FLIGHT)
+    if (bridge_state_ == BridgeState::ARMING
+        || bridge_state_ == BridgeState::AUTONOMOUS_FLIGHT)
     {
       setBridgeState(BridgeState::OFF);
     }
@@ -303,8 +340,9 @@ void SBusBridge::sendSBusMessageToSerialPort(const SBusMsg& sbus_msg)
       break;
 
     case BridgeState::ARMING:
-      // Since there might be some RC commands smoothing and checks on multiple messages before arming, we repeat
-      // the messages with minimum throttle and arming command multiple times. 5 times seems to work robustly.
+      // Since there might be some RC commands smoothing and checks on multiple
+      // messages before arming, we repeat the messages with minimum throttle
+      // and arming command multiple times. 5 times seems to work robustly.
       if (arming_counter_ >= kSmoothingFailRepetitions_)
       {
         setBridgeState(BridgeState::AUTONOMOUS_FLIGHT);
@@ -329,18 +367,21 @@ void SBusBridge::sendSBusMessageToSerialPort(const SBusMsg& sbus_msg)
     default:
       // Disarm the vehicle because this code must be terribly wrong
       sbus_message_to_send.setArmStateDisarmed();
-      ROS_WARN("[%s] Bridge is in unknown state, vehicle will be disarmed", pnh_.getNamespace().c_str());
+      ROS_WARN("[%s] Bridge is in unknown state, vehicle will be disarmed",
+               pnh_.getNamespace().c_str());
       break;
   }
 
   if ((ros::Time::now() - time_last_sbus_msg_sent_).toSec() <= 0.006)
   {
-    // An SBUS message takes 3ms to be transmitted by the serial port so let's not stress it too much
-    // This should only happen in case of switching between control commands and rc commands
+    // An SBUS message takes 3ms to be transmitted by the serial port so let's
+    // not stress it too much. This should only happen in case of switching
+    // between control commands and rc commands
     if (bridge_state_ == BridgeState::ARMING)
     {
-      // In case of arming we want to send kSmoothingFailRepetitions_ messages with minimum throttle to the
-      // flight controller. Since this check prevents the message from being sent out we reduce the counter that
+      // In case of arming we want to send kSmoothingFailRepetitions_ messages
+      // with minimum throttle to the flight controller. Since this check
+      // prevents the message from being sent out we reduce the counter that
       // was incremented above assuming the message would actually be sent.
       arming_counter_--;
     }
@@ -372,43 +413,54 @@ SBusMsg SBusBridge::generateSBusMessageFromControlCommand(
     {
       sbus_msg.setControlModeAngle();
       sbus_msg.setThrottleCommand(
-          thrust_mapping_.inverseThrustMapping(control_command->thrust * mass_, battery_voltage_));
+          thrust_mapping_.inverseThrustMapping(control_command->thrust * mass_,
+                                               battery_voltage_));
 
-      Eigen::Vector3d desired_euler_angles = quad_common::quaternionToEulerAnglesZYX(
-          quad_common::geometryToEigen(control_command->orientation));
+      Eigen::Vector3d desired_euler_angles =
+          quad_common::quaternionToEulerAnglesZYX(
+              quad_common::geometryToEigen(control_command->orientation));
 
-      quad_common::limit(desired_euler_angles(0), -max_roll_angle_, max_roll_angle_);
-      quad_common::limit(desired_euler_angles(1), -max_pitch_angle_, max_pitch_angle_);
+      quad_common::limit(desired_euler_angles(0), -max_roll_angle_,
+                         max_roll_angle_);
+      quad_common::limit(desired_euler_angles(1), -max_pitch_angle_,
+                         max_pitch_angle_);
 
       sbus_msg.setRollCommand(
           round(
-              (desired_euler_angles(0) / max_roll_angle_) * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
+              (desired_euler_angles(0) / max_roll_angle_)
+                  * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
                   + SBusMsg::kMeanCmd));
       sbus_msg.setPitchCommand(
           round(
-              (desired_euler_angles(1) / max_pitch_angle_) * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
+              (desired_euler_angles(1) / max_pitch_angle_)
+                  * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
                   + SBusMsg::kMeanCmd));
       sbus_msg.setYawCommand(
           round(
-              (-control_command->bodyrates.z / max_yaw_rate_) * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
+              (-control_command->bodyrates.z / max_yaw_rate_)
+                  * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
                   + SBusMsg::kMeanCmd));
     }
     else
     {
       sbus_msg.setControlModeRate();
       sbus_msg.setThrottleCommand(
-          thrust_mapping_.inverseThrustMapping(control_command->thrust * mass_, battery_voltage_));
+          thrust_mapping_.inverseThrustMapping(control_command->thrust * mass_,
+                                               battery_voltage_));
       sbus_msg.setRollCommand(
           round(
-              (control_command->bodyrates.x / max_roll_rate_) * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
+              (control_command->bodyrates.x / max_roll_rate_)
+                  * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
                   + SBusMsg::kMeanCmd));
       sbus_msg.setPitchCommand(
           round(
-              (control_command->bodyrates.y / max_pitch_rate_) * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
+              (control_command->bodyrates.y / max_pitch_rate_)
+                  * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
                   + SBusMsg::kMeanCmd));
       sbus_msg.setYawCommand(
           round(
-              (-control_command->bodyrates.z / max_yaw_rate_) * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
+              (-control_command->bodyrates.z / max_yaw_rate_)
+                  * (SBusMsg::kMaxCmd - SBusMsg::kMeanCmd)
                   + SBusMsg::kMeanCmd));
     }
   }
@@ -438,7 +490,8 @@ void SBusBridge::setBridgeState(const BridgeState& desired_bridge_state)
       break;
 
     default:
-      ROS_WARN("[%s] Wanted to switch to unknown bridge state", pnh_.getNamespace().c_str());
+      ROS_WARN("[%s] Wanted to switch to unknown bridge state",
+               pnh_.getNamespace().c_str());
   }
 }
 
@@ -460,7 +513,8 @@ void SBusBridge::armBridgeCallback(const std_msgs::BoolConstPtr& msg)
   else
   {
     bridge_armed_ = false;
-    if (bridge_state_ == BridgeState::ARMING || bridge_state_ == BridgeState::AUTONOMOUS_FLIGHT)
+    if (bridge_state_ == BridgeState::ARMING
+        || bridge_state_ == BridgeState::AUTONOMOUS_FLIGHT)
     {
       setBridgeState(BridgeState::OFF);
     }
@@ -474,7 +528,8 @@ void SBusBridge::batteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg)
 
   if (battery_voltage_ != 0.0)
   {
-    battery_voltage_ = alpha_vbat_filter_ * msg->data + (1.0 - alpha_vbat_filter_) * battery_voltage_;
+    battery_voltage_ = alpha_vbat_filter_ * msg->data
+        + (1.0 - alpha_vbat_filter_) * battery_voltage_;
   }
   else
   {
