@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>position_controller</name>
+  <version>0.0.0</version>
+  <description>The position_controller package</description>
+
+  <maintainer email="faessler@ifi.uzh.ch">Matthias Faessler</maintainer>
+  <license>TODO</license>
+
+  <author>Matthias Faessler</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>eigen_catkin</depend>
+  <depend>quadrotor_common</depend>
+  <depend>roscpp</depend>
+
+  <export>
+
+  </export>
+
+</package>
