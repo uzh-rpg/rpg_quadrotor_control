@@ -13,8 +13,6 @@ enum class ControlMode
 
 struct ControlCommand
 {
-
-public:
   ControlCommand();
   ControlCommand(const quadrotor_msgs::ControlCommand& control_command_msg);
   ~ControlCommand();

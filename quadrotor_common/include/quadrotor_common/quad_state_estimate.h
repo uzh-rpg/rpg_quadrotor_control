@@ -16,7 +16,6 @@ enum class CoordinateFrame
 
 struct QuadStateEstimate
 {
-public:
   QuadStateEstimate();
   QuadStateEstimate(const nav_msgs::Odometry& state_estimate_msg);
 
