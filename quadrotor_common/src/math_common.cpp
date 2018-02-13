@@ -23,33 +23,39 @@ float lowpass(const float filterin, const float input, const double alpha)
   return filterout;
 }
 
-float lowpass(const float filterin, const float input, const double fc, const double dt)
+float lowpass(const float filterin, const float input, const double fc,
+              const double dt)
 {
   double alpha;
   alpha = fcToAlpha(fc, dt);
   return lowpass(filterin, input, alpha);
 }
 
-Eigen::Vector3d lowpass(const Eigen::Vector3d& filterin, const Eigen::Vector3d& input, const double alpha)
+Eigen::Vector3d lowpass(const Eigen::Vector3d& filterin,
+                        const Eigen::Vector3d& input, const double alpha)
 {
   Eigen::Vector3d filterout;
   filterout = (1.0 - alpha) * filterin + alpha * input;
   return filterout;
 }
 
-Eigen::Vector3d lowpass(const Eigen::Vector3d& filterin, const Eigen::Vector3d& input, const double fc, const double dt)
+Eigen::Vector3d lowpass(const Eigen::Vector3d& filterin,
+                        const Eigen::Vector3d& input, const double fc,
+                        const double dt)
 {
   double alpha;
   alpha = fcToAlpha(fc, dt);
   return lowpass(filterin, input, alpha);
 }
 
-Eigen::Quaterniond lowpass(const Eigen::Quaterniond& filterin, const Eigen::Quaterniond& input, const double alpha)
+Eigen::Quaterniond lowpass(const Eigen::Quaterniond& filterin,
+                           const Eigen::Quaterniond& input, const double alpha)
 {
   return filterin.slerp(alpha, input);
 }
 
-Eigen::Quaterniond lowpass(const Eigen::Quaterniond& filterin, const Eigen::Quaterniond& input, const double fc,
+Eigen::Quaterniond lowpass(const Eigen::Quaterniond& filterin,
+                           const Eigen::Quaterniond& input, const double fc,
                            const double dt)
 {
   double alpha;
@@ -57,7 +63,8 @@ Eigen::Quaterniond lowpass(const Eigen::Quaterniond& filterin, const Eigen::Quat
   return filterin.slerp(alpha, input);
 }
 
-Eigen::Affine3d lowpass(const Eigen::Affine3d& filterin, const Eigen::Affine3d& input, const double alpha)
+Eigen::Affine3d lowpass(const Eigen::Affine3d& filterin,
+                        const Eigen::Affine3d& input, const double alpha)
 {
   Eigen::Vector3d filter_position = filterin.translation();
   Eigen::Quaterniond filer_orientation(filterin.rotation());
@@ -71,11 +78,14 @@ Eigen::Affine3d lowpass(const Eigen::Affine3d& filterin, const Eigen::Affine3d& 
   filter_out_position = lowpass(filter_position, input_position, alpha);
   filter_out_orientation = lowpass(filer_orientation, input_orientation, alpha);
 
-  Eigen::Affine3d filter_out = Eigen::Translation3d(filter_out_position) * filter_out_orientation;
+  Eigen::Affine3d filter_out = Eigen::Translation3d(filter_out_position)
+      * filter_out_orientation;
   return filter_out;
 }
 
-Eigen::Affine3d lowpass(const Eigen::Affine3d& filterin, const Eigen::Affine3d& input, const double fc, const double dt)
+Eigen::Affine3d lowpass(const Eigen::Affine3d& filterin,
+                        const Eigen::Affine3d& input, const double fc,
+                        const double dt)
 {
   double alpha;
   alpha = fcToAlpha(fc, dt);
@@ -108,9 +118,11 @@ double wrapMinusPiToPi(const double angle)
   return wrapped_angle;
 }
 
-double wrapAngleDifference(const double current_angle, const double desired_angle)
+double wrapAngleDifference(const double current_angle,
+                           const double desired_angle)
 {
-  double angle_diff = wrapZeroToTwoPi(desired_angle) - wrapZeroToTwoPi(current_angle);
+  double angle_diff = wrapZeroToTwoPi(desired_angle)
+      - wrapZeroToTwoPi(current_angle);
   if (angle_diff > M_PIl)
   {
     angle_diff = (-2.0 * M_PIl + angle_diff);
@@ -154,15 +166,18 @@ double radToDeg(const double rad)
 Eigen::Vector3d quaternionToEulerAnglesZYX(const Eigen::Quaterniond& q)
 {
   Eigen::Vector3d euler_angles;
-  euler_angles(0) = atan2(2.0 * q.w() * q.x() + 2.0 * q.y() * q.z(),
-                          q.w() * q.w() - q.x() * q.x() - q.y() * q.y() + q.z() * q.z());
+  euler_angles(0) = atan2(
+      2.0 * q.w() * q.x() + 2.0 * q.y() * q.z(),
+      q.w() * q.w() - q.x() * q.x() - q.y() * q.y() + q.z() * q.z());
   euler_angles(1) = -asin(2.0 * q.x() * q.z() - 2.0 * q.w() * q.y());
-  euler_angles(2) = atan2(2.0 * q.w() * q.z() + 2.0 * q.x() * q.y(),
-                          q.w() * q.w() + q.x() * q.x() - q.y() * q.y() - q.z() * q.z());
+  euler_angles(2) = atan2(
+      2.0 * q.w() * q.z() + 2.0 * q.x() * q.y(),
+      q.w() * q.w() + q.x() * q.x() - q.y() * q.y() - q.z() * q.z());
   return euler_angles;
 }
 
-Eigen::Quaterniond eulerAnglesZYXToQuaternion(const Eigen::Vector3d& euler_angles)
+Eigen::Quaterniond eulerAnglesZYXToQuaternion(
+    const Eigen::Vector3d& euler_angles)
 {
   Eigen::Quaterniond q;
   double r = euler_angles(0) / 2.0;
@@ -179,12 +194,14 @@ Eigen::Vector3d rotationMatrixToEulerAnglesZYX(const Eigen::Matrix3d& R)
 {
   Eigen::Vector3d euler_angles;
   euler_angles(0) = atan2(R(2, 1), R(2, 2));
-  euler_angles(1) = -atan2(R(2, 0), sqrt(pow(R(2, 1), 2.0) + pow(R(2, 2), 2.0)));
+  euler_angles(1) = -atan2(R(2, 0),
+                           sqrt(pow(R(2, 1), 2.0) + pow(R(2, 2), 2.0)));
   euler_angles(2) = atan2(R(1, 0), R(0, 0));
   return euler_angles;
 }
 
-Eigen::Matrix3d eulerAnglesZYXToRotationMatrix(const Eigen::Vector3d& euler_angles)
+Eigen::Matrix3d eulerAnglesZYXToRotationMatrix(
+    const Eigen::Vector3d& euler_angles)
 {
   double r = euler_angles(0);
   double p = euler_angles(1);

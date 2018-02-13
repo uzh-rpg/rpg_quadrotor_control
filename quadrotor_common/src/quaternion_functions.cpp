@@ -3,11 +3,13 @@
 namespace quadrotor_common
 {
 
-Eigen::Vector3d quaternionRatesToBodyRates(const Eigen::Quaterniond& q2, const Eigen::Quaterniond& q1, const double dt,
+Eigen::Vector3d quaternionRatesToBodyRates(const Eigen::Quaterniond& q2,
+                                           const Eigen::Quaterniond& q1,
+                                           const double dt,
                                            const bool rates_in_body_frame)
 {
-  // Computes the angular velocity in body coordinate system for a rotation from q1 to q2
-  // within the time dt
+  // Computes the angular velocity in body coordinate system for a rotation
+  // from q1 to q2 within the time dt
 
   Eigen::Quaterniond q_dot;
 
@@ -17,7 +19,8 @@ Eigen::Vector3d quaternionRatesToBodyRates(const Eigen::Quaterniond& q2, const E
   // better q or -q (they both represent the same attitude in space)
 
   Eigen::Quaterniond q2_best = q2;
-  if ((-q2_best.coeffs() - q1.coeffs()).norm() < (q2_best.coeffs() - q1.coeffs()).norm())
+  if ((-q2_best.coeffs() - q1.coeffs()).norm()
+      < (q2_best.coeffs() - q1.coeffs()).norm())
   {
     q2_best.coeffs() = -q2_best.coeffs();
   }
@@ -35,18 +38,21 @@ Eigen::Vector3d quaternionRatesToBodyRates(const Eigen::Quaterniond& q2, const E
   }
 }
 
-Eigen::Vector3d quaternionDeltaToBodyRates(const Eigen::Quaterniond& q2, const Eigen::Quaterniond& q1, const double dt,
+Eigen::Vector3d quaternionDeltaToBodyRates(const Eigen::Quaterniond& q2,
+                                           const Eigen::Quaterniond& q1,
+                                           const double dt,
                                            const bool rates_in_body_frame)
 {
-  // Computes the angular velocity in body coordinate system for a rotation from q1 to q2
-  // within the time dt
+  // Computes the angular velocity in body coordinate system for a rotation
+  // from q1 to q2 within the time dt
   // This is basically the inverse of the integrateQuaternion function
 
   Eigen::Quaterniond q_e = q1.inverse() * q2;
 
   if (q_e.w() < 0)
   {
-    // Make sure real part of quaternion has positive sign such that we take the minimum distance from q1 to q2 to compute the body rates
+    // Make sure real part of quaternion has positive sign such that we take
+    // the minimum distance from q1 to q2 to compute the body rates
     q_e = Eigen::Quaterniond(-q_e.w(), -q_e.x(), -q_e.y(), -q_e.z());
   }
 
@@ -66,11 +72,13 @@ Eigen::Vector3d quaternionDeltaToBodyRates(const Eigen::Quaterniond& q2, const E
   }
 }
 
-Eigen::Quaterniond integrateQuaternion(const Eigen::Quaterniond q_start, const Eigen::Vector3d bodyrates,
+Eigen::Quaterniond integrateQuaternion(const Eigen::Quaterniond q_start,
+                                       const Eigen::Vector3d bodyrates,
                                        const double dt)
 {
-  // pushes the orientation forward in time assuming constant bodyrates B_omega_WB
-  // make sure that the bodyrates are in the body frame not the world frame
+  // Pushes the orientation forward in time assuming constant bodyrates
+  // B_omega_WB. Make sure that the bodyrates are in the body frame not the
+  // world frame
   Eigen::Quaterniond q_end;
 
   double p = bodyrates.x();
@@ -85,13 +93,17 @@ Eigen::Quaterniond integrateQuaternion(const Eigen::Quaterniond q_start, const E
     Lambda << 0, -p, -q, -r, p, 0, r, -q, q, -r, 0, p, r, q, -p, 0;
     Lambda = Lambda * 0.5;
 
-    // here i use a hack because coeffs returns [x y z w ] but we always work with [ w x y z ]
-    Eigen::Vector4d q_start_as_vector(q_start.w(), q_start.x(), q_start.y(), q_start.z()); // [w x y z ]
-    Eigen::Vector4d q_end_as_vector; // [w x y z ]
+    // here we use a hack because coeffs returns [x y z w ] but we always work
+    // with [ w x y z ]
+    Eigen::Vector4d q_start_as_vector(q_start.w(), q_start.x(), q_start.y(),
+                                      q_start.z()); // [w x y z]
+    Eigen::Vector4d q_end_as_vector; // [w x y z]
 
     q_end_as_vector = (Eigen::Matrix4d::Identity() * cos(omega_norm * dt / 2.0)
-        + 2.0 / omega_norm * Lambda * sin(omega_norm * dt / 2.0)) * q_start_as_vector;
-    q_end = Eigen::Quaterniond(q_end_as_vector(0), q_end_as_vector(1), q_end_as_vector(2), q_end_as_vector(3));
+        + 2.0 / omega_norm * Lambda * sin(omega_norm * dt / 2.0))
+        * q_start_as_vector;
+    q_end = Eigen::Quaterniond(q_end_as_vector(0), q_end_as_vector(1),
+                               q_end_as_vector(2), q_end_as_vector(3));
   }
   else
   {
@@ -112,4 +124,4 @@ double sinc(const double a)
   }
 }
 
-} //quadrotor_common
+} // namespace quadrotor_common

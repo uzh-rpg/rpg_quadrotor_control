@@ -13,7 +13,6 @@ cs_add_library(${PROJECT_NAME}
   src/geometry_eigen_conversions.cpp
   src/math_common.cpp
   src/parameter_helper.cpp
-  src/quad_desired_state.cpp
   src/quaternion_functions.cpp)
   
 cs_install()

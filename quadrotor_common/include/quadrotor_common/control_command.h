@@ -8,10 +8,10 @@ namespace quadrotor_common
 
 enum class ControlMode
 {
-  NONE, ATTITUDE, BODY_RATES, ROTOR_THRUSTS
+  NONE, ATTITUDE, BODY_RATES, ANGULAR_ACCELERATIONS, ROTOR_THRUSTS
 };
 
-class ControlCommand
+struct ControlCommand
 {
 
 public:
@@ -20,6 +20,7 @@ public:
   ~ControlCommand();
 
   void zero();
+  quadrotor_msgs::ControlCommand toRosMessage();
 
   ros::Time timestamp;
 
@@ -30,7 +31,7 @@ public:
   bool armed;
 
   // Time at which this command should be executed
-  ros::Time execution_time;
+  ros::Time expected_execution_time;
 
   // Orientation of the body frame with respect to the world frame
   Eigen::Quaterniond orientation; // [-]
