@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>manual_flight_assistant</name>
+  <version>0.0.0</version>
+  <description>The manual_flight_assistant package</description>
+  
+  <maintainer email="faessler@ifi.uzh.ch">Matthias Faessler</maintainer>
+  <license>TODO</license>
+
+  <author>Matthias Faessler</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>quadrotor_common</depend>
+  <depend>roscpp</depend>
+  <depend>sbus_bridge</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
+
+  <export>
+
+  </export>
+</package>

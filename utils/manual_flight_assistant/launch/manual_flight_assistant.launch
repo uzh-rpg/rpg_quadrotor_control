@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<launch>
+    
+  <arg name="quad_name"/>
+    
+  <group ns="$(arg quad_name)" >
+        
+    <node pkg="manual_flight_assistant" type="manual_flight_assistant" 
+        name="manual_flight_assistant" output="screen">
+      <rosparam file="$(find manual_flight_assistant)/parameters/default.yaml"/>
+    </node>
+        
+  </group>
+
+</launch>

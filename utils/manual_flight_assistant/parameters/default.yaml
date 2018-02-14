@@ -1,0 +1,7 @@
+joypad_timeout: 0.5
+sbus_timeout: 0.5
+joypad_axes_zero_tolerance: 0.05
+sbus_axes_zero_tolerance: 10
+vmax_xy: 1.5
+vmax_z: 0.7
+rmax_yaw: 1.5
