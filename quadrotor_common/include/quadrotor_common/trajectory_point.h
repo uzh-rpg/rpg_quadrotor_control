@@ -11,7 +11,7 @@ struct TrajectoryPoint
 {
   TrajectoryPoint();
   TrajectoryPoint(const quadrotor_msgs::TrajectoryPoint& trajectory_point_msg);
-  ~TrajectoryPoint();
+  virtual ~TrajectoryPoint();
 
   quadrotor_msgs::TrajectoryPoint toRosMessage();
 

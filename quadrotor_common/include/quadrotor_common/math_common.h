@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Eigen/Dense>
-#include <ros/ros.h>
 
 namespace quadrotor_common
 {

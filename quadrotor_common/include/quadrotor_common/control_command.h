@@ -15,7 +15,7 @@ struct ControlCommand
 {
   ControlCommand();
   ControlCommand(const quadrotor_msgs::ControlCommand& control_command_msg);
-  ~ControlCommand();
+  virtual ~ControlCommand();
 
   void zero();
   quadrotor_msgs::ControlCommand toRosMessage();
