@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+    
+  <arg name="quad_name" />
+
+  <group ns="$(arg quad_name)" >
+    <node pkg="vbat_thrust_calibration" name="vbat_thrust_calibration" 
+        type="vbat_thrust_calibration.py" output="screen">
+      <param name="time_average_interval" value="1.0" />
+      <param name="min_battery_voltage" value="10.7" />
+      <param name="max_battery_voltage" value="12.2" />
+      <param name="hover_tolerance_radius" value="0.3" />
+    </node>
+  </group>
+    
+</launch>
