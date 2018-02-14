@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
 
   <node pkg="sbus_bridge" name="sbus_bridge" type="sbus_bridge" output="screen">
