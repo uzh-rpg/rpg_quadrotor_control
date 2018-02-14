@@ -72,8 +72,8 @@ Eigen::Vector3d quaternionDeltaToBodyRates(const Eigen::Quaterniond& q2,
   }
 }
 
-Eigen::Quaterniond integrateQuaternion(const Eigen::Quaterniond q_start,
-                                       const Eigen::Vector3d bodyrates,
+Eigen::Quaterniond integrateQuaternion(const Eigen::Quaterniond& q_start,
+                                       const Eigen::Vector3d& bodyrates,
                                        const double dt)
 {
   // Pushes the orientation forward in time assuming constant bodyrates

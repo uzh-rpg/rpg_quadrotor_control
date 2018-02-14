@@ -4,22 +4,19 @@
 #include <nav_msgs/Odometry.h>
 #include <ros/time.h>
 
-#include "quadrotor_common/geometry_eigen_conversions.h"
-
 namespace quadrotor_common
 {
 
 enum class CoordinateFrame
 {
-  WORLD, OPTITRACK, VISION, LOCAL
+  INVALID, WORLD, OPTITRACK, VISION, LOCAL
 };
 
 struct QuadStateEstimate
 {
   QuadStateEstimate();
   QuadStateEstimate(const nav_msgs::Odometry& state_estimate_msg);
-
-  ~QuadStateEstimate();
+  virtual ~QuadStateEstimate();
 
   nav_msgs::Odometry toRosMessage();
   void transformBodyRatesToBodyFrame();

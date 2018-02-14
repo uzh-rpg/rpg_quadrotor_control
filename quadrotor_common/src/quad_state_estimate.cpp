@@ -1,5 +1,7 @@
 #include "quadrotor_common/quad_state_estimate.h"
 
+#include "quadrotor_common/geometry_eigen_conversions.h"
+
 namespace quadrotor_common
 {
 
@@ -15,8 +17,12 @@ QuadStateEstimate::QuadStateEstimate(
     const nav_msgs::Odometry& state_estimate_msg)
 {
   timestamp = state_estimate_msg.header.stamp;
-  coordinate_frame = CoordinateFrame::WORLD;
-  if (state_estimate_msg.header.frame_id.compare("optitrack") == 0)
+  coordinate_frame = CoordinateFrame::INVALID;
+  if (state_estimate_msg.header.frame_id.compare("world") == 0)
+  {
+    coordinate_frame = CoordinateFrame::WORLD;
+  }
+  else if (state_estimate_msg.header.frame_id.compare("optitrack") == 0)
   {
     coordinate_frame = CoordinateFrame::OPTITRACK;
   }
@@ -56,6 +62,9 @@ nav_msgs::Odometry QuadStateEstimate::toRosMessage()
       break;
     case CoordinateFrame::LOCAL:
       msg.header.frame_id = "local";
+      break;
+    default:
+      msg.header.frame_id = "invalid";
       break;
   }
   msg.child_frame_id = "body";
