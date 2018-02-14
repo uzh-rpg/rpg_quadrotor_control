@@ -11,6 +11,4 @@ catkin_simple(ALL_DEPS_REQUIRED)
 cs_add_library(${PROJECT_NAME} src/position_controller.cpp)
 
 cs_install()
-install(DIRECTORY parameters
-  DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})
 cs_export()
