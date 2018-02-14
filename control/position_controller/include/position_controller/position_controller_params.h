@@ -27,55 +27,89 @@ public:
 
     if (!quadrotor_common::getParam(path_rel_to_node + "/use_rate_mode",
                                     use_rate_mode, pnh))
+    {
       return false;
+    }
 
     if (!quadrotor_common::getParam(path_rel_to_node + "/kpxy", kpxy, pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/kdxy", kdxy, pnh))
+    {
       return false;
+    }
 
     if (!quadrotor_common::getParam(path_rel_to_node + "/kpz", kpz, pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/kdz", kdz, pnh))
+    {
       return false;
+    }
 
     if (!quadrotor_common::getParam(path_rel_to_node + "/krp", krp, pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/kyaw", kyaw, pnh))
+    {
       return false;
+    }
 
     if (!quadrotor_common::getParam(path_rel_to_node + "/pxy_error_max",
                                     pxy_error_max, pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/vxy_error_max",
                                     vxy_error_max, pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/pz_error_max",
                                     pz_error_max, pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/vz_error_max",
                                     vz_error_max, pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/yaw_error_max",
                                     yaw_error_max, pnh))
+    {
       return false;
+    }
 
     if (!quadrotor_common::getParam(
         path_rel_to_node + "/perform_aerodynamics_compensation",
         perform_aerodynamics_compensation, pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/k_drag_x", k_drag_x,
                                     pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/k_drag_y", k_drag_y,
                                     pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/k_drag_z", k_drag_z,
                                     pnh))
+    {
       return false;
+    }
     if (!quadrotor_common::getParam(path_rel_to_node + "/k_thrust_horz",
                                     k_thrust_horz, pnh))
+    {
       return false;
+    }
 
     return true;
   }
