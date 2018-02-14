@@ -1,0 +1,7 @@
+state_predictor:
+  integration_step_size: 0.001 # [s]
+  maximum_prediction_horizon: 0.1 # [s]
+  
+  tau_thrust_up_dynamics: 0.03
+  tau_thrust_down_dynamics: 0.03
+  tau_angle_rate_dynamics: 0.04
