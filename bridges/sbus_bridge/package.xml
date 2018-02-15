@@ -13,8 +13,8 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>message_generation</depend>
-  <depend>quad_common</depend>
-  <depend>quad_msgs</depend>
+  <depend>quadrotor_common</depend>
+  <depend>quadrotor_msgs</depend>
   <depend>roscpp</depend>
   <depend>std_msgs</depend>
 

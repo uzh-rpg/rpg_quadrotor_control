@@ -95,24 +95,24 @@ void SBusMsg::setYawCommand(const uint16_t yaw_cmd)
 
 void SBusMsg::setControlMode(const ControlMode& control_mode)
 {
-  if (control_mode == ControlMode::ANGLE)
+  if (control_mode == ControlMode::ATTITUDE)
   {
     channels[channel_mapping::kControlMode] = kMinCmd;
   }
-  else
+  else if (control_mode == ControlMode::BODY_RATES)
   {
     channels[channel_mapping::kControlMode] = kMaxCmd;
   }
 }
 
-void SBusMsg::setControlModeRate()
+void SBusMsg::setControlModeAttitude()
 {
-  setControlMode(ControlMode::RATE);
+  setControlMode(ControlMode::ATTITUDE);
 }
 
-void SBusMsg::setControlModeAngle()
+void SBusMsg::setControlModeBodyRates()
 {
-  setControlMode(ControlMode::ANGLE);
+  setControlMode(ControlMode::BODY_RATES);
 }
 
 void SBusMsg::setArmState(const ArmState& arm_state)
@@ -154,10 +154,10 @@ ControlMode SBusMsg::getControlMode() const
 {
   if (channels[channel_mapping::kControlMode] > kMeanCmd)
   {
-    return ControlMode::RATE;
+    return ControlMode::BODY_RATES;
   }
 
-  return ControlMode::ANGLE;
+  return ControlMode::ATTITUDE;
 }
 
 } // namespace sbus_bridge
