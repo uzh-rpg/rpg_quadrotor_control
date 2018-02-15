@@ -8,6 +8,7 @@
   <license>TODO</license>
 
   <author>Matthias Faessler</author>
+  <author>Flavio Fontana</author>
 
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
