@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="model"/>
+  <arg name="quad_name"/>
+  <arg name="enable_ground_truth"/>
+  <arg name="enable_logging"/>
+  <arg name="log_file"/>
+  <arg name="paused"/>
+  <arg name="rviz_environment"/>
+  
+  <node pkg="tf" type="static_transform_publisher" name="link1_broadcaster" 
+      args="1 0 0 0 0 0 1 world base_link 100" />
+
+  <param name="robot_description" command="$(find xacro)/xacro.py $(arg model) 
+      mav_name:=$(arg quad_name) enable_ground_truth:=$(arg enable_ground_truth) 
+      enable_logging:=$(arg enable_logging) log_file:=$(arg log_file) 
+      paused:=$(arg paused)" />
+
+  <node name="joint_state_publisher" pkg="joint_state_publisher" 
+      type="joint_state_publisher" />
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" 
+      type="state_publisher"/>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg rviz_environment)"/>
+
+</launch>

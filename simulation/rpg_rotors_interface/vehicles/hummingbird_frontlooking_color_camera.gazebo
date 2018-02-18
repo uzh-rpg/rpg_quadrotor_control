@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+
+<robot name="hummingbird" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <!-- Instantiate default hummingbird-->
+  <xacro:include filename="$(find rotors_description)/urdf/mav_generic_odometry_sensor.gazebo" />
+
+  <!-- Color camera -->
+  <xacro:include filename="$(find rpg_rotors_interface)/vehicles/components/color_camera.urdf.xacro" />
+
+    <xacro:color_camera 
+         name="camera"
+         parent="${namespace}/base_link"
+         ros_topic="image"
+         cam_info_topic="camera_info"
+         update_rate="30" 
+	 res_x="752"
+         res_y="480"
+         noise_mean="0.0"
+         noise_stddev="0.007"
+         min_distance="0.02"
+         max_distance="50"
+         image_format="R8G8B8"
+         hfov="2.26893"
+         cameraXSize="0.05"
+         cameraYSize="0.02"
+         cameraZSize="0.02"
+    >
+    <origin xyz="0.17 0.0 -0.03" rpy="0.0 0.0 0.0" />
+    </xacro:color_camera> 
+
+</robot>
