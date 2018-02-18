@@ -27,9 +27,9 @@ ManualFlightAssistant::ManualFlightAssistant(const ros::NodeHandle& nh,
   previous_joypad_command_ = joypad_command_;
 
   manual_desired_velocity_pub_ = nh_.advertise<geometry_msgs::TwistStamped>(
-      "copilot/manual_desired_velocity", 1);
-  start_pub_ = nh_.advertise<std_msgs::Empty>("copilot/start", 1);
-  land_pub_ = nh_.advertise<std_msgs::Empty>("copilot/land", 1);
+      "autopilot/velocity_command", 1);
+  start_pub_ = nh_.advertise<std_msgs::Empty>("autopilot/start", 1);
+  land_pub_ = nh_.advertise<std_msgs::Empty>("autopilot/land", 1);
 
   joypad_sub_ = nh_.subscribe("joy", 1, &ManualFlightAssistant::joyCallback,
                               this);
