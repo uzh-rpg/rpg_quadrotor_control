@@ -7,9 +7,21 @@ repositories:
     type: git
     url: git@github.com:ethz-asl/eigen_catkin.git
     version: master
+  mav_comm:
+    type: git
+    url: git@github.com:ethz-asl/mav_comm.git
+    version: master
+  rotors_simulator:
+    type: git
+    url: git@github.com:ethz-asl/rotors_simulator.git
+    version: master
   rpg_quadrotor_common:
     type: git
     url: git@github.com:uzh-rpg/rpg_quadrotor_common.git
+    version: master
+  rpg_quadrotor_control:
+    type: git
+    url: git@github.com:uzh-rpg/rpg_quadrotor_control.git
     version: master
   rpg_single_board_io:
     type: git
