@@ -62,6 +62,8 @@ private:
       const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand land(
       const quadrotor_common::QuadStateEstimate& state_estimate);
+  quadrotor_common::ControlCommand velocityControl(
+      const quadrotor_common::QuadStateEstimate& state_estimate);
 
   void setAutoPilotState(const States& new_state);
   double timeInCurrentState() const;
@@ -112,6 +114,9 @@ private:
   double initial_drop_thrust_;
   ros::Time time_started_ramping_down_;
 
+  geometry_msgs::TwistStamped desired_velocity_command_;
+  ros::Time time_last_velocity_command_handled_;
+
   // Parameters
   bool velocity_estimate_in_world_frame_;
   double control_command_delay_;
@@ -122,6 +127,11 @@ private:
   double idle_thrust_;
   double start_land_velocity_;
   double propeller_ramp_down_timeout_;
+  double velocity_command_input_timeout_;
+  double tau_velocity_command_;
+
+  // Constants
+  static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
 };
 
 } // namespace autopilot

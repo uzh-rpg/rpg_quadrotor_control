@@ -1,5 +1,6 @@
 #include "autopilot/autopilot.h"
 
+#include <quadrotor_common/geometry_eigen_conversions.h>
 #include <quadrotor_common/math_common.h>
 #include <quadrotor_common/parameter_helper.h>
 
@@ -79,6 +80,11 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
     }
   }
 
+  if (!velocity_estimate_in_world_frame_)
+  {
+    received_state_est_.transformVelocityToWorldFrame();
+  }
+
   // Push received state estimate into predictor
   state_predictor_.updateWithStateEstimate(received_state_est_);
 
@@ -117,6 +123,7 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
     case States::GO_TO_POSE:
       break;
     case States::VELOCITY_CONTROL:
+      control_cmd = velocityControl(predicted_state);
       break;
     case States::REFERENCE_CONTROL:
       break;
@@ -174,6 +181,25 @@ void AutoPilot::poseCommandCallback(
 void AutoPilot::velocityCommandCallback(
     const geometry_msgs::TwistStamped::ConstPtr& msg)
 {
+  if (quadrotor_common::geometryToEigen(msg->twist.linear).norm()
+      <= kVelocityCommandZeroThreshold_
+      && fabs(msg->twist.angular.z) <= kVelocityCommandZeroThreshold_)
+  {
+    // Only consider commands with non negligible velocities
+    return;
+  }
+  if (autopilot_state_ != States::HOVER
+      && autopilot_state_ != States::VELOCITY_CONTROL)
+  {
+    return;
+  }
+  if (autopilot_state_ != States::VELOCITY_CONTROL)
+  {
+    setAutoPilotState(States::VELOCITY_CONTROL);
+  }
+
+  desired_velocity_command_ = *msg;
+  desired_velocity_command_.header.stamp = ros::Time::now();
 }
 
 void AutoPilot::referenceStateCallback(
@@ -415,6 +441,65 @@ quadrotor_common::ControlCommand AutoPilot::land(
   return command;
 }
 
+quadrotor_common::ControlCommand AutoPilot::velocityControl(
+    const quadrotor_common::QuadStateEstimate& state_estimate)
+{
+  quadrotor_common::ControlCommand command;
+
+  if (first_time_in_new_state_)
+  {
+    first_time_in_new_state_ = false;
+    reference_state_ = quadrotor_common::TrajectoryPoint();
+    reference_state_.position = state_estimate.position;
+    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
+        state_estimate.orientation).z();
+    time_last_velocity_command_handled_ = ros::Time::now();
+  }
+
+  const double dt =
+      (ros::Time::now() - time_last_velocity_command_handled_).toSec();
+
+  if ((ros::Time::now() - desired_velocity_command_.header.stamp)
+      > ros::Duration(velocity_command_input_timeout_))
+  {
+    desired_velocity_command_.twist.linear.x = 0.0;
+    desired_velocity_command_.twist.linear.y = 0.0;
+    desired_velocity_command_.twist.linear.z = 0.0;
+    desired_velocity_command_.twist.angular.z = 0.0;
+  }
+
+  const double alpha_velocity = 1 - exp(-dt / tau_velocity_command_);
+
+  const Eigen::Vector3d commanded_velocity = quadrotor_common::geometryToEigen(
+      desired_velocity_command_.twist.linear);
+  reference_state_.velocity = (1.0 - alpha_velocity) * reference_state_.velocity
+      + alpha_velocity * commanded_velocity;
+
+  if (reference_state_.velocity.norm() < kVelocityCommandZeroThreshold_
+      && commanded_velocity.norm() < kVelocityCommandZeroThreshold_)
+  {
+    reference_state_.velocity = Eigen::Vector3d::Zero();
+    if (fabs(desired_velocity_command_.twist.angular.z)
+        < kVelocityCommandZeroThreshold_)
+    {
+      setAutoPilotState(States::HOVER);
+    }
+  }
+  reference_state_.position += reference_state_.velocity * dt;
+
+  reference_state_.heading += desired_velocity_command_.twist.angular.z * dt;
+  reference_state_.heading = quadrotor_common::wrapMinusPiToPi(
+      reference_state_.heading);
+  reference_state_.heading_rate = desired_velocity_command_.twist.angular.z;
+
+  time_last_velocity_command_handled_ = ros::Time::now();
+
+  command = base_controller_.run(state_estimate, reference_state_,
+                                 base_controller_params_);
+
+  return command;
+}
+
 void AutoPilot::setAutoPilotState(const States& new_state)
 {
   time_of_switch_to_current_state_ = ros::Time::now();
@@ -475,6 +560,8 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(idle_thrust);
   GET_PARAM(start_land_velocity);
   GET_PARAM(propeller_ramp_down_timeout);
+  GET_PARAM(velocity_command_input_timeout);
+  GET_PARAM(tau_velocity_command);
 
   if (!base_controller_params_.loadParameters(pnh_))
   {
