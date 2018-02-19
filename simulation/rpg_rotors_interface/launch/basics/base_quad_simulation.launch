@@ -64,6 +64,7 @@
         
         <param name="position_controller/use_rate_mode" value="True" />
         
+        <param name="velocity_estimate_in_world_frame" value="false" />
         <param name="state_estimate_timeout" value="0.1" />
         <param name="control_command_delay" value="0.05" />
         
@@ -87,6 +88,7 @@
         
         <param name="position_controller/use_rate_mode" value="True" />
         
+        <param name="velocity_estimate_in_world_frame" value="false" />
         <param name="state_estimate_timeout" value="0.1" />
         <param name="control_command_delay" value="0.05" />
         
