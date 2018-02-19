@@ -6,11 +6,12 @@
 namespace autopilot
 {
 
+// TODO: Make sure everything is initialized properly
 AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     nh_(nh), pnh_(pnh), autopilot_state_(States::OFF), state_before_rc_manual_flight_(
         States::OFF), state_predictor_(nh_, pnh_), reference_state_(), received_state_est_(), state_estimate_available_(
         false), time_of_switch_to_current_state_(), first_time_in_new_state_(
-        true)
+        true), time_to_ramp_down_(false)
 {
   if (!loadParameters())
   {
@@ -103,8 +104,13 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       control_cmd = hover(predicted_state);
       break;
     case States::LAND:
+      control_cmd = land(predicted_state);
       break;
     case States::EMERGENCY_LAND:
+      if (state_estimate_available_)
+      {
+        setAutoPilotState(States::HOVER);
+      }
       break;
     case States::BREAKING:
       break;
@@ -201,7 +207,8 @@ void AutoPilot::controlCommandInputCallback(
 
 void AutoPilot::startCallback(const std_msgs::Empty::ConstPtr& msg)
 {
-  ROS_INFO("[%s] START command received", pnh_.getNamespace().c_str());
+  ROS_INFO_THROTTLE(0.5, "[%s] START command received",
+                    pnh_.getNamespace().c_str());
   if (autopilot_state_ == States::OFF)
   {
     if (state_estimate_available_)
@@ -241,7 +248,38 @@ void AutoPilot::startCallback(const std_msgs::Empty::ConstPtr& msg)
 
 void AutoPilot::landCallback(const std_msgs::Empty::ConstPtr& msg)
 {
-
+  ROS_INFO_THROTTLE(0.5, "[%s] LAND command received",
+                    pnh_.getNamespace().c_str());
+  if (autopilot_state_ == States::OFF || autopilot_state_ == States::LAND
+      || autopilot_state_ == States::EMERGENCY_LAND
+      || autopilot_state_ == States::COMMAND_FEEDTHROUGH
+      || autopilot_state_ == States::RC_MANUAL)
+  {
+    return;
+  }
+  if (state_estimate_available_)
+  {
+    if (received_state_est_.coordinate_frame
+        == quadrotor_common::QuadStateEstimate::CoordinateFrame::WORLD
+        || received_state_est_.coordinate_frame
+            == quadrotor_common::QuadStateEstimate::CoordinateFrame::OPTITRACK)
+    {
+      ROS_INFO("[%s] Absolute state estimate available, landing based on it",
+               pnh_.getNamespace().c_str());
+      setAutoPilotState(States::LAND);
+    }
+    else
+    {
+      ROS_INFO(
+          "[%s] No absolute state estimate available, EMERGENCY_LAND instead",
+          pnh_.getNamespace().c_str());
+      setAutoPilotState(States::EMERGENCY_LAND);
+    }
+  }
+  else
+  {
+    setAutoPilotState(States::EMERGENCY_LAND);
+  }
 }
 
 void AutoPilot::offCallback(const std_msgs::Empty::ConstPtr& msg)
@@ -264,6 +302,7 @@ quadrotor_common::ControlCommand AutoPilot::start(
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
+    initial_start_position_ = state_estimate.position;
     reference_state_ = quadrotor_common::TrajectoryPoint();
     reference_state_.position = state_estimate.position;
     reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
@@ -292,8 +331,9 @@ quadrotor_common::ControlCommand AutoPilot::start(
     }
     else
     {
-      reference_state_.position.z() = start_land_velocity_
-          * (timeInCurrentState() - start_idle_duration_);
+      reference_state_.position.z() = initial_start_position_.z()
+          + start_land_velocity_
+              * (timeInCurrentState() - start_idle_duration_);
       reference_state_.velocity.z() = start_land_velocity_;
     }
   }
@@ -318,6 +358,59 @@ quadrotor_common::ControlCommand AutoPilot::hover(
 
   const quadrotor_common::ControlCommand command = base_controller_.run(
       state_estimate, reference_state_, base_controller_params_);
+
+  return command;
+}
+
+quadrotor_common::ControlCommand AutoPilot::land(
+    const quadrotor_common::QuadStateEstimate& state_estimate)
+{
+  quadrotor_common::ControlCommand command;
+
+  if (first_time_in_new_state_)
+  {
+    first_time_in_new_state_ = false;
+    initial_land_position_ = state_estimate.position;
+    reference_state_ = quadrotor_common::TrajectoryPoint();
+    reference_state_.position = state_estimate.position;
+    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
+        state_estimate.orientation).z();
+    // Initialize drop thrust for the case quad is already below drop height
+    time_to_ramp_down_ = false;
+  }
+
+  reference_state_.position.z() = fmax(
+      0.0,
+      initial_land_position_.z() - start_land_velocity_ * timeInCurrentState());
+  reference_state_.velocity.z() = -start_land_velocity_;
+
+  command = base_controller_.run(state_estimate, reference_state_,
+                                 base_controller_params_);
+
+  if (!time_to_ramp_down_
+      && (state_estimate.position.z() < optitrack_land_drop_height_
+          || timeInCurrentState() > optitrack_start_land_timeout_))
+  {
+    time_to_ramp_down_ = true;
+    time_started_ramping_down_ = ros::Time::now();
+  }
+
+  if (time_to_ramp_down_)
+  {
+    // we are low enough -> ramp down the thrust
+    // we timed out on landing -> ramp down the thrust
+    ROS_INFO_THROTTLE(2, "[%s] Ramping propeller down",
+                      pnh_.getNamespace().c_str());
+    command.collective_thrust = initial_drop_thrust_
+        - initial_drop_thrust_ / propeller_ramp_down_timeout_
+            * (ros::Time::now() - time_started_ramping_down_).toSec();
+  }
+
+  if (command.collective_thrust <= 0.0)
+  {
+    setAutoPilotState(States::OFF);
+    command.zero();
+  }
 
   return command;
 }
@@ -362,6 +455,8 @@ void AutoPilot::publishControlCommand(
 
     control_command_pub_.publish(control_cmd_msg);
     state_predictor_.pushCommandToQueue(control_cmd);
+    // Save applied thrust to initialize propeller ramping down if necessary
+    initial_drop_thrust_ = control_cmd.collective_thrust;
   }
 }
 
@@ -379,6 +474,7 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(start_idle_duration);
   GET_PARAM(idle_thrust);
   GET_PARAM(start_land_velocity);
+  GET_PARAM(propeller_ramp_down_timeout);
 
   if (!base_controller_params_.loadParameters(pnh_))
   {

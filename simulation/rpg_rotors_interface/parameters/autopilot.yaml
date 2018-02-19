@@ -9,7 +9,7 @@ idle_thrust: 2.0 # [m/s]
 start_idle_duration: 2.0 # [s]
 
 optitrack_start_land_timeout: 10 # [s]
-optitrack_land_drop_height: 0.7 # [m]
+optitrack_land_drop_height: 0.3 # [m]
 
 emergency_land_duration: 4   # [s]
 emergency_land_thrust: 9.0 # [m/s^2]
