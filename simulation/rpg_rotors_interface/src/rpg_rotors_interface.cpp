@@ -24,7 +24,7 @@ RPGRotorsInterface::RPGRotorsInterface(const ros::NodeHandle& nh,
       "control_command", 1, &RPGRotorsInterface::rpgControlCommandCallback,
       this);
   rotors_odometry_sub_ = nh_.subscribe(
-      "ground_truth/odometry", 1, &RPGRotorsInterface::rotorsOdometryCallback,
+      "odometry", 1, &RPGRotorsInterface::rotorsOdometryCallback,
       this);
   motor_speed_sub_ = nh_.subscribe("motor_speed", 1,
                                    &RPGRotorsInterface::motorSpeedCallback,

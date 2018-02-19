@@ -3,6 +3,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
 #include <nav_msgs/Odometry.h>
+#include <position_controller/position_controller.h>
+#include <position_controller/position_controller_params.h>
 #include <quadrotor_common/control_command.h>
 #include <quadrotor_common/quad_state_estimate.h>
 #include <quadrotor_msgs/ControlCommand.h>
@@ -54,6 +56,11 @@ private:
   void landCallback(const std_msgs::Empty::ConstPtr& msg);
   void offCallback(const std_msgs::Empty::ConstPtr& msg);
 
+  quadrotor_common::ControlCommand start(
+      const quadrotor_common::QuadStateEstimate& state_estimate);
+  quadrotor_common::ControlCommand hover(
+      const quadrotor_common::QuadStateEstimate& state_estimate);
+
   void setAutoPilotState(const States& new_state);
   double timeInCurrentState() const;
 
@@ -81,8 +88,17 @@ private:
   ros::Subscriber off_sub_;
 
   States autopilot_state_;
+  States state_before_rc_manual_flight_;
 
   state_predictor::StatePredictor state_predictor_;
+
+  position_controller::PositionController base_controller_;
+  position_controller::PositionControllerParams base_controller_params_;
+
+  quadrotor_common::TrajectoryPoint reference_state_;
+
+  quadrotor_common::QuadStateEstimate received_state_est_;
+  bool state_estimate_available_;
 
   ros::Time time_of_switch_to_current_state_;
   bool first_time_in_new_state_;
@@ -90,6 +106,12 @@ private:
   // Parameters
   bool velocity_estimate_in_world_frame_;
   double control_command_delay_;
+  double optitrack_land_drop_height_;
+  double optitrack_start_land_timeout_;
+  double optitrack_start_height_;
+  double start_idle_duration_;
+  double idle_thrust_;
+  double start_land_velocity_;
 };
 
 } // namespace autopilot
