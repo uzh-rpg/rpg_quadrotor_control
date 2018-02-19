@@ -1,6 +1,6 @@
 #include "manual_flight_assistant/manual_flight_assistant.h"
 
-#include <geometry_msgs/TwistStamped.h>
+#include <quadrotor_common/geometry_eigen_conversions.h>
 #include <quadrotor_common/parameter_helper.h>
 #include <sbus_bridge/channel_mapping.h>
 #include <sbus_bridge/sbus_msg.h>
@@ -17,7 +17,7 @@ ManualFlightAssistant::ManualFlightAssistant(const ros::NodeHandle& nh,
                                              const ros::NodeHandle& pnh) :
     nh_(nh), pnh_(pnh), time_last_joypad_msg_(), sbus_command_(),
     previous_sbus_command_(), time_last_sbus_msg_(),
-    sbus_needs_to_go_through_zero_(true)
+    sbus_needs_to_go_through_zero_(true), velocity_command_is_zero_(true)
 {
   loadParameters();
 
@@ -34,9 +34,9 @@ ManualFlightAssistant::ManualFlightAssistant(const ros::NodeHandle& nh,
   joypad_sub_ = nh_.subscribe("joy", 1, &ManualFlightAssistant::joyCallback,
                               this);
   rc_sbus_sub_ = nh_.subscribe("received_sbus_message", 1,
-                            &ManualFlightAssistant::rcSbusCallback, this);
+                               &ManualFlightAssistant::rcSbusCallback, this);
 
-  main_loop_timer_ = nh_.createTimer(ros::Duration(0.02),
+  main_loop_timer_ = nh_.createTimer(ros::Duration(1.0 / kLoopFrequency_),
                                      &ManualFlightAssistant::mainLoop, this);
 }
 
@@ -112,7 +112,7 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
       velocity_command.twist.angular.z = -rmax_yaw_ * normalized_command;
     }
 
-    manual_desired_velocity_pub_.publish(velocity_command);
+    publishVelocityCommand(velocity_command);
   }
   else if (joypadAvailable())
   {
@@ -144,7 +144,7 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
           * joypad_command_.axes[joypad::axes::kYaw];
     }
 
-    manual_desired_velocity_pub_.publish(velocity_command);
+    publishVelocityCommand(velocity_command);
 
     // Start and Land Buttons
     if (!previous_joypad_command_.buttons.empty())
@@ -166,7 +166,7 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
     // Publish zero velocity command
     geometry_msgs::TwistStamped velocity_command;
     velocity_command.header.stamp = ros::Time::now();
-    manual_desired_velocity_pub_.publish(velocity_command);
+    publishVelocityCommand(velocity_command);
   }
 
   // Check whether sbus passes zero if it needs to
@@ -253,6 +253,33 @@ bool ManualFlightAssistant::rcSbusAvailable()
   }
 
   return available;
+}
+
+void ManualFlightAssistant::publishVelocityCommand(
+    const geometry_msgs::TwistStamped& velocity_command)
+{
+  if (quadrotor_common::geometryToEigen(velocity_command.twist.linear).norm()
+      <= kVelocityCommandZeroThreshold_
+      && fabs(velocity_command.twist.angular.z)
+          <= kVelocityCommandZeroThreshold_)
+  {
+    if (!velocity_command_is_zero_)
+    {
+      velocity_command_is_zero_ = true;
+      // Publish one zero velocity command afterwards stop publishing
+      const geometry_msgs::TwistStamped zero_command;
+      manual_desired_velocity_pub_.publish(zero_command);
+    }
+  }
+  else if (velocity_command_is_zero_)
+  {
+    velocity_command_is_zero_ = false;
+  }
+
+  if (!velocity_command_is_zero_)
+  {
+    manual_desired_velocity_pub_.publish(velocity_command);
+  }
 }
 
 bool ManualFlightAssistant::loadParameters()
