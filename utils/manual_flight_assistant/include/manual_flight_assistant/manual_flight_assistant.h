@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Eigen/Dense>
 #include <geometry_msgs/TwistStamped.h>
 #include <ros/ros.h>
 #include <sbus_bridge/SbusRosMessage.h>
