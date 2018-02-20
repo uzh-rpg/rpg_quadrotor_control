@@ -15,7 +15,9 @@ emergency_land_duration: 4   # [s]
 emergency_land_thrust: 9.0 # [m/s^2]
 
 breaking_velocity_threshold: 0.2 # [m/s]
-breaking_timeout: 1.0 # [s]
+breaking_timeout: 0.5 # [s]
 
 velocity_command_input_timeout: 0.1 # [s]
 tau_velocity_command: 0.8 # []
+
+reference_state_input_timeout: 0.1 # [s]
