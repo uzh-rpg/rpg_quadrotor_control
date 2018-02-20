@@ -119,6 +119,7 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       }
       break;
     case States::BREAKING:
+      control_cmd = breakVelocity(predicted_state);
       break;
     case States::GO_TO_POSE:
       break;
@@ -126,6 +127,7 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       control_cmd = velocityControl(predicted_state);
       break;
     case States::REFERENCE_CONTROL:
+      control_cmd = followReference(predicted_state);
       break;
     case States::TRAJECTORY_CONTROL:
       break;
@@ -157,18 +159,18 @@ void AutoPilot::lowLevelFeedbackCallback(
   if (msg->control_mode == msg->RC_MANUAL
       && autopilot_state_ != States::RC_MANUAL)
   {
-    autopilot_state_ = States::RC_MANUAL;
+    setAutoPilotState(States::RC_MANUAL);
   }
   if (msg->control_mode != msg->RC_MANUAL
       && autopilot_state_ == States::RC_MANUAL)
   {
     if (state_before_rc_manual_flight_ == States::OFF)
     {
-      autopilot_state_ = States::OFF;
+      setAutoPilotState(States::OFF);
     }
     else
     {
-      autopilot_state_ = States::BREAKING;
+      setAutoPilotState(States::HOVER);
     }
   }
 }
@@ -205,7 +207,29 @@ void AutoPilot::velocityCommandCallback(
 void AutoPilot::referenceStateCallback(
     const quadrotor_msgs::TrajectoryPoint::ConstPtr& msg)
 {
+  if (autopilot_state_ != States::HOVER
+      && autopilot_state_ != States::REFERENCE_CONTROL)
+  {
+    return;
+  }
+  if (autopilot_state_ != States::REFERENCE_CONTROL)
+  {
+    if ((reference_state_.position
+        - quadrotor_common::geometryToEigen(msg->pose.position)).norm()
+        < kPositionJumpTolerance_)
+    {
+      setAutoPilotState(States::REFERENCE_CONTROL);
+    }
+    else
+    {
+      ROS_WARN("[%s] Received first reference state that is more than %fm away "
+               "from current position, will not go to REFERENCE_CONTROL mode.",
+               pnh_.getNamespace().c_str(), kPositionJumpTolerance_);
+    }
+  }
 
+  time_last_reference_state_input_received_ = ros::Time::now();
+  reference_state_input_ = *msg;
 }
 
 void AutoPilot::trajectoryCallback(
@@ -225,7 +249,7 @@ void AutoPilot::controlCommandInputCallback(
 
   if (autopilot_state_ != States::COMMAND_FEEDTHROUGH)
   {
-    autopilot_state_ = States::COMMAND_FEEDTHROUGH;
+    setAutoPilotState(States::COMMAND_FEEDTHROUGH);
   }
 
   control_command_pub_.publish(*msg);
@@ -278,7 +302,6 @@ void AutoPilot::landCallback(const std_msgs::Empty::ConstPtr& msg)
                     pnh_.getNamespace().c_str());
   if (autopilot_state_ == States::OFF || autopilot_state_ == States::LAND
       || autopilot_state_ == States::EMERGENCY_LAND
-      || autopilot_state_ == States::COMMAND_FEEDTHROUGH
       || autopilot_state_ == States::RC_MANUAL)
   {
     return;
@@ -342,7 +365,6 @@ quadrotor_common::ControlCommand AutoPilot::start(
   if (timeInCurrentState() > optitrack_start_land_timeout_
       || reference_state_.position.z() >= optitrack_start_height_)
   {
-    // TODO: Switch to breaking
     setAutoPilotState(States::HOVER);
   }
   else
@@ -401,7 +423,7 @@ quadrotor_common::ControlCommand AutoPilot::land(
     reference_state_.position = state_estimate.position;
     reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
         state_estimate.orientation).z();
-    // Initialize drop thrust for the case quad is already below drop height
+    // Reset ramp down flag
     time_to_ramp_down_ = false;
   }
 
@@ -438,6 +460,37 @@ quadrotor_common::ControlCommand AutoPilot::land(
     command.zero();
   }
 
+  return command;
+}
+
+quadrotor_common::ControlCommand AutoPilot::breakVelocity(
+    const quadrotor_common::QuadStateEstimate& state_estimate)
+{
+  quadrotor_common::ControlCommand command;
+
+  if (first_time_in_new_state_)
+  {
+    first_time_in_new_state_ = false;
+    initial_land_position_ = state_estimate.position;
+    reference_state_ = quadrotor_common::TrajectoryPoint();
+    reference_state_.position = state_estimate.position;
+    reference_state_.velocity = state_estimate.velocity;
+    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
+        state_estimate.orientation).z();
+  }
+
+  if (state_estimate.velocity.norm() < breaking_velocity_threshold_
+      || timeInCurrentState() > breaking_timeout_)
+  {
+    const double current_heading = reference_state_.heading;
+    reference_state_ = quadrotor_common::TrajectoryPoint();
+    reference_state_.position = state_estimate.position;
+    reference_state_.heading = current_heading;
+    setAutoPilotStateAfterExecutingBreakManeuver(desired_state_after_breaking_);
+  }
+
+  command = base_controller_.run(state_estimate, reference_state_,
+                                 base_controller_params_);
   return command;
 }
 
@@ -500,16 +553,69 @@ quadrotor_common::ControlCommand AutoPilot::velocityControl(
   return command;
 }
 
+quadrotor_common::ControlCommand AutoPilot::followReference(
+    const quadrotor_common::QuadStateEstimate& state_estimate)
+{
+  quadrotor_common::ControlCommand command;
+
+  if (first_time_in_new_state_)
+  {
+    first_time_in_new_state_ = false;
+  }
+
+  if ((ros::Time::now() - time_last_reference_state_input_received_)
+      > ros::Duration(reference_state_input_timeout_))
+  {
+    setAutoPilotState(States::HOVER);
+  }
+
+  command = base_controller_.run(state_estimate, reference_state_,
+                                 base_controller_params_);
+
+  return command;
+}
+
 void AutoPilot::setAutoPilotState(const States& new_state)
 {
   time_of_switch_to_current_state_ = ros::Time::now();
   first_time_in_new_state_ = true;
 
-  if (new_state == States::RC_MANUAL)
+  if (!state_estimate_available_ && new_state != States::OFF
+      && new_state != States::EMERGENCY_LAND
+      && new_state != States::COMMAND_FEEDTHROUGH
+      && new_state != States::RC_MANUAL)
   {
-    state_before_rc_manual_flight_ = States::OFF;
+    autopilot_state_ = States::EMERGENCY_LAND;
+    return;
   }
 
+  if (new_state == States::HOVER || new_state == States::LAND
+      || new_state == States::GO_TO_POSE)
+  {
+    desired_state_after_breaking_ = new_state;
+    autopilot_state_ = States::BREAKING;
+    return;
+  }
+  if (new_state == States::RC_MANUAL)
+  {
+    if (autopilot_state_ == States::OFF)
+    {
+      state_before_rc_manual_flight_ = States::OFF;
+    }
+    else
+    {
+      state_before_rc_manual_flight_ = States::HOVER;
+    }
+  }
+
+  autopilot_state_ = new_state;
+}
+
+void AutoPilot::setAutoPilotStateAfterExecutingBreakManeuver(
+    const States& new_state)
+{
+  time_of_switch_to_current_state_ = ros::Time::now();
+  first_time_in_new_state_ = true;
   autopilot_state_ = new_state;
 }
 
@@ -562,6 +668,9 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(propeller_ramp_down_timeout);
   GET_PARAM(velocity_command_input_timeout);
   GET_PARAM(tau_velocity_command);
+  GET_PARAM(reference_state_input_timeout);
+  GET_PARAM(breaking_velocity_threshold);
+  GET_PARAM(breaking_timeout);
 
   if (!base_controller_params_.loadParameters(pnh_))
   {

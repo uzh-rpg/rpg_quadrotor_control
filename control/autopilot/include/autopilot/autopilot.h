@@ -62,10 +62,15 @@ private:
       const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand land(
       const quadrotor_common::QuadStateEstimate& state_estimate);
+  quadrotor_common::ControlCommand breakVelocity(
+      const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand velocityControl(
+      const quadrotor_common::QuadStateEstimate& state_estimate);
+  quadrotor_common::ControlCommand followReference(
       const quadrotor_common::QuadStateEstimate& state_estimate);
 
   void setAutoPilotState(const States& new_state);
+  void setAutoPilotStateAfterExecutingBreakManeuver(const States& new_state);
   double timeInCurrentState() const;
 
   quadrotor_common::QuadStateEstimate getPredictedStateEstimate(
@@ -117,6 +122,10 @@ private:
   geometry_msgs::TwistStamped desired_velocity_command_;
   ros::Time time_last_velocity_command_handled_;
 
+  quadrotor_msgs::TrajectoryPoint reference_state_input_;
+  ros::Time time_last_reference_state_input_received_;
+  States desired_state_after_breaking_;
+
   // Parameters
   bool velocity_estimate_in_world_frame_;
   double control_command_delay_;
@@ -129,9 +138,13 @@ private:
   double propeller_ramp_down_timeout_;
   double velocity_command_input_timeout_;
   double tau_velocity_command_;
+  double reference_state_input_timeout_;
+  double breaking_velocity_threshold_;
+  double breaking_timeout_;
 
   // Constants
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
+  static constexpr double kPositionJumpTolerance_ = 0.5;
 };
 
 } // namespace autopilot
