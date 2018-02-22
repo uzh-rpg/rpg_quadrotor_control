@@ -3,16 +3,26 @@
 #include <quadrotor_common/geometry_eigen_conversions.h>
 #include <quadrotor_common/math_common.h>
 #include <quadrotor_common/parameter_helper.h>
+#include <quadrotor_msgs/AutopilotFeedback.h>
 
 namespace autopilot
 {
 
-// TODO: Make sure everything is initialized properly
 AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
-    nh_(nh), pnh_(pnh), autopilot_state_(States::OFF), state_before_rc_manual_flight_(
-        States::OFF), state_predictor_(nh_, pnh_), reference_state_(), received_state_est_(), state_estimate_available_(
-        false), time_of_switch_to_current_state_(), first_time_in_new_state_(
-        true), time_to_ramp_down_(false)
+    nh_(nh), pnh_(pnh), state_predictor_(nh_, pnh_), reference_state_(),
+    received_state_est_(), desired_velocity_command_(),
+    reference_state_input_(), received_low_level_feedback_(),
+    autopilot_state_(States::OFF), state_before_rc_manual_flight_(States::OFF),
+    state_estimate_available_(false), time_of_switch_to_current_state_(),
+    first_time_in_new_state_(true), initial_start_position_(),
+    initial_land_position_(), time_to_ramp_down_(false),
+    time_started_ramping_down_(), initial_drop_thrust_(0.0),
+    time_last_velocity_command_handled_(),
+    time_last_reference_state_input_received_(),
+    desired_state_after_breaking_(States::HOVER), stop_watchdog_thread_(false),
+    time_last_state_estimate_received_(), time_started_emergency_landing_(),
+    destructor_invoked_(false), time_last_autopilot_feedback_published_()
+
 {
   if (!loadParameters())
   {
@@ -24,6 +34,8 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
   // Publishers
   control_command_pub_ = nh_.advertise<quadrotor_msgs::ControlCommand>(
       "control_command", 1);
+  autopilot_feedback_pub_ = nh_.advertise<quadrotor_msgs::AutopilotFeedback>(
+      "autopilot/feedback", 1);
 
   // Subscribers
   state_estimate_sub_ = nh_.subscribe("autopilot/state_estimate", 1,
@@ -48,36 +60,115 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
 
   start_sub_ = nh_.subscribe("autopilot/start", 1, &AutoPilot::startCallback,
                              this);
+  force_hover_sub_ = nh_.subscribe("autopilot/force_hover", 1,
+                                   &AutoPilot::forceHoverCallback, this);
   land_sub_ = nh_.subscribe("autopilot/land", 1, &AutoPilot::landCallback,
                             this);
   off_sub_ = nh_.subscribe("autopilot/off", 1, &AutoPilot::offCallback, this);
+
+  // Start watchdog thread
+  try
+  {
+    watchdog_thread_ = std::thread(&AutoPilot::watchdogThread, this);
+  }
+  catch (...)
+  {
+    ROS_ERROR("[%s] Could not successfully start watchdog thread.",
+              pnh_.getNamespace().c_str());
+    ros::shutdown();
+    return;
+  }
 }
 
 AutoPilot::~AutoPilot()
 {
+  destructor_invoked_ = true;
+
+  // Stop watchdog thread
+  stop_watchdog_thread_ = true;
+  // Wait for watchdog thread to finish
+  watchdog_thread_.join();
+
+  // Send out an off command to ensure quadrotor is off
+  quadrotor_common::ControlCommand control_cmd;
+  control_cmd.zero();
+  publishControlCommand(control_cmd);
 }
 
-// TODO watchdog thread to check when the last state estimate was received
+// Watchdog thread to check when the last state estimate was received
 // -> trigger emergency landing if necessary
 // -> set state_estimate_available_ false
+void AutoPilot::watchdogThread()
+{
+  ros::Rate watchdog_rate(1.0 / kWatchdogFrequency_);
+  while (ros::ok() && !stop_watchdog_thread_)
+  {
+    watchdog_rate.sleep();
+
+    std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+    const ros::Time time_now = ros::Time::now();
+
+    if (autopilot_state_ != States::OFF
+        && autopilot_state_ != States::EMERGENCY_LAND
+        && time_now - time_last_state_estimate_received_
+            > ros::Duration(state_estimate_timeout_))
+    {
+      state_estimate_available_ = false;
+      setAutoPilotStateForced(States::EMERGENCY_LAND);
+    }
+
+    if (autopilot_state_ == States::EMERGENCY_LAND)
+    {
+      // Check timeout to switch to OFF
+      if (time_now - time_started_emergency_landing_
+          > ros::Duration(emergency_land_duration_))
+      {
+        setAutoPilotStateForced(States::OFF);
+      }
+
+      // Send emergency landing control command
+      quadrotor_common::ControlCommand control_cmd;
+      control_cmd.armed = true;
+      control_cmd.control_mode = quadrotor_common::ControlMode::ATTITUDE;
+      control_cmd.collective_thrust = emergency_land_thrust_;
+      control_cmd.timestamp = time_now;
+      control_cmd.expected_execution_time = control_cmd.timestamp
+          + ros::Duration(control_command_delay_);
+      publishControlCommand(control_cmd);
+    }
+
+    // Mutex is unlocked because it goes out of scope here
+  }
+}
+
+// TODO: planning thread for planning GO_TO_POSE actions
+// -> when done call trajectoryCallback with computed trajectory
 
 void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
-  // This triggers the control loop
-  state_estimate_available_ = true;
+  if (destructor_invoked_)
+  {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
 
   received_state_est_ = quadrotor_common::QuadStateEstimate(*msg);
   if (!received_state_est_.isValid())
   {
     state_estimate_available_ = false;
-    if (autopilot_state_ != States::OFF
-        && autopilot_state_ != States::EMERGENCY_LAND)
+    if (autopilot_state_ != States::OFF)
     {
-      setAutoPilotState(States::EMERGENCY_LAND);
-      ROS_ERROR(
-          "[%s] Received invalid state estimate, going to EMERGENCY_LANDING",
-          pnh_.getNamespace().c_str());
+      // Do not run control loop if state estimate is not valid
+      // Only allow OFF state without a valid state estimate
+      return;
     }
+  }
+  else
+  {
+    state_estimate_available_ = true;
+    time_last_state_estimate_received_ = ros::Time::now();
   }
 
   if (!velocity_estimate_in_world_frame_)
@@ -97,11 +188,16 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
   quadrotor_common::QuadStateEstimate predicted_state =
       getPredictedStateEstimate(command_execution_time);
 
+  ros::Duration trajectory_execution_left_duration(0.0);
+  const ros::Time start_control_command_computation = ros::Time::now();
   // Compute control command depending on autopilot state
   switch (autopilot_state_)
   {
     case States::OFF:
       control_cmd.zero();
+      // Reset refence_state so we don't have random values in our autopilot
+      // feedback message
+      reference_state_ = quadrotor_common::TrajectoryPoint();
       break;
     case States::START:
       control_cmd = start(predicted_state);
@@ -115,13 +211,17 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
     case States::EMERGENCY_LAND:
       if (state_estimate_available_)
       {
+        // If we end up here it means that we have regained a valid state
+        // estimate, so lets go back to HOVER state
         setAutoPilotState(States::HOVER);
+        control_cmd = hover(predicted_state);
       }
       break;
     case States::BREAKING:
       control_cmd = breakVelocity(predicted_state);
       break;
     case States::GO_TO_POSE:
+      // Currently not necessary but might be useful for MPC control
       break;
     case States::VELOCITY_CONTROL:
       control_cmd = velocityControl(predicted_state);
@@ -130,6 +230,9 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       control_cmd = followReference(predicted_state);
       break;
     case States::TRAJECTORY_CONTROL:
+      // TODO: Set trajectory_execution_left_duration
+      // NOTE: This function also needs to set the reference_state_ variable
+      // according to the currently used trajectory sample
       break;
     case States::COMMAND_FEEDTHROUGH:
       // Do nothing here, command is being published in the command input
@@ -141,9 +244,11 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       // the authority back to our autonomous controller
       control_cmd.zero();
       control_cmd.armed = true;
-      control_cmd.collective_thrust = 9.81;
+      control_cmd.collective_thrust = kGravityAcc_;
       break;
   }
+  const ros::Duration control_computation_time = ros::Time::now()
+      - start_control_command_computation;
 
   if (autopilot_state_ != States::COMMAND_FEEDTHROUGH)
   {
@@ -151,11 +256,34 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
     control_cmd.expected_execution_time = command_execution_time;
     publishControlCommand(control_cmd);
   }
+
+  // Publish autopilot feedback throttled down to a maximum frequency
+  if ((ros::Time::now() - time_last_autopilot_feedback_published_)
+      >= ros::Duration(1.0 / kMaxAutopilotFeedbackPublishFrequency_))
+  {
+    publishAutopilotFeedback(autopilot_state_,
+                             ros::Duration(control_command_delay_),
+                             control_computation_time,
+                             trajectory_execution_left_duration,
+                             received_low_level_feedback_, reference_state_,
+                             predicted_state);
+  }
+
+  // Mutex is unlocked because it goes out of scope here
 }
 
 void AutoPilot::lowLevelFeedbackCallback(
     const quadrotor_msgs::LowLevelFeedback::ConstPtr& msg)
 {
+  if (destructor_invoked_)
+  {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+  received_low_level_feedback_ = *msg;
+
   if (msg->control_mode == msg->RC_MANUAL
       && autopilot_state_ != States::RC_MANUAL)
   {
@@ -173,16 +301,37 @@ void AutoPilot::lowLevelFeedbackCallback(
       setAutoPilotState(States::HOVER);
     }
   }
+
+  // Mutex is unlocked because it goes out of scope here
 }
 
 void AutoPilot::poseCommandCallback(
     const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
+  if (destructor_invoked_)
+  {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+  // TODO: Idea: A trajectory is planned to the desired pose in a separate
+  // thread. Once the thread is done it calls the trajectoryCallback with
+  // the computed trajectory
+
+  // Mutex is unlocked because it goes out of scope here
 }
 
 void AutoPilot::velocityCommandCallback(
     const geometry_msgs::TwistStamped::ConstPtr& msg)
 {
+  if (destructor_invoked_)
+  {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
   if (quadrotor_common::geometryToEigen(msg->twist.linear).norm()
       <= kVelocityCommandZeroThreshold_
       && fabs(msg->twist.angular.z) <= kVelocityCommandZeroThreshold_)
@@ -202,11 +351,20 @@ void AutoPilot::velocityCommandCallback(
 
   desired_velocity_command_ = *msg;
   desired_velocity_command_.header.stamp = ros::Time::now();
+
+  // Mutex is unlocked because it goes out of scope here
 }
 
 void AutoPilot::referenceStateCallback(
     const quadrotor_msgs::TrajectoryPoint::ConstPtr& msg)
 {
+  if (destructor_invoked_)
+  {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
   if (autopilot_state_ != States::HOVER
       && autopilot_state_ != States::REFERENCE_CONTROL)
   {
@@ -230,17 +388,36 @@ void AutoPilot::referenceStateCallback(
 
   time_last_reference_state_input_received_ = ros::Time::now();
   reference_state_input_ = *msg;
+
+  // Mutex is unlocked because it goes out of scope here
 }
 
 void AutoPilot::trajectoryCallback(
     const quadrotor_msgs::Trajectory::ConstPtr& msg)
 {
+  if (destructor_invoked_)
+  {
+    return;
+  }
 
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+  // TODO: Idea: trajectories are being pushed into a queue and consecutively
+  // executed if there are no jumps in the beginning and between them
+
+  // Mutex is unlocked because it goes out of scope here
 }
 
 void AutoPilot::controlCommandInputCallback(
     const quadrotor_msgs::ControlCommand::ConstPtr& msg)
 {
+  if (destructor_invoked_)
+  {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
   if (autopilot_state_ != States::OFF && autopilot_state_ != States::HOVER)
   {
     // Only allow this if the current state is OFF or HOVER
@@ -253,10 +430,19 @@ void AutoPilot::controlCommandInputCallback(
   }
 
   control_command_pub_.publish(*msg);
+
+  // Mutex is unlocked because it goes out of scope here
 }
 
 void AutoPilot::startCallback(const std_msgs::Empty::ConstPtr& msg)
 {
+  if (destructor_invoked_)
+  {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
   ROS_INFO_THROTTLE(0.5, "[%s] START command received",
                     pnh_.getNamespace().c_str());
   if (autopilot_state_ == States::OFF)
@@ -294,10 +480,43 @@ void AutoPilot::startCallback(const std_msgs::Empty::ConstPtr& msg)
     ROS_WARN("[%s] Autopilot is not OFF, will not switch to START",
              pnh_.getNamespace().c_str());
   }
+
+  // Mutex is unlocked because it goes out of scope here
+}
+
+void AutoPilot::forceHoverCallback(const std_msgs::Empty::ConstPtr& msg)
+{
+  if (destructor_invoked_)
+  {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+  ROS_INFO_THROTTLE(0.5, "[%s] FORCE HOVER command received",
+                    pnh_.getNamespace().c_str());
+
+  if (autopilot_state_ == States::OFF || autopilot_state_ == States::HOVER
+      || autopilot_state_ == States::EMERGENCY_LAND
+      || autopilot_state_ == States::RC_MANUAL)
+  {
+    return;
+  }
+
+  setAutoPilotState(States::HOVER);
+
+  // Mutex is unlocked because it goes out of scope here
 }
 
 void AutoPilot::landCallback(const std_msgs::Empty::ConstPtr& msg)
 {
+  if (destructor_invoked_)
+  {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
   ROS_INFO_THROTTLE(0.5, "[%s] LAND command received",
                     pnh_.getNamespace().c_str());
   if (autopilot_state_ == States::OFF || autopilot_state_ == States::LAND
@@ -306,41 +525,31 @@ void AutoPilot::landCallback(const std_msgs::Empty::ConstPtr& msg)
   {
     return;
   }
-  if (state_estimate_available_)
-  {
-    if (received_state_est_.coordinate_frame
-        == quadrotor_common::QuadStateEstimate::CoordinateFrame::WORLD
-        || received_state_est_.coordinate_frame
-            == quadrotor_common::QuadStateEstimate::CoordinateFrame::OPTITRACK)
-    {
-      ROS_INFO("[%s] Absolute state estimate available, landing based on it",
-               pnh_.getNamespace().c_str());
-      setAutoPilotState(States::LAND);
-    }
-    else
-    {
-      ROS_INFO(
-          "[%s] No absolute state estimate available, EMERGENCY_LAND instead",
-          pnh_.getNamespace().c_str());
-      setAutoPilotState(States::EMERGENCY_LAND);
-    }
-  }
-  else
-  {
-    setAutoPilotState(States::EMERGENCY_LAND);
-  }
+
+  setAutoPilotState(States::LAND);
+
+  // Mutex is unlocked because it goes out of scope here
 }
 
 void AutoPilot::offCallback(const std_msgs::Empty::ConstPtr& msg)
 {
+  if (destructor_invoked_)
+  {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
   if (autopilot_state_ != States::OFF)
   {
     ROS_INFO("[%s] OFF command received", pnh_.getNamespace().c_str());
-    setAutoPilotState(States::OFF);
+    setAutoPilotStateForced(States::OFF);
     // Allow user to take over manually and land the vehicle, then off the
     // controller and disable the RC without the vehicle going back to hover
     state_before_rc_manual_flight_ = States::OFF;
   }
+
+  // Mutex is unlocked because it goes out of scope here
 }
 
 quadrotor_common::ControlCommand AutoPilot::start(
@@ -435,12 +644,20 @@ quadrotor_common::ControlCommand AutoPilot::land(
   command = base_controller_.run(state_estimate, reference_state_,
                                  base_controller_params_);
 
-  if (!time_to_ramp_down_
-      && (state_estimate.position.z() < optitrack_land_drop_height_
-          || timeInCurrentState() > optitrack_start_land_timeout_))
+  if (received_state_est_.coordinate_frame
+      == quadrotor_common::QuadStateEstimate::CoordinateFrame::WORLD
+      || received_state_est_.coordinate_frame
+          == quadrotor_common::QuadStateEstimate::CoordinateFrame::OPTITRACK)
   {
-    time_to_ramp_down_ = true;
-    time_started_ramping_down_ = ros::Time::now();
+    // We only allow ramping down the propellers if we have an absolute stat
+    // estimate available, otherwise we just keep going down "forever"
+    if (!time_to_ramp_down_
+        && (state_estimate.position.z() < optitrack_land_drop_height_
+            || timeInCurrentState() > optitrack_start_land_timeout_))
+    {
+      time_to_ramp_down_ = true;
+      time_started_ramping_down_ = ros::Time::now();
+    }
   }
 
   if (time_to_ramp_down_)
@@ -486,7 +703,7 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
     reference_state_ = quadrotor_common::TrajectoryPoint();
     reference_state_.position = state_estimate.position;
     reference_state_.heading = current_heading;
-    setAutoPilotStateAfterExecutingBreakManeuver(desired_state_after_breaking_);
+    setAutoPilotStateForced(desired_state_after_breaking_);
   }
 
   command = base_controller_.run(state_estimate, reference_state_,
@@ -509,9 +726,6 @@ quadrotor_common::ControlCommand AutoPilot::velocityControl(
     time_last_velocity_command_handled_ = ros::Time::now();
   }
 
-  const double dt =
-      (ros::Time::now() - time_last_velocity_command_handled_).toSec();
-
   if ((ros::Time::now() - desired_velocity_command_.header.stamp)
       > ros::Duration(velocity_command_input_timeout_))
   {
@@ -521,6 +735,8 @@ quadrotor_common::ControlCommand AutoPilot::velocityControl(
     desired_velocity_command_.twist.angular.z = 0.0;
   }
 
+  const double dt =
+      (ros::Time::now() - time_last_velocity_command_handled_).toSec();
   const double alpha_velocity = 1 - exp(-dt / tau_velocity_command_);
 
   const Eigen::Vector3d commanded_velocity = quadrotor_common::geometryToEigen(
@@ -586,6 +802,7 @@ void AutoPilot::setAutoPilotState(const States& new_state)
       && new_state != States::RC_MANUAL)
   {
     autopilot_state_ = States::EMERGENCY_LAND;
+    time_started_emergency_landing_ = ros::Time::now();
     return;
   }
 
@@ -607,16 +824,23 @@ void AutoPilot::setAutoPilotState(const States& new_state)
       state_before_rc_manual_flight_ = States::HOVER;
     }
   }
+  if (new_state == States::EMERGENCY_LAND)
+  {
+    time_started_emergency_landing_ = ros::Time::now();
+  }
 
   autopilot_state_ = new_state;
 }
 
-void AutoPilot::setAutoPilotStateAfterExecutingBreakManeuver(
-    const States& new_state)
+void AutoPilot::setAutoPilotStateForced(const States& new_state)
 {
   time_of_switch_to_current_state_ = ros::Time::now();
   first_time_in_new_state_ = true;
   autopilot_state_ = new_state;
+  if (new_state == States::EMERGENCY_LAND)
+  {
+    time_started_emergency_landing_ = ros::Time::now();
+  }
 }
 
 double AutoPilot::timeInCurrentState() const
@@ -651,26 +875,92 @@ void AutoPilot::publishControlCommand(
   }
 }
 
+void AutoPilot::publishAutopilotFeedback(
+    const States& autopilot_state, const ros::Duration& control_command_delay,
+    const ros::Duration& control_computation_time,
+    const ros::Duration& trajectory_execution_left_duration,
+    const quadrotor_msgs::LowLevelFeedback& low_level_feedback,
+    const quadrotor_common::TrajectoryPoint& reference_state,
+    const quadrotor_common::QuadStateEstimate& state_estimate)
+{
+  quadrotor_msgs::AutopilotFeedback fb_msg;
+
+  fb_msg.header.stamp = ros::Time::now();
+  switch (autopilot_state)
+  {
+    case States::OFF:
+      fb_msg.autopilot_state = fb_msg.OFF;
+      break;
+    case States::START:
+      fb_msg.autopilot_state = fb_msg.START;
+      break;
+    case States::HOVER:
+      fb_msg.autopilot_state = fb_msg.HOVER;
+      break;
+    case States::LAND:
+      fb_msg.autopilot_state = fb_msg.LAND;
+      break;
+    case States::EMERGENCY_LAND:
+      fb_msg.autopilot_state = fb_msg.EMERGENCY_LAND;
+      break;
+    case States::BREAKING:
+      fb_msg.autopilot_state = fb_msg.BREAKING;
+      break;
+    case States::GO_TO_POSE:
+      fb_msg.autopilot_state = fb_msg.GO_TO_POSE;
+      break;
+    case States::VELOCITY_CONTROL:
+      fb_msg.autopilot_state = fb_msg.VELOCITY_CONTROL;
+      break;
+    case States::REFERENCE_CONTROL:
+      fb_msg.autopilot_state = fb_msg.REFERENCE_CONTROL;
+      break;
+    case States::TRAJECTORY_CONTROL:
+      fb_msg.autopilot_state = fb_msg.TRAJECTORY_CONTROL;
+      break;
+    case States::COMMAND_FEEDTHROUGH:
+      fb_msg.autopilot_state = fb_msg.COMMAND_FEEDTHROUGH;
+      break;
+    case States::RC_MANUAL:
+      fb_msg.autopilot_state = fb_msg.RC_MANUAL;
+      break;
+  }
+  fb_msg.control_command_delay = control_command_delay;
+  fb_msg.control_computation_time = control_computation_time;
+  fb_msg.trajectory_execution_left_duration =
+      trajectory_execution_left_duration;
+  fb_msg.low_level_feedback = low_level_feedback;
+  fb_msg.reference_state = reference_state.toRosMessage();
+  fb_msg.state_estimate = state_estimate.toRosMessage();
+
+  autopilot_feedback_pub_.publish(fb_msg);
+
+  time_last_autopilot_feedback_published_ = ros::Time::now();
+}
+
 bool AutoPilot::loadParameters()
 {
 #define GET_PARAM(name) \
 if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   return false
 
+  GET_PARAM(state_estimate_timeout);
   GET_PARAM(velocity_estimate_in_world_frame);
   GET_PARAM(control_command_delay);
-  GET_PARAM(optitrack_land_drop_height);
-  GET_PARAM(optitrack_start_land_timeout);
-  GET_PARAM(optitrack_start_height);
+  GET_PARAM(start_land_velocity);
   GET_PARAM(start_idle_duration);
   GET_PARAM(idle_thrust);
-  GET_PARAM(start_land_velocity);
+  GET_PARAM(optitrack_start_height);
+  GET_PARAM(optitrack_start_land_timeout);
+  GET_PARAM(optitrack_land_drop_height);
   GET_PARAM(propeller_ramp_down_timeout);
+  GET_PARAM(breaking_velocity_threshold);
+  GET_PARAM(breaking_timeout);
   GET_PARAM(velocity_command_input_timeout);
   GET_PARAM(tau_velocity_command);
   GET_PARAM(reference_state_input_timeout);
-  GET_PARAM(breaking_velocity_threshold);
-  GET_PARAM(breaking_timeout);
+  GET_PARAM(emergency_land_duration);
+  GET_PARAM(emergency_land_thrust);
 
   if (!base_controller_params_.loadParameters(pnh_))
   {

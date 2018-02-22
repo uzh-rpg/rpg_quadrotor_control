@@ -1,18 +1,14 @@
+state_estimate_timeout: 0.2 # [s]
 velocity_estimate_in_world_frame: true
 control_command_delay: 0.0 # [s]
 
 start_land_velocity: 0.5 # [m/s]
-optitrack_start_height: 1.0 # [m]
-
-propeller_ramp_down_timeout: 1.5 # [s]
-idle_thrust: 2.0 # [m/s]
 start_idle_duration: 2.0 # [s]
-
-optitrack_start_land_timeout: 10 # [s]
+idle_thrust: 2.0 # [m/s]
+optitrack_start_height: 1.0 # [m]
+optitrack_start_land_timeout: 5 # [s]
 optitrack_land_drop_height: 0.3 # [m]
-
-emergency_land_duration: 4   # [s]
-emergency_land_thrust: 9.0 # [m/s^2]
+propeller_ramp_down_timeout: 1.5 # [s]
 
 breaking_velocity_threshold: 0.2 # [m/s]
 breaking_timeout: 0.5 # [s]
@@ -21,3 +17,6 @@ velocity_command_input_timeout: 0.1 # [s]
 tau_velocity_command: 0.8 # []
 
 reference_state_input_timeout: 0.1 # [s]
+
+emergency_land_duration: 4   # [s]
+emergency_land_thrust: 9.0 # [m/s^2]
