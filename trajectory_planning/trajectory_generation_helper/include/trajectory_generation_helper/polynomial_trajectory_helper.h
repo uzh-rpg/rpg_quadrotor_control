@@ -1,8 +1,10 @@
 #pragma once
 
+#include <Eigen/Dense>
 #include <polynomial_trajectories/polynomial_trajectory.h>
 #include <polynomial_trajectories/polynomial_trajectory_settings.h>
 #include <quadrotor_common/trajectory.h>
+#include <quadrotor_common/trajectory_point.h>
 
 namespace trajectory_generation_helper
 {

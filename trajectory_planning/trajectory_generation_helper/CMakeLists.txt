@@ -8,7 +8,8 @@ add_compile_options(-O3)
 find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 
-cs_add_library(${PROJECT_NAME} src/polynomial_trajectory_helper.cpp)
+cs_add_library(${PROJECT_NAME} src/polynomial_trajectory_helper.cpp
+	src/heading_trajectory_helper.cpp)
 
 cs_install()
 cs_export()
