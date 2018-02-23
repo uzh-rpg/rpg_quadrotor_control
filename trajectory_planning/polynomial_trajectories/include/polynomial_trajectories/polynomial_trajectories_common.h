@@ -2,6 +2,7 @@
 
 #include <Eigen/Dense>
 #include <quadrotor_common/trajectory_point.h>
+#include <ros/duration.h>
 
 #include "polynomial_trajectories/polynomial_trajectory.h"
 
@@ -9,7 +10,8 @@ namespace polynomial_trajectories
 {
 
 quadrotor_common::TrajectoryPoint getPointFromTrajectory(
-    const PolynomialTrajectory& trajectory, const double time);
+    const PolynomialTrajectory& trajectory,
+    const ros::Duration& time_from_start);
 Eigen::VectorXd computeFactorials(const int length, const int order);
 Eigen::VectorXd dVec(const int number_of_coefficients,
                      const int derivative_order);

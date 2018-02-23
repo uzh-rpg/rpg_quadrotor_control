@@ -6,7 +6,8 @@ namespace polynomial_trajectories
 {
 
 quadrotor_common::TrajectoryPoint getPointFromTrajectory(
-    const PolynomialTrajectory& trajectory, const double time)
+    const PolynomialTrajectory& trajectory,
+    const ros::Duration& time_from_start)
 {
   quadrotor_common::TrajectoryPoint desired_state;
 
@@ -39,33 +40,34 @@ quadrotor_common::TrajectoryPoint getPointFromTrajectory(
   }
 
   // Check if time is between 0 and trajectory duration
-  double time_eval = time;
+  double time_eval = time_from_start.toSec();
   if (time_eval < 0)
   {
     ROS_WARN(
         "[%s] Requested desired state from trajectory for a time where the "
         "trajectory is not defined (t = %f). Trajectory is defined for "
         "t = [%f, %f]. Trajectory at time t = %f is returned instead.",
-        ros::this_node::getName().c_str(), time_eval, 0.0, trajectory.T, 0.0);
+        ros::this_node::getName().c_str(), time_eval, 0.0, trajectory.T.toSec(),
+        0.0);
     return trajectory.start_state;
   }
-  else if (time_eval > trajectory.T)
+  else if (time_eval > trajectory.T.toSec())
   {
     if (trajectory.trajectory_type
         == polynomial_trajectories::TrajectoryType::MINIMUM_SNAP_RING
         || trajectory.trajectory_type
             == polynomial_trajectories::TrajectoryType::MINIMUM_SNAP_RING_OPTIMIZED_SEGMENTS)
     {
-      time_eval = fmod(time_eval, trajectory.T);
+      time_eval = fmod(time_eval, trajectory.T.toSec());
     }
-    else if (time_eval > trajectory.T + 0.01)
+    else if (time_eval > trajectory.T.toSec() + 0.01)
     {
       ROS_WARN(
           "[%s] Requested desired state from trajectory for a time where the "
           "trajectory is not defined (t = %f). Trajectory is defined for "
           "t = [%f, %f]. Trajectory at time t = %f is returned instead.",
-          ros::this_node::getName().c_str(), time_eval, 0.0, trajectory.T,
-          trajectory.T);
+          ros::this_node::getName().c_str(), time_eval, 0.0,
+          trajectory.T.toSec(), trajectory.T.toSec());
       return trajectory.end_state;
     }
   }
@@ -261,16 +263,16 @@ void computeMaxima(const PolynomialTrajectory& trajectory,
   *maximal_jerk = 0.0;
   *maximal_snap = 0.0;
   double dt = 0.05;
-  if (trajectory.T < 0.5)
+  if (trajectory.T.toSec() < 0.5)
   {
     dt = 0.005;
   }
   double t = 0.0;
-  while (t + dt <= trajectory.T)
+  while (t + dt <= trajectory.T.toSec())
   {
     t += dt;
-    quadrotor_common::TrajectoryPoint state = getPointFromTrajectory(trajectory,
-                                                                     t);
+    quadrotor_common::TrajectoryPoint state = getPointFromTrajectory(
+        trajectory, ros::Duration(t));
     double velocity = state.velocity.norm();
     double acceleration = state.acceleration.norm();
     double jerk = state.jerk.norm();
@@ -311,10 +313,10 @@ void computeQuadRelevantMaxima(const PolynomialTrajectory& trajectory,
   double dt = 0.01;
 
   double t = 0.0;
-  while (t <= trajectory.T)
+  while (t <= trajectory.T.toSec())
   {
-    quadrotor_common::TrajectoryPoint state = getPointFromTrajectory(trajectory,
-                                                                     t);
+    quadrotor_common::TrajectoryPoint state = getPointFromTrajectory(
+        trajectory, ros::Duration(t));
 
     const double velocity = state.velocity.norm();
 
