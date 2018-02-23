@@ -56,9 +56,11 @@ PolynomialTrajectory computeTimeOptimalTrajectory(
   initial_trajectory.trajectory_type =
       polynomial_trajectories::TrajectoryType::FULLY_CONSTRAINED;
   initial_trajectory.start_state = s0;
+  initial_trajectory.start_state.time_from_start = ros::Duration(0.0);
   initial_trajectory.end_state = s1;
   initial_trajectory.number_of_segments = 1;
   initial_trajectory.T = ros::Duration(init_trajectory_duration);
+  initial_trajectory.end_state.time_from_start = initial_trajectory.T;
   initial_trajectory.coeff = implementation::computeTrajectoryCoeff(
       s0, s1, order_of_continuity, initial_trajectory.T.toSec());
   initial_trajectory.segment_times.resize(1);
@@ -87,6 +89,7 @@ PolynomialTrajectory computeTimeOptimalTrajectory(
     }
 
     trajectory.T = ros::Duration(0.9 * trajectory.T.toSec());
+    trajectory.end_state.time_from_start = trajectory.T;
     trajectory.segment_times(0) = trajectory.T.toSec();
     trajectory.coeff = implementation::computeTrajectoryCoeff(
         s0, s1, order_of_continuity, trajectory.T.toSec());
@@ -125,6 +128,7 @@ PolynomialTrajectory computeTimeOptimalTrajectory(
     {
       // recompute trajectory with new duration
       trajectory.T = ros::Duration(new_intersections.maxCoeff());
+      trajectory.end_state.time_from_start = trajectory.T;
       trajectory.segment_times(0) = trajectory.T.toSec();
       trajectory.coeff = implementation::computeTrajectoryCoeff(
           s0, s1, order_of_continuity, trajectory.T.toSec());
@@ -162,6 +166,7 @@ PolynomialTrajectory computeTimeOptimalTrajectory(
       for (int j = i; j < max_iterations; j++)
       {
         trajectory.T = ros::Duration(1.1 * trajectory.T.toSec());
+        trajectory.end_state.time_from_start = trajectory.T;
         trajectory.segment_times(0) = trajectory.T.toSec();
         trajectory.coeff = implementation::computeTrajectoryCoeff(
             s0, s1, order_of_continuity, trajectory.T.toSec());
@@ -206,9 +211,11 @@ PolynomialTrajectory computeFixedTimeTrajectory(
   trajectory.trajectory_type =
       polynomial_trajectories::TrajectoryType::FULLY_CONSTRAINED;
   trajectory.start_state = s0;
+  trajectory.start_state.time_from_start = ros::Duration(0.0);
   trajectory.end_state = s1;
   trajectory.number_of_segments = 1;
   trajectory.T = ros::Duration(execution_time);
+  trajectory.end_state.time_from_start = trajectory.T;
   trajectory.coeff = implementation::computeTrajectoryCoeff(s0, s1,
                                                             order_of_continuity,
                                                             execution_time);

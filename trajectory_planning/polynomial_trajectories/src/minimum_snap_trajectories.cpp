@@ -33,10 +33,12 @@ PolynomialTrajectory generateMinimumSnapTrajectory(
   minimum_snap_trajectory.segment_times = segment_times;
 
   minimum_snap_trajectory.start_state = start_state;
+  minimum_snap_trajectory.start_state.time_from_start = ros::Duration(0.0);
   minimum_snap_trajectory.end_state = end_state;
 
   minimum_snap_trajectory.optimization_cost = 0.0; // will be reset later on
   minimum_snap_trajectory.T = ros::Duration(segment_times.sum());
+  minimum_snap_trajectory.end_state.time_from_start = minimum_snap_trajectory.T;
 
   // Ensure trajectory settings that result in feasible optimization problem
   const int min_poly_order = 2
