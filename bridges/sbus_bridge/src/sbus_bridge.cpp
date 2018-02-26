@@ -573,19 +573,20 @@ void SBusBridge::publishLowLevelFeedback(const ros::TimerEvent& time) const
     low_level_feedback_msg.battery_voltage = battery_voltage_;
     if (battery_voltage_ > n_lipo_cells_ * kBatteryLowVoltagePerCell_)
     {
-      low_level_feedback_msg.battery_state = low_level_feedback_msg.GOOD;
+      low_level_feedback_msg.battery_state = low_level_feedback_msg.BAT_GOOD;
     }
     else if (battery_voltage_ > n_lipo_cells_ * kBatteryCriticalVoltagePerCell_)
     {
-      low_level_feedback_msg.battery_state = low_level_feedback_msg.LOW;
+      low_level_feedback_msg.battery_state = low_level_feedback_msg.BAT_LOW;
     }
     else if (battery_voltage_ > n_lipo_cells_ * kBatteryInvalidVoltagePerCell_)
     {
-      low_level_feedback_msg.battery_state = low_level_feedback_msg.CRITICAL;
+      low_level_feedback_msg.battery_state =
+          low_level_feedback_msg.BAT_CRITICAL;
     }
     else
     {
-      low_level_feedback_msg.battery_state = low_level_feedback_msg.INVALID;
+      low_level_feedback_msg.battery_state = low_level_feedback_msg.BAT_INVALID;
     }
 
     if (bridge_state_ == BridgeState::RC_FLIGHT)
