@@ -123,7 +123,7 @@ AutoPilot::~AutoPilot()
 // -> set state_estimate_available_ false
 void AutoPilot::watchdogThread()
 {
-  ros::Rate watchdog_rate(1.0 / kWatchdogFrequency_);
+  ros::Rate watchdog_rate(kWatchdogFrequency_);
   while (ros::ok() && !stop_watchdog_thread_)
   {
     watchdog_rate.sleep();
@@ -169,7 +169,7 @@ void AutoPilot::watchdogThread()
 // -> when done call trajectoryCallback with computed trajectory
 void AutoPilot::goToPoseThread()
 {
-  ros::Rate idle_rate(1.0 / kGoToPoseIdleFrequency_);
+  ros::Rate idle_rate(kGoToPoseIdleFrequency_);
   while (ros::ok() && !stop_go_to_pose_thread_)
   {
     idle_rate.sleep();
