@@ -11,6 +11,7 @@
 #include <position_controller/position_controller_params.h>
 #include <quadrotor_common/control_command.h>
 #include <quadrotor_common/quad_state_estimate.h>
+#include <quadrotor_common/trajectory_point.h>
 #include <quadrotor_msgs/ControlCommand.h>
 #include <quadrotor_msgs/LowLevelFeedback.h>
 #include <quadrotor_msgs/Trajectory.h>
@@ -45,6 +46,7 @@ public:
 private:
 
   void watchdogThread();
+  void goToPoseThread();
 
   void stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg);
   void lowLevelFeedbackCallback(
@@ -87,6 +89,7 @@ private:
       const States& autopilot_state, const ros::Duration& control_command_delay,
       const ros::Duration& control_computation_time,
       const ros::Duration& trajectory_execution_left_duration,
+      const int trajectories_left_in_queues,
       const quadrotor_msgs::LowLevelFeedback& low_level_feedback,
       const quadrotor_common::TrajectoryPoint& reference_state,
       const quadrotor_common::QuadStateEstimate& state_estimate);
@@ -97,12 +100,21 @@ private:
   ros::NodeHandle pnh_;
 
   // Main mutex:
-  // This mutex is locked in the watchdog thread and all the Callback functions
+  // This mutex is locked in the watchdogThread and all the Callback functions
   // All other functions should only be called from one of those and therefore
   // do not need to lock the mutex themselves
   // The functions that lock the mutex do so at their start of execution and
   // keep it locked until they are finished
   mutable std::mutex main_mutex_;
+
+  // Go to pose mutex:
+  // This mutex is locked in the goToPoseThread and the poseCommandCallback and
+  // should be called according to the order in goToPoseThread before locking
+  // the main thread
+  // It specifically protects
+  // - requested_go_to_pose_
+  // - received_go_to_pose_command_
+  mutable std::mutex go_to_pose_mutex_;
 
   ros::Publisher control_command_pub_;
   ros::Publisher autopilot_feedback_pub_;
@@ -148,6 +160,12 @@ private:
   ros::Time time_last_reference_state_input_received_;
   States desired_state_after_breaking_;
 
+  // Go to pose variables
+  std::thread go_to_pose_thread_;
+  geometry_msgs::PoseStamped requested_go_to_pose_;
+  bool received_go_to_pose_command_;
+  std::atomic_bool stop_go_to_pose_thread_;
+
   // Watchdog
   std::thread watchdog_thread_;
   std::atomic_bool stop_watchdog_thread_;
@@ -171,6 +189,9 @@ private:
   double propeller_ramp_down_timeout_;
   double breaking_velocity_threshold_;
   double breaking_timeout_;
+  double go_to_pose_max_velocity_;
+  double go_to_pose_max_normalized_thrust_;
+  double go_to_pose_max_roll_pitch_rate_;
   double velocity_command_input_timeout_;
   double tau_velocity_command_;
   double reference_state_input_timeout_;
@@ -183,6 +204,9 @@ private:
   static constexpr double kGravityAcc_ = 9.81;
   static constexpr double kWatchdogFrequency_ = 50.0;
   static constexpr double kMaxAutopilotFeedbackPublishFrequency_ = 60.0;
+  static constexpr double kGoToPoseIdleFrequency_ = 50.0;
+  static constexpr double kGoToPoseTrajectorySamplingFrequency_ = 50.0;
+  static constexpr int kGoToPosePolynomialOrderOfContinuity_ = 5;
 };
 
 } // namespace autopilot

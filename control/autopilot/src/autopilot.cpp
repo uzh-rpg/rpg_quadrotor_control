@@ -3,7 +3,10 @@
 #include <quadrotor_common/geometry_eigen_conversions.h>
 #include <quadrotor_common/math_common.h>
 #include <quadrotor_common/parameter_helper.h>
+#include <quadrotor_common/trajectory.h>
 #include <quadrotor_msgs/AutopilotFeedback.h>
+#include <trajectory_generation_helper/heading_trajectory_helper.h>
+#include <trajectory_generation_helper/polynomial_trajectory_helper.h>
 
 namespace autopilot
 {
@@ -19,9 +22,11 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     time_started_ramping_down_(), initial_drop_thrust_(0.0),
     time_last_velocity_command_handled_(),
     time_last_reference_state_input_received_(),
-    desired_state_after_breaking_(States::HOVER), stop_watchdog_thread_(false),
-    time_last_state_estimate_received_(), time_started_emergency_landing_(),
-    destructor_invoked_(false), time_last_autopilot_feedback_published_()
+    desired_state_after_breaking_(States::HOVER), requested_go_to_pose_(),
+    received_go_to_pose_command_(false), stop_go_to_pose_thread_(false),
+    stop_watchdog_thread_(false), time_last_state_estimate_received_(),
+    time_started_emergency_landing_(), destructor_invoked_(false),
+    time_last_autopilot_feedback_published_()
 
 {
   if (!loadParameters())
@@ -78,11 +83,29 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     ros::shutdown();
     return;
   }
+
+  // Start go to pose thread
+  try
+  {
+    go_to_pose_thread_ = std::thread(&AutoPilot::goToPoseThread, this);
+  }
+  catch (...)
+  {
+    ROS_ERROR("[%s] Could not successfully start go to pose thread.",
+              pnh_.getNamespace().c_str());
+    ros::shutdown();
+    return;
+  }
 }
 
 AutoPilot::~AutoPilot()
 {
   destructor_invoked_ = true;
+
+  // Stop go to pose thread
+  stop_go_to_pose_thread_ = true;
+  // Wait for go to pose thread to finish
+  go_to_pose_thread_.join();
 
   // Stop watchdog thread
   stop_watchdog_thread_ = true;
@@ -142,8 +165,62 @@ void AutoPilot::watchdogThread()
   }
 }
 
-// TODO: planning thread for planning GO_TO_POSE actions
+// Planning thread for planning GO_TO_POSE actions
 // -> when done call trajectoryCallback with computed trajectory
+void AutoPilot::goToPoseThread()
+{
+  ros::Rate idle_rate(1.0 / kGoToPoseIdleFrequency_);
+  while (ros::ok() && !stop_go_to_pose_thread_)
+  {
+    idle_rate.sleep();
+
+    std::lock_guard<std::mutex> go_to_pose_lock(go_to_pose_mutex_);
+
+    if (received_go_to_pose_command_)
+    {
+      quadrotor_common::TrajectoryPoint start_state;
+      {
+        // Store current reference state as a start state for trajectory
+        // planning
+        std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+        // Note that since we only allow go to pose actions starting from hover
+        // state, the derivatives of reference state are all zeros
+        start_state = reference_state_;
+
+        // Main mutex is unlocked because it goes out of scope here
+      }
+
+      // Compose desired end state
+      quadrotor_common::TrajectoryPoint end_state;
+      end_state.position = quadrotor_common::geometryToEigen(
+          requested_go_to_pose_.pose.position);
+      end_state.orientation = quadrotor_common::geometryToEigen(
+          requested_go_to_pose_.pose.orientation);
+      end_state.heading = quadrotor_common::quaternionToEulerAnglesZYX(
+          end_state.orientation).z();
+
+      quadrotor_common::Trajectory go_to_pose_traj =
+          trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
+              start_state, end_state, kGoToPosePolynomialOrderOfContinuity_,
+              go_to_pose_max_velocity_, go_to_pose_max_normalized_thrust_,
+              go_to_pose_max_roll_pitch_rate_,
+              kGoToPoseTrajectorySamplingFrequency_);
+
+      trajectory_generation_helper::heading::addConstantHeadingRate(
+          start_state.heading, end_state.heading, &go_to_pose_traj);
+
+      quadrotor_msgs::Trajectory::Ptr go_to_pose_traj_ptr(
+                new quadrotor_msgs::Trajectory);
+      *go_to_pose_traj_ptr = go_to_pose_traj.toRosMessage();
+
+      received_go_to_pose_command_ = false;
+      trajectoryCallback(go_to_pose_traj_ptr);
+    }
+
+    // Mutex is unlocked because it goes out of scope here
+  }
+}
 
 void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
@@ -189,6 +266,7 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       getPredictedStateEstimate(command_execution_time);
 
   ros::Duration trajectory_execution_left_duration(0.0);
+  int trajectories_left_in_queues = 0;
   const ros::Time start_control_command_computation = ros::Time::now();
   // Compute control command depending on autopilot state
   switch (autopilot_state_)
@@ -231,6 +309,7 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       break;
     case States::TRAJECTORY_CONTROL:
       // TODO: Set trajectory_execution_left_duration
+      // TODO: Set trajectories_left_in_queues
       // NOTE: This function also needs to set the reference_state_ variable
       // according to the currently used trajectory sample
       break;
@@ -265,6 +344,7 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
                              ros::Duration(control_command_delay_),
                              control_computation_time,
                              trajectory_execution_left_duration,
+                             trajectories_left_in_queues,
                              received_low_level_feedback_, reference_state_,
                              predicted_state);
   }
@@ -313,13 +393,22 @@ void AutoPilot::poseCommandCallback(
     return;
   }
 
+  // We need to lock both the go to pose mutex and the main mutex here.
+  // The order of locking has to match the one in goToPoseThread() to prevent
+  // deadlocks. So the go to pose mutex has to be locked first.
+  std::lock_guard<std::mutex> go_to_pose_lock(go_to_pose_mutex_);
   std::lock_guard<std::mutex> main_lock(main_mutex_);
 
-  // TODO: Idea: A trajectory is planned to the desired pose in a separate
+  // Idea: A trajectory is planned to the desired pose in a separate
   // thread. Once the thread is done it calls the trajectoryCallback with
   // the computed trajectory
+  if (autopilot_state_ == States::HOVER)
+  {
+    requested_go_to_pose_ = *msg;
+    received_go_to_pose_command_ = true;
+  }
 
-  // Mutex is unlocked because it goes out of scope here
+  // Mutexes are unlocked because they go out of scope here
 }
 
 void AutoPilot::velocityCommandCallback(
@@ -879,6 +968,7 @@ void AutoPilot::publishAutopilotFeedback(
     const States& autopilot_state, const ros::Duration& control_command_delay,
     const ros::Duration& control_computation_time,
     const ros::Duration& trajectory_execution_left_duration,
+    const int trajectories_left_in_queues,
     const quadrotor_msgs::LowLevelFeedback& low_level_feedback,
     const quadrotor_common::TrajectoryPoint& reference_state,
     const quadrotor_common::QuadStateEstimate& state_estimate)
@@ -956,6 +1046,9 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(propeller_ramp_down_timeout);
   GET_PARAM(breaking_velocity_threshold);
   GET_PARAM(breaking_timeout);
+  GET_PARAM(go_to_pose_max_velocity);
+  GET_PARAM(go_to_pose_max_normalized_thrust);
+  GET_PARAM(go_to_pose_max_roll_pitch_rate);
   GET_PARAM(velocity_command_input_timeout);
   GET_PARAM(tau_velocity_command);
   GET_PARAM(reference_state_input_timeout);
