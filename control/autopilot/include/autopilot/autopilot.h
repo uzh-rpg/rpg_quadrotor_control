@@ -73,6 +73,8 @@ private:
       const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand breakVelocity(
       const quadrotor_common::QuadStateEstimate& state_estimate);
+  quadrotor_common::ControlCommand waitForGoToPoseAction(
+      const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand velocityControl(
       const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand followReference(

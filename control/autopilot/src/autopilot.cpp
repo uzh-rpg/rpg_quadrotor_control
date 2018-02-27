@@ -299,7 +299,7 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       control_cmd = breakVelocity(predicted_state);
       break;
     case States::GO_TO_POSE:
-      // Currently not necessary but might be useful for MPC control
+      control_cmd = waitForGoToPoseAction(predicted_state);
       break;
     case States::VELOCITY_CONTROL:
       control_cmd = velocityControl(predicted_state);
@@ -404,6 +404,7 @@ void AutoPilot::poseCommandCallback(
   // the computed trajectory
   if (autopilot_state_ == States::HOVER)
   {
+    setAutoPilotState(States::GO_TO_POSE);
     requested_go_to_pose_ = *msg;
     received_go_to_pose_command_ = true;
   }
@@ -493,6 +494,7 @@ void AutoPilot::trajectoryCallback(
 
   // TODO: Idea: trajectories are being pushed into a queue and consecutively
   // executed if there are no jumps in the beginning and between them
+  // Only allowed from HOVER state
 
   // Mutex is unlocked because it goes out of scope here
 }
@@ -800,6 +802,28 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
   return command;
 }
 
+quadrotor_common::ControlCommand AutoPilot::waitForGoToPoseAction(
+    const quadrotor_common::QuadStateEstimate& state_estimate)
+{
+  if (first_time_in_new_state_)
+  {
+    first_time_in_new_state_ = false;
+    // We do not reset the reference state since we are only allowed to
+    // transition to the GO_TO_POSE state from HOVER
+  }
+
+  // This effectively just hovers since the actual go to pose action happens
+  // by computing a trajectory in a separate thread and then call the trajectory
+  // callback which executes the go to pose action.
+  // Going into this state instead of remaining in hover prevents the autopilot
+  // to go to TRAJECTORY_CONTROL mode in the time where a go to pose trajectory
+  // is planned
+  const quadrotor_common::ControlCommand command = base_controller_.run(
+      state_estimate, reference_state_, base_controller_params_);
+
+  return command;
+}
+
 quadrotor_common::ControlCommand AutoPilot::velocityControl(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
@@ -895,8 +919,7 @@ void AutoPilot::setAutoPilotState(const States& new_state)
     return;
   }
 
-  if (new_state == States::HOVER || new_state == States::LAND
-      || new_state == States::GO_TO_POSE)
+  if (new_state == States::HOVER || new_state == States::LAND)
   {
     desired_state_after_breaking_ = new_state;
     autopilot_state_ = States::BREAKING;
