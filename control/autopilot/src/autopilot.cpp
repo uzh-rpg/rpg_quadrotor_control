@@ -199,33 +199,53 @@ void AutoPilot::goToPoseThread()
       end_state.heading = quadrotor_common::quaternionToEulerAnglesZYX(
           end_state.orientation).z();
 
-      quadrotor_common::Trajectory go_to_pose_traj =
-          trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
-              start_state, end_state, kGoToPosePolynomialOrderOfContinuity_,
-              go_to_pose_max_velocity_, go_to_pose_max_normalized_thrust_,
-              go_to_pose_max_roll_pitch_rate_,
-              kGoToPoseTrajectorySamplingFrequency_);
-
-      trajectory_generation_helper::heading::addConstantHeadingRate(
-          start_state.heading, end_state.heading, &go_to_pose_traj);
-
+      if ((start_state.position - end_state.position).norm()
+          <= kGoToPoseNeglectThreshold_)
       {
-        // Push computed trajectory into the queue and set the autopilot
-        // to the TRAJECTORY_CONTROL state
+        // If the requested position is very close to the current reference
+        // position we do not compute a trajectory but just change the
+        // reference position
         std::lock_guard<std::mutex> main_lock(main_mutex_);
 
-        if (autopilot_state_ == States::GO_TO_POSE)
+        reference_state_.position = end_state.position;
+        reference_state_.heading = end_state.heading;
+        // TODO: Do something smarter if we want to rotate without translation
+        setAutoPilotState(States::HOVER);
+
+        // Main mutex is unlocked because it goes out of scope here
+      }
+      else
+      {
+        quadrotor_common::Trajectory go_to_pose_traj =
+            trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
+                start_state, end_state, kGoToPosePolynomialOrderOfContinuity_,
+                go_to_pose_max_velocity_, go_to_pose_max_normalized_thrust_,
+                go_to_pose_max_roll_pitch_rate_,
+                kGoToPoseTrajectorySamplingFrequency_);
+
+        trajectory_generation_helper::heading::addConstantHeadingRate(
+            start_state.heading, end_state.heading, &go_to_pose_traj);
+
         {
-          trajectory_queue_.clear();
-          trajectory_queue_.push_back(go_to_pose_traj);
-          setAutoPilotState(States::TRAJECTORY_CONTROL);
-        }
-        else
-        {
-          ROS_WARN("[%s] Autopilot state switched to another state from "
-                   "GO_TO_POSE while computing a go to pose trajectory. "
-                   "Therefore, trajectory will not be executed.",
-                   pnh_.getNamespace().c_str());
+          // Push computed trajectory into the queue and set the autopilot
+          // to the TRAJECTORY_CONTROL state
+          std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+          if (autopilot_state_ == States::GO_TO_POSE)
+          {
+            trajectory_queue_.clear();
+            trajectory_queue_.push_back(go_to_pose_traj);
+            setAutoPilotState(States::TRAJECTORY_CONTROL);
+          }
+          else
+          {
+            ROS_WARN("[%s] Autopilot state switched to another state from "
+                     "GO_TO_POSE while computing a go to pose trajectory. "
+                     "Therefore, trajectory will not be executed.",
+                     pnh_.getNamespace().c_str());
+          }
+
+          // Main mutex is unlocked because it goes out of scope here
         }
       }
 

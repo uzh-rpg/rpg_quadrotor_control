@@ -219,6 +219,7 @@ private:
   static constexpr double kGoToPoseIdleFrequency_ = 50.0;
   static constexpr double kGoToPoseTrajectorySamplingFrequency_ = 50.0;
   static constexpr int kGoToPosePolynomialOrderOfContinuity_ = 5;
+  static constexpr double kGoToPoseNeglectThreshold_ = 0.05;
 };
 
 } // namespace autopilot
