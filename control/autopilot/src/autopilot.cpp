@@ -11,15 +11,22 @@ namespace autopilot
 {
 
 AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
-    nh_(nh), pnh_(pnh), state_predictor_(nh_, pnh_), reference_state_(), received_state_est_(), desired_velocity_command_(), reference_state_input_(), received_low_level_feedback_(), autopilot_state_(
-        States::OFF), state_before_rc_manual_flight_(States::OFF), state_estimate_available_(
-        false), time_of_switch_to_current_state_(), first_time_in_new_state_(
-        true), initial_start_position_(), initial_land_position_(), time_to_ramp_down_(
-        false), time_started_ramping_down_(), initial_drop_thrust_(0.0), time_last_velocity_command_handled_(), time_last_reference_state_input_received_(), desired_state_after_breaking_(
-        States::HOVER), requested_go_to_pose_(), received_go_to_pose_command_(
-        false), stop_go_to_pose_thread_(false), trajectory_queue_(), time_start_trajectory_execution_(), stop_watchdog_thread_(
-        false), time_last_state_estimate_received_(), time_started_emergency_landing_(), destructor_invoked_(
-        false), time_last_autopilot_feedback_published_()
+    nh_(nh), pnh_(pnh), state_predictor_(nh_, pnh_), reference_state_(),
+    received_state_est_(), desired_velocity_command_(),
+    reference_state_input_(), received_low_level_feedback_(),
+    autopilot_state_(States::OFF), state_before_rc_manual_flight_(States::OFF),
+    state_estimate_available_(false), time_of_switch_to_current_state_(),
+    first_time_in_new_state_(true), initial_start_position_(),
+    initial_land_position_(), time_to_ramp_down_(false),
+    time_started_ramping_down_(), initial_drop_thrust_(0.0),
+    time_last_velocity_command_handled_(),
+    time_last_reference_state_input_received_(),
+    desired_state_after_breaking_(States::HOVER), requested_go_to_pose_(),
+    received_go_to_pose_command_(false), stop_go_to_pose_thread_(false),
+    trajectory_queue_(), time_start_trajectory_execution_(),
+    stop_watchdog_thread_(false), time_last_state_estimate_received_(),
+    time_started_emergency_landing_(), destructor_invoked_(false),
+    time_last_autopilot_feedback_published_()
 
 {
   if (!loadParameters())
@@ -768,10 +775,15 @@ quadrotor_common::ControlCommand AutoPilot::hover(
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
+    // We can only enter HOVER mode from breaking unless breaking is not
+    // necessary. So we keep the reference position and heading and only
+    // set the derivatives to zero to avoid jumps due to setting the reference
+    // to the current estimate
+    const Eigen::Vector3d current_position = reference_state_.position;
+    const double current_heading = reference_state_.heading;
     reference_state_ = quadrotor_common::TrajectoryPoint();
-    reference_state_.position = state_estimate.position;
-    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
-        state_estimate.orientation).z();
+    reference_state_.position = current_position;
+    reference_state_.heading = current_heading;
   }
 
   const quadrotor_common::ControlCommand command = base_controller_.run(
@@ -847,7 +859,20 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
-    initial_land_position_ = state_estimate.position;
+    if (state_estimate.velocity.norm() < breaking_velocity_threshold_
+        || timeInCurrentState() > breaking_timeout_)
+    {
+      // Breaking is not necessary so we do not update the reference position
+      // but set all derivatives to zero
+      const Eigen::Vector3d current_position = reference_state_.position;
+      const double current_heading = reference_state_.heading;
+      reference_state_ = quadrotor_common::TrajectoryPoint();
+      reference_state_.position = current_position;
+      reference_state_.heading = current_heading;
+      setAutoPilotStateForced(desired_state_after_breaking_);
+      return base_controller_.run(state_estimate, reference_state_,
+                                  base_controller_params_);
+    }
     reference_state_ = quadrotor_common::TrajectoryPoint();
     reference_state_.position = state_estimate.position;
     reference_state_.velocity = state_estimate.velocity;
