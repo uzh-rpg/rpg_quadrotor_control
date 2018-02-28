@@ -183,528 +183,30 @@
 In this document, we summarized the theory and math behind the quadrotor control algorithms developed at the \emph{Robotics and Perception Group} as they are implemented in our \href{https://github.com/uzh-rpg/rpg_quadrotor_control}{rpg\_quadrotor\_control} repository.
 If you spot any typos or mistakes or want to improve or add something, please open an issue or send us a pull request on \url{https://github.com/uzh-rpg/rpg_quadrotor_control}.
 
-\section{Mechanics}
+\section{Nomenclature} \label{sec:nomenclature}
 
-\subsection{Euler's first law}
+\begin{figure}[t]
+   \centering
+   \includegraphics[width=0.8\textwidth]{img/quadrotor.pdf}
+   \caption{Schematics of the considered quadrotor model with the used coordinate systems and rotor forces.}
+   \label{fig:quad}
+\end{figure}
 
-The linear momentum of a rigid body, $\bVec{p}$ is defined as 
-%
-\begin{equation}
-	 \bVec{p} := m\cdot   \bVec{v}_S,
-	 \label{eq:linear_momentum}
-\end{equation}
-%
-where $m$ is the mass of the body, and $\bVec{v}_S$ is the velocity of the center of mass.
-Euler's first law states that the change of linear momentum is equal to the sum of all external forces $\bVec{F}$:
-%
-\begin{equation}
-	\dot{\bVec{p}} =   \bVec{F},
-	\label{eq:sum_of_all_forces_equal_dp}
-\end{equation}
-%
-Differentiating~\eqref{eq:linear_momentum} and inserting in~\eqref{eq:sum_of_all_forces_equal_dp} gives
-%
-\begin{equation}
-	\dot{\bVec{p}} = m \cdot   \bVec{a}_S =   \bVec{F},
-	\label{eq:pdot_equal_F}
-\end{equation}
-%
-where $\bVec{a}_S$ is the acceleration of the center of mass.	
+In this work, we make use of a world frame $\wfr$ with orthonormal basis ${\left\{ \vect{x}{}{\wfr}, \vect{y}{}{\wfr}, \vect{z}{}{\wfr} \right\}}$ represented in world coordinates and a body frame $\bfr$ with orthonormal basis ${\left\{ \vect{x}{}{\bfr}, \vect{y}{}{\bfr}, \vect{z}{}{\bfr} \right\}}$ also represented in world coordinates.
+The body frame is fixed to the quadrotor with an origin coinciding with its center of mass as depicted in Fig.~\ref{fig:quad}.
+The quadrotor is subject to a gravitational acceleration $\gravacc$ in negative $\vect{z}{}{\wfr}$ direction.
+We denote the position of the quadrotor's center of mass as $\pos$, and its derivatives, velocity, acceleration, jerk, and snap as $\vel$, $\acc$, $\jerk$, and $\snap$, respectively.
+We represent the quadrotor's orientation as a rotation matrix ${\ori{} = \sVec{\vect{x}{}{\bfr} & \vect{y}{}{\bfr} & \vect{z}{}{\bfr}}}$ and its body rates (i.e., the angular velocity) as $\bodyrates$ represented in body coordinates.
+Finally, we denote quantities that can be computed from a reference trajectory as \emph{reference values} and quantities that are computed by an outer loop feedback control law and passed to an inner loop controller as \emph{desired values}.
+A reference trajectory consists of the reference position $\vect{\pos}{}{ref}$, the reference velocity $\vect{\vel}{}{ref}$, the reference acceleration $\vect{\acc}{}{ref}$, the reference jerk $\vect{\jerk}{}{ref}$, and the reference snap $\vect{\snap}{}{ref}$, as well as a reference heading $\heading_{\mathsmaller{\mathrm{ref}}}$, a reference heading rate $\dot{\heading}_{\mathsmaller{\mathrm{ref}}}$, and a reference heading acceleration $\ddot{\heading}_{\mathsmaller{\mathrm{ref}}}$.
 
-\subsection{Euler's second law}	
-
-The angular momentum of a rigid body with respect to a stationary point $O$ is defined as 
-%
-\begin{equation}
-	\vect{L}{}{O} :=   \ori{OP} \times   \bVec{p} + \vect{I}{}{P} \cdot   \bVec{\Omega} + m \cdot   \ori{PS}\times \vect{v}{}{P},
-	\label{eq:L_O_P}
-\end{equation}
-%
-where $P$ is an arbitrary point on the body, and $\vect{I}{}{P}$ is the second moment of inertia matrix with respect to a rotation around $P$, $\bVec{\Omega} $ is the angular velocity of the body.
-Evaluating~\eqref{eq:L_O_P} not for an arbitrary $P$ but at the center of mass $P=S$ we find
-%
-\begin{equation}
-	\vect{L}{}{O} =   \ori{OS} \times    \bVec{p} +  \vect{I}{}{S} \cdot  \bVec{\Omega}.
-	\label{eq:L_O_S}
-\end{equation}
-%
-Euler's second law states that the change of angular momentum is equal to the sum of all external moments $\vect{M}{}{O}$ with respect to $O$:
-% 
-\begin{equation}
-	\vectdot{L}{}{O} = \vect{M}{}{O}.
-	\label{eq:second_law}
-\end{equation}
-%
-Differentiating~\eqref{eq:L_O_S} and inserting in~\eqref{eq:second_law} gives
-%
-\begin{equation}
-	\vectdot{L}{}{O} = \ori{OS}\times  \dot{\bVec{p}} + \vect{I}{}{S} \cdot   \bVec{\Psi} + \bVec\Omega \times   \vect{I}{}{S} \cdot   \bVec{\Omega}  =   \vect{M}{}{O},
-	\label{ldot_equal_MO}
-\end{equation}
-%
-where $\bVec{\Psi}$ is the angular acceleration of the body.
-We can further rewrite~\eqref{ldot_equal_MO} as
-%
-\begin{align}
-  \vectdot{L}{}{O} -   \ori{OS}\times  \dot{\bVec{p}} = 
-  \vect{I}{}{S} \cdot   \bVec{\Psi} + 
-  \bVec\Omega \times   \vect{I}{}{S} \cdot   \bVec{\Omega} & = 
-  \vect{M}{}{O}-   \ori{OS}\times  \dot{\bVec{p}}, \nonumber\\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%=  \vect{I}{}{S} \cdot   \bVec{\Psi} +
-%  \bVec\Omega \times   \vect{I}{}{S} \cdot   \bVec{\Omega}
-& = 
-  \vect{M}{}{O} +   \ori{SO}\times  \dot{\bVec{p}}, \nonumber\\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%=   \vect{I}{}{S} \cdot   \bVec{\Psi} +
-%  \bVec\Omega \times   \vect{I}{}{S} \cdot   \bVec{\Omega}
-& = 
-  \vect{M}{}{O} +   \ori{SO}\times  \bVec{F}, \nonumber\\
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-  \vect{I}{}{S} \cdot   \bVec{\Psi} + 
-  \bVec\Omega \times   \vect{I}{}{S} \cdot   \bVec{\Omega} & = 
-  \vect{M}{}{S}.
-	\label{eq:ldot_equal_MS}
-\end{align}
-
-\subsection{Summary}
-
-Note that we can not only evaluate~\eqref{eq:pdot_equal_F} and~\eqref{eq:ldot_equal_MS} in the world frame $\wfr$ but in any rotating coordinate systems $A$ and $C$.
-%
-\begin{align}
-	m \cdot \vect{a}{A}{S} & = \vect{F}{A}{}, \\
-	\vect{I}{C}{S} \cdot  \prescript{}{C}{\bVec{\Psi}} + \vect{\Omega}{C}{} \times  \vect{I}{C}{S} \cdot \vect{\Omega}{C}{} &= \vect{M}{C}{S}.
-\end{align}
-
-%\subsection{Euler differential}
-%This euler differential is used when building the differential in a rotating coordinate system. 
-%\begin{equation}
-%{_B}\left( \dot{\bVec{c}} \right) = \left( {{_B}\bVec{c}} \right) \highdot + {_B}\omega_{IB} \times \bVec{c}
-%\end{equation} 
-
-
-\section{Attitude Representations}
-
-This is not an introduction to coordinate transformations but a small summary of the important math we need to describe the dynamics of a quadrotor.
-
-\subsection{Rotation Matrices and Euler Angles}\label{sec:traforotmat}
-
-We denote the rotation matrix that converts from system $\bfr$ to $\wfr$ as $\ori{\wfr \bfr}$ and the translation of system $\bfr$ with respect to system $\wfr$ as $\bVec{t}_{\wfr \bfr}$, respectively.
-To convert a vector $\bVec{c}$ from the body frame $\bfr$ to the world frame $\wfr$ we use
-%
-\begin{equation}
-	\vect{\thrust}{\wfr}{} = \ori{\wfr \bfr} \cdot \vect{\thrust}{\bfr}{} .
-\end{equation}
-%
-Correspondingly, to convert a point $\bVec{p}$ from the body frame $\bfr$ to the world frame $\wfr$ we use
-%
-\begin{equation}
-	\vect{\pos}{\wfr}{} = \ori{\wfr \bfr} \cdot \vect{\pos}{\bfr}{} \; + \; \vect{t}{\wfr}{\wfr \bfr} .
-\end{equation}
-%
-Later on Euler angles can be used.
-It is really important to keep in mind that with Euler angles the order of each single rotation is important. 
-When you are using formulas with euler angles, always check what convention they are using.
-Here we will use the $z-y-x$ convention:
-%
-\begin{enumerate}
-\item yaw $\psi$ around the z body axis
-\item pitch $\theta$ around the new y body axis
-\item roll $\phi$ around the new x body axis
-\end{enumerate}
-%
-\begin{equation}
-	\ori{\wfr \bfr} = \ori{z}(\psi) \ori{y}(\theta) \ori{x}(\phi) ,	
-\end{equation}
-%
-where
-% 
-\begin{align}
-\ori{z}(\psi) &= 
-\begin{bmatrix} 
-	\cos (\psi) & -\sin (\psi) & 0 \\
-	\sin (\psi) & \cos (\psi) & 0 \\
-	0 & 0 & 1 \\	
-\end{bmatrix},
-\\
-\ori{y}(\theta) &= 
-\begin{bmatrix} 
-	\cos (\theta) & 0 & \sin (\theta) \\
-	0 & 1 & 0 \\
-	-\sin (\theta) & 0 & \cos (\theta)
-\end{bmatrix},
-\\
-\ori{x}(\phi) &= 
-\begin{bmatrix} 
-	1 & 0 & 0 \\
-	0 & \cos (\phi) & -\sin (\phi) \\
-	0 & \sin (\phi) & \cos (\phi) \\
-\end{bmatrix}.
-\end{align}
-%
-Putting it all together we get
-%
-\begin{align}
-\ori{\wfr \bfr} &= \begin{bmatrix}
-\scos(\psi)\scos(\theta) & \scos(\psi)\ssin(\theta)\ssin(\phi)-\ssin(\psi)\scos(\phi) & \scos(\psi)\ssin(\theta)\scos(\phi)+\ssin(\psi)\ssin(\phi) \\
-\ssin(\psi)\scos(\theta) & \ssin(\psi)\ssin(\theta)\ssin(\phi)+\scos(\psi)\scos(\phi) & \ssin(\psi)\ssin(\theta)\scos(\phi)-\scos(\psi)\ssin(\phi) \\
--\ssin(\theta) & \scos(\theta)\ssin(\phi) & \scos(\theta)\scos(\phi)
-\end{bmatrix}, \\
-	&= \begin{bmatrix} \vect{x}{}{\bfr} & \vect{y}{}{\bfr} & \vect{z}{}{\bfr} \end{bmatrix}, \label{eq:r_basis_vectors}
-\end{align}
-%
-with $\vect{x}{}{\bfr}$, $\vect{y}{}{\bfr}$ and $\vect{z}{}{\bfr}$ being the orthogonal basis vectors of the Body coordinate system $\bfr$ represented in world coordinates $\wfr$ as illustrated in Fig.~\ref{fig:quad}.
-The angular velocity of coordinate system $\bfr$ with respect to the world frame $\wfr$ is denoted as $\vect{\bodyrates}{}{\wfr \bfr}$. 
-For the next step, we define the skew symmetric matrix
-%
-\begin{equation}
-\vect{\hat{\bodyrates}}{}{\wfr \bfr} = 
-	\begin{bmatrix} 
-    	0 & -\omega_{3} & \omega_{2}\\
-    	\omega_{3}& 0 &-\omega_{1}\\
-    	-\omega_{2} & \omega_{1} & 0 
-    \end{bmatrix} .
-\end{equation}
-%
-The angular velocity is defined as
-%
-\begin{equation}
-\vect{\hat{\bodyrates}}{\wfr}{\wfr \bfr} := \vectdot{\ori{}}{}{\wfr \bfr} \cdot \ori{\wfr \bfr}^{T} ,
-\label{eq:I_omegahat_IB}
-\end{equation}
-%
-or in body frame $\bfr$
-%
-\begin{align}
-\vect{\hat{\bodyrates}}{\bfr}{\wfr \bfr} 
-&= 
-\ori{\bfr\wfr} \cdot \vect{\hat{\bodyrates}}{\wfr}{\wfr \bfr} \cdot \ori{\bfr \wfr}^{T}, \\
-& = \ori{\bfr \wfr} \cdot \vectdot{\ori{}}{}{\wfr \bfr} \cdot \ori{\wfr \bfr}^{T}  \cdot \ori{\bfr \wfr}^{T}, \\
-& = \ori{\wfr \bfr}^{\top} \cdot \vectdot{\ori{}}{}{\wfr \bfr}.
-\label{eq:B_omegahat_IB}
-\end{align}
-%
-Evaluating~\eqref{eq:I_omegahat_IB} and~\eqref{eq:B_omegahat_IB} for $\vect{\bodyrates}{}{\wfr \bfr}$ we get
-%        
-\begin{equation}
-\vect{\bodyrates}{\wfr}{\wfr \bfr} =
-\begin{bmatrix} \dot{\phi} \scos(\theta) \scos(\psi) - \dot{\theta} \ssin(\psi) \\
-\dot{\phi} \scos(\theta) \ssin(\psi) + \dot{\theta} \scos(\psi) \\
--\dot{\phi} \ssin(\theta) + \dot{\psi} 
-\end{bmatrix} 
-= 
-\begin{bmatrix} \scos(\theta) \scos(\psi) & -\ssin(\psi) & 0 \\
-\scos(\theta) \ssin(\psi) & \scos(\psi) & 0 \\
--\ssin(\theta) & 0 & 1
-\end{bmatrix} 
-\begin{bmatrix}
-	\dot{\phi}\\
-	\dot{\theta}\\
-	\dot{\psi}
-\end{bmatrix} ,
-\label{eq:I_omega_IB}
-\end{equation}
-%
-and
-%
-\begin{equation}
-\vect{\bodyrates}{\bfr}{\wfr \bfr} =
-\begin{bmatrix}
-	\dot{\phi} - \ssin(\theta) \dot{\psi} \\
-	\scos(\phi) \dot{\theta} + \ssin(\phi)\scos(\theta) \dot{\psi}\\
-	-\ssin(\phi) \dot{\theta} + \scos(\phi)\scos(\theta) \dot{\psi}
-\end{bmatrix}
-=
-\begin{bmatrix}
-	1 & 0 & -\ssin(\theta) \\
-	0 & \scos(\phi) & \ssin(\phi)\scos(\theta) \\
-	0 & -\ssin(\phi) & \scos(\phi)\scos(\theta)
-\end{bmatrix}
-\begin{bmatrix}
-	\dot{\phi}\\
-	\dot{\theta}\\
-	\dot{\psi}
-\end{bmatrix} .
-\label{eq:B_omega_IB}
-\end{equation}
-
-\subsection{Quaternions}\label{sec:trafoquaternion}
-
-Instead of using Euler angles or rotation matrices, the orientation of a quadrotor can also be represented as a quaternion. 
-We denote
-%
-\begin{equation}
-\vect{q}{}{\wfr \bfr} = \begin{bmatrix} \qw & \qx & \qy & \qz \end{bmatrix}^{\top}
-\end{equation}
-%
-as the quaternion that describes the orientation of coordinate frame $\bfr$ with respect to coordinate frame $\wfr$, where $q_w$ is the real part of the quaternion. 
-Note that $\vect{q}{}{\wfr \bfr}$ is what you get from optitrack. 
-The adjoint, norm, and inverse of the quaternion, $\bVec{q}$, are 
-% 
-\begin{align}
-	\bar{\bVec{q}} &= \begin{bmatrix} \qw & -\qx & -\qy & -\qz \end{bmatrix}^{\top},\\
-	 \norm{\bVec{q}} & =  \sqrt{ \qw^2 + \qx^2 + \qy^2 + \qz^2 },\\
-	 \bVec{q}^{-1} & = \frac{ \bar{\bVec{q}} }{ \norm{\bVec{q}}  }.
-\end{align}
-%
-\subsubsection{Quaternion Multiplication}
-
-Quaternion multiplication is not commutative. 
-The Quaternion multiplication between quaternions $\bVec{q}$ and $\bVec{p}$ is defined as
-%
-\begin{align}
-\bVec{q} \otimes \bVec{p} = \bVec{Q}\left(\bVec{q}\right) \cdot \bVec{p} = \bar{\bVec{Q}}\left(\bVec{p}\right) \cdot \bVec{q},\\
-%
-\bVec{p} \otimes \bVec{q} = \bVec{Q}\left(\bVec{p}\right) \cdot \bVec{q} = \bar{\bVec{Q}}\left(\bVec{q}\right)\cdot \bVec{p},\\
-\end{align}
-%
-where 
-%
-\begin{equation}
-\bVec{Q}\left(\bVec{q}\right) = 
-\begin{bmatrix} 
-	\qw & -\qx & -\qy & -\qz \\ 
-	\qx &  \qw & -\qz &  \qy \\
-	\qy &  \qz &  \qw & -\qx \\
-	\qz & -\qy &  \qx &  \qw \\
-\end{bmatrix},
-\end{equation}
-%
-\begin{equation}
-\bar{\bVec{Q}}\left(\bVec{q}\right) = 
-\begin{bmatrix} 
-	\qw & -\qx & -\qy & -\qz \\ 
-	\qx &  \qw &  \qz & -\qy \\
-	\qy & -\qz &  \qw &  \qx \\
-	\qz &  \qy & -\qx &  \qw \\
-\end{bmatrix}.
-\end{equation}
-%
-We find that
-%
-\begin{align}
-\bVec{Q}\left(\bar{\bVec{q}}\right) = \bVec{Q}\left(\bVec{q}\right)^{\top},\\
-\bar{\bVec{Q}}\left(\bar{\bVec{q}}\right) = \bar{\bVec{Q}}\left(\bVec{q}\right)^{\top}.
-\end{align}
-
-\subsubsection{Rotating a Vector by a Quaternion}
-
-To rotate a vector $\bVec{v}$ by a quaternion $\bVec{q}$ we use the notion $\bVec{q} \odot \bVec{v}$. 
-To rotate a vector $\prescript{}{\bfr}{\bVec{v}}$ represented in body coordinates $\bfr$ into world coordinates $\wfr$ we can apply
-%
-\begin{equation}
-	\begin{bmatrix} 0 \\ \vect{\vel}{\wfr}{} \end{bmatrix} = \begin{bmatrix} 0 \\ \vect{q}{}{\wfr \bfr} \odot \vect{\vel}{\bfr}{} \end{bmatrix} = \bar{\bVec{Q}}^{\top} \left(\vect{q}{}{\wfr \bfr}\right) \cdot \bVec{Q}\left(\vect{q}{}{\wfr \bfr}\right) \cdot \begin{bmatrix} 0 \\ \vect{\vel}{\bfr}{} \end{bmatrix} .
-\end{equation}
-%
-This equation will be more clear by looking at the derivations for transforming a quaternion into a rotation matrix as described in Section~\ref{sec:quat_to_tor_mat}.
-
-\subsubsection{Quaternion Rates to Angular Velocity}
-
-The time derivative of the unit quaternion is the vector of quaternion rates. 
-The quaternion rates $\dot{\bVec{q}}$ are related to the angular velocities similar to~\eqref{eq:I_omegahat_IB}.
-%
-\begin{align}
-\begin{bmatrix}
-	0\\
-	\vect{\bodyrates}{\wfr}{\wfr \bfr}
-\end{bmatrix}
-&=
-2 \vectdot{q}{}{\wfr \bfr} \otimes \vectbar{q}{}{\wfr \bfr},
-\\&= 
-2 \bVec{Q}\left( \vectdot{q}{}{\wfr \bfr} \right) \vectbar{q}{}{\wfr \bfr},
-\\&=
-2 \bar{\bVec{Q}}\left( \vectbar{q}{}{\wfr \bfr} \right) \vectdot{q}{}{\wfr \bfr},
-\end{align}
-%
-or in body fixed frame $\bfr$
-%
-\begin{align}
-\begin{bmatrix}
-	0\\
-	\vect{\bodyrates}{\wfr}{\wfr \bfr}
-\end{bmatrix}
-&=
-2 \vectbar{q}{}{\wfr \bfr} \otimes \vectdot{q}{}{\wfr \bfr}.
-\label{eq:omega_from_q_body}
-\end{align}
-%
-More compactly, we can write
-%
-\begin{align}
-\vect{\bodyrates}{\wfr}{\wfr \bfr} = 2\bVec{W}\left( \vect{q}{}{\wfr \bfr} \right) \vectdot{q}{}{\wfr \bfr},\\
-\vect{\bodyrates}{\wfr}{\wfr \bfr} = 2\bVec{W'}\left( \vect{q}{}{\wfr \bfr} \right) \vectdot{q}{}{\wfr \bfr},
-\end{align}
-%
-with $\bVec{W} \left( \vect{q}{}{\wfr \bfr} \right)$ and $\bVec{W'}\left( \vect{q}{}{\wfr \bfr} \right)$ as defined in Section~\ref{sec:quat_to_tor_mat}.
-
-\subsection{Changing Transformation Representation}
-
-This section lists the common conversions between different orientation representations.
-
-\subsubsection{Rotation Matrix to Euler Angles}
-
-For this conversion, we denote $R_{ij}$ as the element in row $i$ and column $j$ of $\ori{\wfr \bfr}$.
-%
-\begin{align}
-	\phi &= \atantwo(R_{32}, R_{33}) \\
-	\theta &= \atantwo(R_{31}, \sqrt{R_{32}^2 + R_{33}^2}) \\
-	\psi &= \atantwo(R_{21}, R_{11})
-\end{align}
-
-\subsubsection{Euler Angles to Rotation Matrix}
-
-\begin{equation}
-\ori{\wfr \bfr} = \begin{bmatrix}
-\scos(\psi)\scos(\theta) & \scos(\psi)\ssin(\theta)\ssin(\phi)-\ssin(\psi)\scos(\phi) & \scos(\psi)\ssin(\theta)\scos(\phi)+\ssin(\psi)\ssin(\phi) \\
-\ssin(\psi)\scos(\theta) & \ssin(\psi)\ssin(\theta)\ssin(\phi)+\scos(\psi)\scos(\phi) & \ssin(\psi)\ssin(\theta)\scos(\phi)-\scos(\psi)\ssin(\phi) \\
--\ssin(\theta) & \scos(\theta)\ssin(\phi) & \scos(\theta)\scos(\phi)
-\end{bmatrix}
-\end{equation}
-
-\subsubsection{Quaternion to Euler Angles}
-
-\begin{align}
-	\phi &= \atantwo(2 q_w q_x + 2 q_y q_z, \; q_w^2 - q_x^2 - q_y^2 + q_z^2) \\
-	\theta &= -\asin(2 q_x q_z - 2 q_w q_y) \\
-	\psi &= \atantwo(2 q_w q_z + 2 q_x q_y, \; q_w^2 + q_x^2 - q_y^2 - q_z^2)
-\end{align}
-
-\subsubsection{Euler Angles to Quaternion}
-
-\begin{equation}
-	\vect{q}{}{\wfr \bfr} = \begin{bmatrix} q_w \\ q_x \\ q_y \\ q_z	\end{bmatrix} 
-	= \begin{bmatrix} \cos\left(\frac{\phi}{2}\right) \cos\left(\frac{\theta}{2}\right) \cos\left(\frac{\psi}{2}\right) + \sin\left(\frac{\phi}{2}\right) \sin\left(\frac{\theta}{2}\right) \sin\left(\frac{\psi}{2}\right) \\
-	\sin\left(\frac{\phi}{2}\right) \cos\left(\frac{\theta}{2}\right) \cos\left(\frac{\psi}{2}\right) - \cos\left(\frac{\phi}{2}\right) \sin\left(\frac{\theta}{2}\right) \sin\left(\frac{\psi}{2}\right) \\
-	\cos\left(\frac{\phi}{2}\right) \sin\left(\frac{\theta}{2}\right) \cos\left(\frac{\psi}{2}\right) + \sin\left(\frac{\phi}{2}\right) \cos\left(\frac{\theta}{2}\right) \sin\left(\frac{\psi}{2}\right) \\
-	\cos\left(\frac{\phi}{2}\right) \cos\left(\frac{\theta}{2}\right) \sin\left(\frac{\psi}{2}\right) - \sin\left(\frac{\phi}{2}\right) \sin\left(\frac{\theta}{2}\right) \cos\left(\frac{\psi}{2}\right) \\
-	 \end{bmatrix}
-\end{equation}
-
-\subsubsection{Quaternion to Rotation Matrix} \label{sec:quat_to_tor_mat}
-
-Unit quaternions are quaternions with unity norm. 
-Throughout this section, we assume that
-%
-\begin{equation}
-	\| \bVec{q} \| = 1 .
-\end{equation}
-%
-To convert a vector $\bVec{c}$ from the body frame $\bfr$ to the world frame $\wfr$ we use
-%
-\begin{align}
-\begin{bmatrix} 
-	0\\
-	\vect{\thrust}{\wfr}{}
-\end{bmatrix}
-& = 
-\bVec{q} \cdot
-\begin{bmatrix} 
-	0\\
-	\vect{\thrust}{\bfr}{}
-\end{bmatrix} \cdot
-\bVec{q}^{-1},\\
-%
-& = 
-\bVec{q} \cdot
-\begin{bmatrix} 
-	0\\
-	\vect{\thrust}{\bfr}{}
-\end{bmatrix} \cdot
-\bar{\bVec{q}},\\
-% 
-&= 
-\bar{\bVec{Q}}\left(\bVec{q}\right)^{\top}
-\bVec{Q}\left(\bVec{q}\right)
-\begin{bmatrix} 
-	0\\
-	\vect{\thrust}{\bfr}{}
-\end{bmatrix}, \label{eq:d123}\\
-%
-&=
-\begin{bmatrix} 
-	1        & \bVec{0}^{\top}\\
-    \bVec{0} & \ori{\wfr \bfr}
-\end{bmatrix} 
-\begin{bmatrix} 
-	0\\
-	\vect{\thrust}{\bfr}{} 
-\end{bmatrix}. \label{eq:d124}
-\end{align}
-%
-From~\eqref{eq:d123} and~\eqref{eq:d124}, it can be seen that the rotation matrix can be as
-%
-\begin{equation}
-\ori{\wfr \bfr}
-=
-\begin{bmatrix} 
-\qw^2 + \qx^2 - \qy^2 - \qz^2, & 2\qx\qy - 2\qw\qz,         & 2\qw\qy + 2\qx\qz\\
-2\qw\qz + 2\qx\qy,         & \qw^2 - \qx^2 + \qy^2 - \qz^2, & 2\qy\qz - 2\qw\qx\\
-2\qx\qz - 2\qw\qy,         & 2\qw\qx + 2\qy\qz,         & \qw^2 - \qx^2 - \qy^2 + \qz^2\\
-\end{bmatrix}.
-\label{eq:quatToRot}
-\end{equation}
-%
-To rewrite~\eqref{eq:d123} and~\eqref{eq:d124}, we define
-%
-\begin{equation}
-	\bVec{W}(\vect{q}{}{\wfr \bfr}) = \begin{bmatrix} 
-	-q_x & q_w & -q_z & q_y \\
-	-q_y & q_z & q_w & -q_x \\
-	-q_z & -q_y & q_x & q_w 
-	\end{bmatrix},
-\end{equation}
-%
-\begin{equation}
-	\bVec{W'}(\vect{q}{}{\wfr \bfr}) = \begin{bmatrix} 
-	-q_x & q_w & q_z & -q_y \\
-	-q_y & -q_z & q_w & q_x \\
-	-q_z & q_y & -q_x & q_w 
-	\end{bmatrix},
-\end{equation}
-%
-which allows us to write~\eqref{eq:quatToRot} as
-%
-\begin{align}
-\ori{\wfr \bfr} = \bVec{W}(\vect{q}{}{\wfr \bfr}) \bVec{W'}(\vect{q}{}{\wfr \bfr})^{\top} .
-\end{align}
-%
-Note that just as with rotation matrices, sequences of rotations are represented by products of quaternions. 
-That is, for unit quaternions it holds that
-%
-\begin{equation}
-	\ori{}\left( \bVec{q} \cdot \bVec{p} \right) = 
-	\ori{}\left( \bVec{q} \right) \ori{}\left( \bVec{p} \right).
-\end{equation}
-%
-%Furthermore we define the following matrices.
-%
-%Correspondingly, to convert a point $\bVec{p}$ from the body frame $B$ to the world frame $\wfr$ we use
-%
-%\begin{equation}
-%	{_\wfr}\bVec{p} = \bVec{W}(\bVec{q}_{\wfr B}) \cdot \bVec{W'}(\bVec{q}_{\wfr B})^{\top} \cdot {_B}\bVec{p} \; + \; {_\wfr}\bVec{t}_{\wfr B}
-%	\label{eq:quattranspoint}
-%\end{equation}
-%
-%where $\bVec{t}_{\wfr B}$ denotes the translation of coordinate frame $B$ with %respect to coordinate frame $\wfr$.
-%
-Getting a quaternion directly from a rotation matrix is not straight forward but is also not used very often in our applications.
-
-
-
-\section{Dynamics of a Quadrotor} \label{sec:dynamics}
+\section{Maybe reuse this part on old Dynamics of a Quadrotor} \label{sec:dynamics}
 
 \subsection{Coordinate System}
 
 For all our quadrotor math, we make use of the coordinate conventions as illustrated in Fig.~\ref{fig:quad} with the $x$-axis $\vect{x}{}{\bfr}$ pointing forward, the $y$-axis $\vect{y}{}{\bfr}$ pointing left and the $z$-axis $\vect{z}{}{\bfr}$ pointing up.
 Therefore, we define the gravity vector as $\bVec{g} = [ 0 \; 0 \; -g ]^{\top}$. 
 The rotor numbering and rotation directions can also be seen in Fig.~\ref{fig:quad}.
-
-\begin{figure}[t]
-   \centering
-   \includegraphics[width=0.8\textwidth]{img/quadrotor.pdf}
-   \caption{Quadrotor with coordinate system and rotor forces.}
-   \label{fig:quad}
-\end{figure}
 
 \subsection{Variables and Parameters}\label{sec:dynamicsvarpar}
 Here we define some variables and parameters which we will use later
@@ -726,305 +228,6 @@ Here we define some variables and parameters which we will use later
 	\item $\vect{\bodyrates}{\wfr}{\wfr \bfr} = \vect{\Omega}{\bfr}{} = \sVec{p \\ q\\ r} $  Angular velocity of the quadrotor in body coordinates $\bfr$. 
 	Note that the $\bfr$ system is attached to the quadrotor body frame, hence $\vect{\bodyrates}{\wfr}{\wfr \bfr} = \vect{\Omega}{\bfr}{}$.
 \end{itemize}
-
-\subsection{Using Euler Angles}\label{sec:dynamicseuler}
-
-In this section we use Euler angles and the corresponding rotation matrices as defined in Section~\ref{sec:traforotmat}, where the rotation matrix $\ori{\wfr \bfr}(\phi, \theta, \psi)$ is a function of the euler angles.
-\newline\newline
-We can evaluate~\eqref{eq:pdot_equal_F} in the world frame as
-%
-\begin{equation}
-	\sVec{\ddot{x}\\ \ddot{y} \\ \ddot{z}} =  
-\sVec{0\\ 0\\ - g} + \ori{\wfr \bfr}(\phi, \theta, \psi) \sVec{0\\ 0\\ c},
-	\label{eq:lindynamics}
-\end{equation}
-%
-or in vectorized form
-%
-\begin{equation}
-	\ddot{\pos} = \vect{\gravityvec}{\wfr}{} + \ori{\wfr \bfr}(\phi, \theta, \psi) \cdot \bVec{c}.
-\end{equation}
-%
-Next, we evaluate~\eqref{eq:ldot_equal_MS} in the body coordinate system $\bfr$
-%
-\begin{align}
-	\begin{bmatrix} 
-    	J_{xx} & 0 & 0 \\ 0 & J_{yy} & 0 \\ 0 & 0 & J_{zz} 
-    \end{bmatrix}  
-    \sVec{\dot{p}\\ \dot{q} \\ \dot{r}}  
-    + 
-	\sVec{p \\ q\\ r} 
-	\times  
-	\begin{bmatrix} 
-		J_{xx} & 0 & 0 \\ 0 & J_{yy} & 0 \\ 0 & 0 & J_{zz} 
-	\end{bmatrix} 
-	\sVec{p \\ q\\ r} 
-&= 
- \begin{bmatrix} \frac{\sqrt{2}}{2}l(f_1-f_2-f_3+f_4) \\
-							\frac{\sqrt{2}}{2}l(-f_1-f_2+f_3+f_4) \\
-							\kappa(f_1-f_2+f_3-f_4)
-						\end{bmatrix} ,
-\\
-\begin{bmatrix} 
-       J_{xx} \dot{p} + q \cdot r \left( J_{zz} - J_{yy} \right)\\
-       J_{yy} \dot{q} + p \cdot r \left( J_{xx} - J_{zz} \right)\\
-       J_{zz} \dot{r} + p \cdot q \left( J_{yy} - J_{xx} \right)
-\end{bmatrix}   
-  &= 
- \begin{bmatrix} \frac{\sqrt{2}}{2}l(f_1-f_2-f_3+f_4) \\
-							\frac{\sqrt{2}}{2}l(-f_1-f_2+f_3+f_4) \\
-							\kappa(f_1-f_2+f_3-f_4)
-						\end{bmatrix},
-\label{eq:rotdynamics}
-\end{align}
-%
-or in vectorized form
-%
-\begin{equation}
-	\bVec{J} \cdot \vectdot{\bodyrates}{\bfr}{\wfr \bfr} + \vect{\bodyrates}{\wfr}{\wfr \bfr} \times \bVec{J} \cdot   \vect{\bodyrates}{\wfr}{\wfr \bfr} = \bodytorques .
-	\label{eq:rotdynamicsvector}
-\end{equation}
-%
-Now, we want to write the quadrotor dynamics in state space form. 
-First, we chose the state vector as
-%
-\begin{align}
-	\bVec{s} &= \begin{bmatrix} x & y &z &\dot{x} &\dot{y} &\dot{z} &\phi &\theta &\psi &p &q &r \end{bmatrix}^{\top} ,\label{eq:state} \\
-	&= \begin{bmatrix} \vect{\pos}{\wfr}{\wfr \bfr} & \vect{\vel}{\wfr}{\wfr \bfr} & \phi & \theta & \psi & \vect{\bodyrates}{\wfr}{\wfr \bfr} \end{bmatrix}^{\top} .
-\end{align}
-%
-In the following we rewrite~\eqref{eq:lindynamics} and~\eqref{eq:rotdynamics} in order to fit the state space form. 
-%
-\begin{align}
-\begin{bmatrix} 
-	\dot{x} \\\dot{y} \\\dot{z} 
-\end{bmatrix}
-	&= \begin{bmatrix} 
-	\dot{x} \\\dot{y} \\\dot{z} 
-\end{bmatrix}, \\
-%
-\begin{bmatrix} 
-	\ddot{x} \\\ddot{y} \\\ddot{z} 
-\end{bmatrix}
-	&= \begin{bmatrix} 0\\ 0\\ -g\end{bmatrix} + \ori{\wfr \bfr}(\phi, \theta, \psi) \begin{bmatrix} 0\\ 0\\ c \end{bmatrix},	\\
-%
-\begin{bmatrix}
-	\dot{\phi} \\ \dot{\theta} \\ \dot{\psi} 
-\end{bmatrix} 
- &=
-\begin{bmatrix} 1 & \stan(\theta)\ssin(\phi) & \stan(\theta)\scos(\phi) \\ 
-0 & \scos(\phi) & -\ssin(\phi) 
-\\ 0 & \frac{\ssin(\phi)}{\scos(\theta)}  & \frac{\scos(\phi)}{\scos(\theta)} \end{bmatrix}    
-\begin{bmatrix}
-	p \\ q \\ r 
-\end{bmatrix}, \label{eq:euleranglerates} \\
-%
-\begin{bmatrix} 
-	\dot{p} \\\dot{q} \\\dot{r} 
-\end{bmatrix}
-	&= 
-\begin{bmatrix} 
-	\frac{1}{J_{xx}}
-		\left( 
-			\frac{\sqrt{2}}{2}l(f_1-f_2-f_3+f_4) 
-			- q \cdot r \left( J_{zz} - J_{yy} \right)
-		\right) \\
-	\frac{1}{J_{yy}}
-		\left( 
-			\frac{\sqrt{2}}{2}l(-f_1-f_2+f_3+f_4)	
-			- p \cdot r \left( J_{xx} - J_{zz} \right) 
-		\right) \\
-	\frac{1}{J_{zz}}
-		\left( 
-			\kappa(f_1-f_2+f_3-f_4)
-			- q \cdot p \left( J_{yy} - J_{xx} \right)		 
-		\right) \\
-\end{bmatrix} ,
-\end{align}
-%
-or in vectorized form
-%
-\begin{align}
-	\vectdot{\pos}{\wfr}{\wfr \bfr} &= \vect{\vel}{\wfr}{\wfr \bfr}, \\
-	\vectdot{\vel}{\wfr}{\wfr \bfr} &= \vect{\gravityvec}{\wfr}{} + \ori{\wfr \bfr}(\phi, \theta, \psi) \cdot \bVec{c}, \\
-	\begin{bmatrix} \dot{\phi} \\ \dot{\theta} \\ \dot{\psi} \end{bmatrix} &=
-	\begin{bmatrix} 1 & \stan(\theta)\ssin(\phi) & \stan(\theta)\scos(\phi) \\ 0 & \scos(\phi) & -\ssin(\phi) \\ 0 & \frac{\ssin(\phi)}{\scos(\theta)}  & \frac{\scos(\phi)}{\scos(\theta)} \end{bmatrix} \vect{\bodyrates}{\wfr}{\wfr \bfr}, \label{eq:eulerangleratesvectorized} \\
-	\vectdot{\bodyrates}{\bfr}{\wfr \bfr} &= \bVec{J}^{-1} \cdot \left( \bodytorques - \vect{\bodyrates}{\wfr}{\wfr \bfr} \times \bVec{J} \cdot \vect{\bodyrates}{\bfr}{\wfr \bfr} \right).
-\end{align}
-%
-Finally, the derivation of the Euler angle derivatives in~\eqref{eq:euleranglerates} and~\eqref{eq:eulerangleratesvectorized} is shown here. 
-They are a function of the Euler angles and the body rates:
-%
-\begin{equation}
-\begin{bmatrix} 
-	\dot{\phi} \\\dot{\theta} \\\dot{\psi} 
-\end{bmatrix}
-= \begin{bmatrix} 
-	\dot{\phi}(\phi,\theta,\psi,p,q,r) \\\dot{\theta}(\phi,\theta,\psi,p,q,r) \\\dot{\psi}(\phi,\theta,\psi,p,q,r) 
-\end{bmatrix}.
-\end{equation}
-%
-For this we use~\eqref{eq:B_omega_IB}:
-%
-\begin{equation}
-\begin{bmatrix}
-	p \\ q \\ r 
-\end{bmatrix} 
- =
-\begin{bmatrix}
-	1 & 0 & -\ssin(\theta) \\
-	0 & \scos(\phi) & \ssin(\phi)\scos(\theta) \\
-	0 & -\ssin(\phi) & \scos(\phi)\scos(\theta)
-\end{bmatrix} 
-\begin{bmatrix}
-	\dot{\phi}\\
-	\dot{\theta}\\
-	\dot{\psi}
-\end{bmatrix} .
-\label{eq:pqr_as_eulerangles}
-\end{equation}
-%
-Inverting~\eqref{eq:pqr_as_eulerangles} finally leads to 
-%
-\begin{equation}
-\begin{bmatrix}
-	\dot{\phi} \\ \dot{\theta} \\ \dot{\psi} 
-\end{bmatrix} 
- =
-\begin{bmatrix} 1 & \stan(\theta)\ssin(\phi) & \stan(\theta)\scos(\phi) \\ 0 & \scos(\phi) & -\ssin(\phi) \\ 0 & \frac{\ssin(\phi)}{\scos(\theta)}  & \frac{\scos(\phi)}{\scos(\theta)} \end{bmatrix}
-\begin{bmatrix}
-	p \\ q \\ r 
-\end{bmatrix} .     
-\end{equation}
-
-
-
-%\begin{bmatrix} 
-%	\dot{x} \\\dot{y} \\\dot{z} 
-%	\\\ddot{x} \\\ddot{y} \\\ddot{z} 
-%	\\\dot{\Phi} \\\dot{\Theta} \\\dot{\Psi} 
-%	\\\dot{p} \\\dot{q} \\\dot{r} \end{bmatrix}.
-
-
-%For those who attended Mechanik III a refresh on Professor Glocker's notation
-%\begin{itemize}
-%\item Drall: $\vect{L}{}{O} $
-%\item Impulsmoment: $ \ori{OS} \times \bVec{p} $
-%\item Spin: $ \vect{I}{}{S} \cdot \bVec{\Omega} $
-%\end{itemize}	
-
-% Bibliography
-%\bibliography{bibliography}{}
-%\bibliographystyle{plain}
-
-\subsection{Using Rotation Matrices}\label{sec:dynamicsrotmat}
-
-We define $\ori{\wfr \bfr}$ to be the rotation matrix which transforms vectors from $\bfr$ to $\wfr$, but also describes the orientation of the quadrotor. 
-In this section we will use the vectorized forms of the equations only.
-\newline\newline
-We can evaluate~\eqref{eq:pdot_equal_F} in the world frame as
-%
-\begin{equation}
-	\ddot{\pos} = \vect{\gravityvec}{\wfr}{} + \ori{\wfr \bfr} \cdot \bVec{c}.
-\label{eq:lindynamicsrotmat}
-\end{equation}
-%
-Since we use the same representation of the body rates as in Section~\ref{sec:dynamicseuler}, the evaluation of~\eqref{eq:ldot_equal_MS} remains the same as in~\eqref{eq:rotdynamicsvector}.
-\newline\newline
-We chose the state vector as
-%
-\begin{equation}
-	\bVec{s} = \begin{bmatrix} \vect{\pos}{\wfr}{\wfr \bfr} & \vect{\vel}{\wfr}{\wfr \bfr} & \ori{\wfr \bfr} & \vect{\bodyrates}{\wfr}{\wfr \bfr} \end{bmatrix}^{\top}.
-\end{equation}
-%
-In the following, we rewrite~\eqref{eq:lindynamicsrotmat} and~\eqref{eq:rotdynamicsvector} in order to fit the state space form. 
-%
-\begin{align}
-	\vectdot{\pos}{\wfr}{\wfr \bfr} &= \vect{\vel}{\wfr}{\wfr \bfr}, \\
-	\vectdot{\vel}{\wfr}{\wfr \bfr} &= \vect{\gravityvec}{\wfr}{} + \ori{\wfr \bfr} \cdot \bVec{c},	\\
-	\vectdot{\ori{}}{}{\wfr \bfr} &= \ori{\wfr \bfr} \cdot \vect{\hat{\bodyrates}}{\bfr}{\wfr \bfr}, \\
-	\vectdot{\bodyrates}{\bfr}{\wfr \bfr} &= \bVec{J}^{-1} \cdot \left( \bodytorques - \vect{\bodyrates}{\wfr}{\wfr \bfr} \times \bVec{J} \cdot \vect{\bodyrates}{\wfr}{\wfr \bfr} \right).
-\end{align}
-
-\subsection{Using Quaternions} \label{sec:dyn_model_quat}
-
-In this section, we use a quaternion $\vect{q}{}{\wfr \bfr}$, as defined in Section~\ref{sec:trafoquaternion}, to represent the orientation of the quadrotor. 
-We will again use the vectorized forms of the equations only.
-\newline\newline
-We can evaluate~\eqref{eq:pdot_equal_F} in the world frame as
-%
-\begin{equation}
-	\ddot{\pos} = \vect{\gravityvec}{\wfr}{} + \vect{q}{}{\wfr \bfr} \odot \bVec{c}.
-	\label{eq:lindynamicsquat}
-\end{equation}
-%
-Since we use the same representation of the body rates as in Section~\ref{sec:dynamicseuler}, the evaluation of~\eqref{eq:ldot_equal_MS} remains the same as in~\eqref{eq:rotdynamicsvector}.
-\newline\newline
-We chose the state vector as
-%
-\begin{equation}
-	\bVec{s} = \begin{bmatrix} \vect{\pos}{\wfr}{\wfr \bfr} & \vect{\vel}{\wfr}{\wfr \bfr} & \vect{q}{}{\wfr \bfr} & \vect{\bodyrates}{\wfr}{\wfr \bfr} \end{bmatrix}^{\top}.
-\end{equation}
-%
-In the following, we rewrite~\eqref{eq:lindynamicsquat} and~\eqref{eq:rotdynamicsvector} in order to fit the state space form.
-%
-\begin{align}
-	\vectdot{\pos}{\wfr}{\wfr \bfr} &= \vect{\vel}{\wfr}{\wfr \bfr}, \\
-	\vectdot{\vel}{\wfr}{\wfr \bfr} &= \vect{\gravityvec}{\wfr}{} + \vect{q}{}{\wfr \bfr} \odot \bVec{c},	\\
-	\vectdot{q}{}{\wfr \bfr} &= \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \vect{q}{}{\wfr \bfr}, \label{eq:quatderivative} \\
-	\vectdot{\bodyrates}{\bfr}{\wfr \bfr} &= \bVec{J}^{-1} \cdot \left( \bodytorques - \vect{\bodyrates}{\wfr}{\wfr \bfr} \times \bVec{J} \cdot \vect{\bodyrates}{\wfr}{\wfr \bfr} \right),
-\end{align}
-%
-where
-%
-\begin{equation}
-	\quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) = \frac{1}{2}
-	\begin{bmatrix} 0 & -p & -q & -r \\ p & 0 & r & -q \\ q & -r & 0 & p \\ r & q & -p & 0 \end{bmatrix} 
-	=
-	\frac{1}{2}
-	\bar{\bVec{Q}}
-		\left( 	
-			\begin{bmatrix}
-				0\\
-				\vect{\bodyrates}{\wfr}{\wfr \bfr}
-			\end{bmatrix} 
-		\right)
-	=
-	\frac{1}{2}
-	\bar{\bVec{Q}}
-		\left( 	
-			\begin{bmatrix}
-				0\\
-				p \\ q \\ r
-			\end{bmatrix} 
-		\right).
-\end{equation}
-%
-We find~\eqref{eq:quatderivative} by using~\eqref{eq:omega_from_q_body}
-\begin{align}
-\vectdot{q}{}{\wfr \bfr}
-& = 
-	\frac{1}{2}
-	\vect{q}{}{\wfr \bfr} 
-	\cdot	
-	\begin{bmatrix}
-		0\\
-		\vect{\bodyrates}{\wfr}{\wfr \bfr}
-	\end{bmatrix},
-\\
-& = 
-	\frac{1}{2}
-	\bar{\bVec{Q}}
-		\left( 	
-			\begin{bmatrix}
-				0\\
-				\vect{\bodyrates}{\wfr}{\wfr \bfr}
-			\end{bmatrix} 
-		\right)
-	\vect{q}{}{\wfr \bfr} .
-\end{align}
-%
-Equation~\eqref{eq:quatderivative} can be integrated as described in Appendix~\ref{sec:appquatint}.
 
 \section{Control}
 
@@ -1288,7 +491,7 @@ TODO: Describe how we saturate the single rotor thrusts according to \cite{Faess
 
 \subsection{Delay Compensation}
 
-TODO: about state predictor
+TODO: about \href{https://github.com/uzh-rpg/rpg_quadrotor_common/tree/master/state_predictor}{state predictor}
 
 \section{Trajectory Generation}
 
@@ -1410,81 +613,93 @@ Therefore, we can compute the norm of the roll and pitch body rates as
 	\end{bmatrix}} = \sqrt{\norm{\frac{\bVec{j}}{c}}^2 - \left( (\bVec{e}_z^B)^{\top} \cdot \frac{\bVec{j}}{c} \right)^2}
 \end{equation}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Appendix
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\newpage
-\appendix
-\appendixpage
-\addappheadtotoc
+\section{Math}
 
-\section{Zeroth Order Integration of a Unit Quaternion} \label{sec:appquatint}
+\subsection{Mechanics}
 
-Simply integrating a quaternion derivative component-wise does not guarantee to result in a unit quaternion and requires normalization. 
-Under the assumption of a discrete time step in the interval $[t, t+\Delta t]$ with constant body rates $\vect{\bodyrates}{\wfr}{\wfr \bfr}$, a nice solution for the integration exists (from~\cite{Trawny05tr}) which does not require to normalize the quaternion. 
-%
-First we restate~\eqref{eq:quatderivative}
-%
-\begin{equation}
-	\vectdot{q}{}{\wfr \bfr} = \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \vect{q}{}{\wfr \bfr}.
-\end{equation}
-%
-In literature we find the solution to this differential equation with starting point $\vect{q}{}{\wfr \bfr}(t)$ to be 
+\subsubsection{Euler's first law}
+
+The linear momentum of a rigid body, $\bVec{p}$ is defined as 
 %
 \begin{equation}
-	\vect{q}{}{\wfr \bfr}(t + \Delta t) = e^{\left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \Delta t \right)} \cdot \vect{q}{}{\wfr \bfr}(t).
+	 \bVec{p} := m\cdot   \bVec{v}_S,
+	 \label{eq:linear_momentum}
 \end{equation}
 %
-The matrix exponential is defined as
+where $m$ is the mass of the body, and $\bVec{v}_S$ is the velocity of the center of mass.
+Euler's first law states that the change of linear momentum is equal to the sum of all external forces $\bVec{F}$:
 %
 \begin{equation}
-	e^{\left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \Delta t \right)} = 
-	\bVec{I}_4 \; + \; \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \Delta t \; + \; \frac{1}{2!} \left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \Delta t \right)^2 \; + \; \frac{1}{3!} \left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \Delta t \right)^3 \; + \; \ldots
-	\label{eq:matrixexponential}
+	\dot{\bVec{p}} =   \bVec{F},
+	\label{eq:sum_of_all_forces_equal_dp}
 \end{equation}
 %
-It can easily be verified that
+Differentiating~\eqref{eq:linear_momentum} and inserting in~\eqref{eq:sum_of_all_forces_equal_dp} gives
 %
 \begin{equation}
-	\left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \right)^2 = - \frac{1}{4} \lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert^2 \cdot \bVec{I}_4,
-	\label{eq:quatrotsquare}
+	\dot{\bVec{p}} = m \cdot   \bVec{a}_S =   \bVec{F},
+	\label{eq:pdot_equal_F}
 \end{equation}
 %
-where
+where $\bVec{a}_S$ is the acceleration of the center of mass.	
+
+\subsubsection{Euler's second law}	
+
+The angular momentum of a rigid body with respect to a stationary point $O$ is defined as 
 %
 \begin{equation}
-	\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert = \sqrt{p^2 + q^2 + r^2}.
+	\vect{L}{}{O} :=   \ori{OP} \times   \bVec{p} + \vect{I}{}{P} \cdot   \bVec{\Omega} + m \cdot   \ori{PS}\times \vect{v}{}{P},
+	\label{eq:L_O_P}
 \end{equation}
 %
-Using~\eqref{eq:quatrotsquare} and rearranging the terms, \eqref{eq:matrixexponential} can be written as
+where $P$ is an arbitrary point on the body, and $\vect{I}{}{P}$ is the second moment of inertia matrix with respect to a rotation around $P$, $\bVec{\Omega} $ is the angular velocity of the body.
+Evaluating~\eqref{eq:L_O_P} not for an arbitrary $P$ but at the center of mass $P=S$ we find
+%
+\begin{equation}
+	\vect{L}{}{O} =   \ori{OS} \times    \bVec{p} +  \vect{I}{}{S} \cdot  \bVec{\Omega}.
+	\label{eq:L_O_S}
+\end{equation}
+%
+Euler's second law states that the change of angular momentum is equal to the sum of all external moments $\vect{M}{}{O}$ with respect to $O$:
+% 
+\begin{equation}
+	\vectdot{L}{}{O} = \vect{M}{}{O}.
+	\label{eq:second_law}
+\end{equation}
+%
+Differentiating~\eqref{eq:L_O_S} and inserting in~\eqref{eq:second_law} gives
+%
+\begin{equation}
+	\vectdot{L}{}{O} = \ori{OS}\times  \dot{\bVec{p}} + \vect{I}{}{S} \cdot   \bVec{\Psi} + \bVec\Omega \times   \vect{I}{}{S} \cdot   \bVec{\Omega}  =   \vect{M}{}{O},
+	\label{ldot_equal_MO}
+\end{equation}
+%
+where $\bVec{\Psi}$ is the angular acceleration of the body.
+We can further rewrite~\eqref{ldot_equal_MO} as
 %
 \begin{align}
-	e^{\left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \Delta t \right)} 
-	&= 
-	\bVec{I}_4 \cdot 
-	\left( 
-		1 
-		- \frac{\left( \lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \frac{\Delta t}{2} \right)^2}{2!} 
-		+ \frac{\left( \lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \frac{\Delta t}{2} \right)^4}{4!} 
-		- \ldots 
-	\right), \\
-	& \quad 
-	+ \frac{2}{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert} \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot 	
-	\left( 
-		\frac{\left( \lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \frac{\Delta t}{2} \right)}{1!} 
-		- \frac{\left( \lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \frac{\Delta t}{2} \right)^3}{3!} 
-		+  \ldots 
-	\right), \nonumber \\
-	&= \bVec{I}_4 \cdot \cos{\left( \frac{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \Delta t}{2} \right)} + \frac{2}{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert} \cdot \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \sin{\left( \frac{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \Delta t}{2} \right)}.
+  \vectdot{L}{}{O} -   \ori{OS}\times  \dot{\bVec{p}} = 
+  \vect{I}{}{S} \cdot   \bVec{\Psi} + 
+  \bVec\Omega \times   \vect{I}{}{S} \cdot   \bVec{\Omega} & = 
+  \vect{M}{}{O}-   \ori{OS}\times  \dot{\bVec{p}}, \nonumber\\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%=  \vect{I}{}{S} \cdot   \bVec{\Psi} +
+%  \bVec\Omega \times   \vect{I}{}{S} \cdot   \bVec{\Omega}
+& = 
+  \vect{M}{}{O} +   \ori{SO}\times  \dot{\bVec{p}}, \nonumber\\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%=   \vect{I}{}{S} \cdot   \bVec{\Psi} +
+%  \bVec\Omega \times   \vect{I}{}{S} \cdot   \bVec{\Omega}
+& = 
+  \vect{M}{}{O} +   \ori{SO}\times  \bVec{F}, \nonumber\\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+  \vect{I}{}{S} \cdot   \bVec{\Psi} + 
+  \bVec\Omega \times   \vect{I}{}{S} \cdot   \bVec{\Omega} & = 
+  \vect{M}{}{S}.
+	\label{eq:ldot_equal_MS}
 \end{align}
-%
-So the state update of the quaternion becomes
-%
-\begin{equation}
-	\vect{q}{}{\wfr \bfr}(t + \Delta t) = \left( \bVec{I}_4 \cdot \cos{\left( \frac{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \Delta t}{2} \right)} + \frac{2}{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert} \cdot \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \sin{\left( \frac{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \Delta t}{2} \right)} \right) \cdot \vect{q}{}{\wfr \bfr}(t) .
-\end{equation}
 
-\section{Differentiating the Angular Momentum}
+\subsubsection{Differentiating the Angular Momentum}
 
 This section shows how to differentiate $ \vect{L}{}{O} $.
 First, we restate~\eqref{eq:L_O_S} for the definition of the angular momentum
@@ -1588,7 +803,776 @@ Combining the results~\eqref{eq:appendix_drall_deriv0} and~\eqref{eq:appendix_dr
 	+ \bVec{\Omega} \times \vect{I}{}{S} \cdot \bVec{\Omega}.
 \end{align}
 %
-Again this result is valid in any coordinate system. 
+Again this result is valid in any coordinate system.
+
+\subsubsection{Summary}
+
+Note that we can not only evaluate~\eqref{eq:pdot_equal_F} and~\eqref{eq:ldot_equal_MS} in the world frame $\wfr$ but in any rotating coordinate systems $A$ and $C$.
+%
+\begin{align}
+	m \cdot \vect{a}{A}{S} & = \vect{F}{A}{}, \\
+	\vect{I}{C}{S} \cdot  \prescript{}{C}{\bVec{\Psi}} + \vect{\Omega}{C}{} \times  \vect{I}{C}{S} \cdot \vect{\Omega}{C}{} &= \vect{M}{C}{S}.
+\end{align}
+
+\subsection{Attitude Representations}
+
+This is not an introduction to coordinate transformations but a small summary of the important math we need to describe the dynamics of a quadrotor.
+
+\subsubsection{Rotation Matrices and Euler Angles}\label{sec:traforotmat}
+
+We denote the rotation matrix that converts from system $\bfr$ to $\wfr$ as $\ori{\wfr \bfr}$ and the translation of system $\bfr$ with respect to system $\wfr$ as $\bVec{t}_{\wfr \bfr}$, respectively.
+To convert a vector $\bVec{c}$ from the body frame $\bfr$ to the world frame $\wfr$ we use
+%
+\begin{equation}
+	\vect{\thrust}{\wfr}{} = \ori{\wfr \bfr} \cdot \vect{\thrust}{\bfr}{} .
+\end{equation}
+%
+Correspondingly, to convert a point $\bVec{p}$ from the body frame $\bfr$ to the world frame $\wfr$ we use
+%
+\begin{equation}
+	\vect{\pos}{\wfr}{} = \ori{\wfr \bfr} \cdot \vect{\pos}{\bfr}{} \; + \; \vect{t}{\wfr}{\wfr \bfr} .
+\end{equation}
+%
+Later on Euler angles can be used.
+It is really important to keep in mind that with Euler angles the order of each single rotation is important. 
+When you are using formulas with euler angles, always check what convention they are using.
+Here we will use the $z-y-x$ convention:
+%
+\begin{enumerate}
+\item yaw $\psi$ around the z body axis
+\item pitch $\theta$ around the new y body axis
+\item roll $\phi$ around the new x body axis
+\end{enumerate}
+%
+\begin{equation}
+	\ori{\wfr \bfr} = \ori{z}(\psi) \ori{y}(\theta) \ori{x}(\phi) ,	
+\end{equation}
+%
+where
+% 
+\begin{align}
+\ori{z}(\psi) &= 
+\begin{bmatrix} 
+	\cos (\psi) & -\sin (\psi) & 0 \\
+	\sin (\psi) & \cos (\psi) & 0 \\
+	0 & 0 & 1 \\	
+\end{bmatrix},
+\\
+\ori{y}(\theta) &= 
+\begin{bmatrix} 
+	\cos (\theta) & 0 & \sin (\theta) \\
+	0 & 1 & 0 \\
+	-\sin (\theta) & 0 & \cos (\theta)
+\end{bmatrix},
+\\
+\ori{x}(\phi) &= 
+\begin{bmatrix} 
+	1 & 0 & 0 \\
+	0 & \cos (\phi) & -\sin (\phi) \\
+	0 & \sin (\phi) & \cos (\phi) \\
+\end{bmatrix}.
+\end{align}
+%
+Putting it all together we get
+%
+\begin{align}
+\ori{\wfr \bfr} &= \begin{bmatrix}
+\scos(\psi)\scos(\theta) & \scos(\psi)\ssin(\theta)\ssin(\phi)-\ssin(\psi)\scos(\phi) & \scos(\psi)\ssin(\theta)\scos(\phi)+\ssin(\psi)\ssin(\phi) \\
+\ssin(\psi)\scos(\theta) & \ssin(\psi)\ssin(\theta)\ssin(\phi)+\scos(\psi)\scos(\phi) & \ssin(\psi)\ssin(\theta)\scos(\phi)-\scos(\psi)\ssin(\phi) \\
+-\ssin(\theta) & \scos(\theta)\ssin(\phi) & \scos(\theta)\scos(\phi)
+\end{bmatrix}, \\
+	&= \begin{bmatrix} \vect{x}{}{\bfr} & \vect{y}{}{\bfr} & \vect{z}{}{\bfr} \end{bmatrix}, \label{eq:r_basis_vectors}
+\end{align}
+%
+with $\vect{x}{}{\bfr}$, $\vect{y}{}{\bfr}$ and $\vect{z}{}{\bfr}$ being the orthogonal basis vectors of the Body coordinate system $\bfr$ represented in world coordinates $\wfr$ as illustrated in Fig.~\ref{fig:quad}.
+The angular velocity of coordinate system $\bfr$ with respect to the world frame $\wfr$ is denoted as $\vect{\bodyrates}{}{\wfr \bfr}$. 
+For the next step, we define the skew symmetric matrix
+%
+\begin{equation}
+\vect{\hat{\bodyrates}}{}{\wfr \bfr} = 
+	\begin{bmatrix} 
+    	0 & -\omega_{3} & \omega_{2}\\
+    	\omega_{3}& 0 &-\omega_{1}\\
+    	-\omega_{2} & \omega_{1} & 0 
+    \end{bmatrix} .
+\end{equation}
+%
+The angular velocity is defined as
+%
+\begin{equation}
+\vect{\hat{\bodyrates}}{\wfr}{\wfr \bfr} := \vectdot{\ori{}}{}{\wfr \bfr} \cdot \ori{\wfr \bfr}^{T} ,
+\label{eq:I_omegahat_IB}
+\end{equation}
+%
+or in body frame $\bfr$
+%
+\begin{align}
+\vect{\hat{\bodyrates}}{\bfr}{\wfr \bfr} 
+&= 
+\ori{\bfr\wfr} \cdot \vect{\hat{\bodyrates}}{\wfr}{\wfr \bfr} \cdot \ori{\bfr \wfr}^{T}, \\
+& = \ori{\bfr \wfr} \cdot \vectdot{\ori{}}{}{\wfr \bfr} \cdot \ori{\wfr \bfr}^{T}  \cdot \ori{\bfr \wfr}^{T}, \\
+& = \ori{\wfr \bfr}^{\top} \cdot \vectdot{\ori{}}{}{\wfr \bfr}.
+\label{eq:B_omegahat_IB}
+\end{align}
+%
+Evaluating~\eqref{eq:I_omegahat_IB} and~\eqref{eq:B_omegahat_IB} for $\vect{\bodyrates}{}{\wfr \bfr}$ we get
+%        
+\begin{equation}
+\vect{\bodyrates}{\wfr}{\wfr \bfr} =
+\begin{bmatrix} \dot{\phi} \scos(\theta) \scos(\psi) - \dot{\theta} \ssin(\psi) \\
+\dot{\phi} \scos(\theta) \ssin(\psi) + \dot{\theta} \scos(\psi) \\
+-\dot{\phi} \ssin(\theta) + \dot{\psi} 
+\end{bmatrix} 
+= 
+\begin{bmatrix} \scos(\theta) \scos(\psi) & -\ssin(\psi) & 0 \\
+\scos(\theta) \ssin(\psi) & \scos(\psi) & 0 \\
+-\ssin(\theta) & 0 & 1
+\end{bmatrix} 
+\begin{bmatrix}
+	\dot{\phi}\\
+	\dot{\theta}\\
+	\dot{\psi}
+\end{bmatrix} ,
+\label{eq:I_omega_IB}
+\end{equation}
+%
+and
+%
+\begin{equation}
+\vect{\bodyrates}{\bfr}{\wfr \bfr} =
+\begin{bmatrix}
+	\dot{\phi} - \ssin(\theta) \dot{\psi} \\
+	\scos(\phi) \dot{\theta} + \ssin(\phi)\scos(\theta) \dot{\psi}\\
+	-\ssin(\phi) \dot{\theta} + \scos(\phi)\scos(\theta) \dot{\psi}
+\end{bmatrix}
+=
+\begin{bmatrix}
+	1 & 0 & -\ssin(\theta) \\
+	0 & \scos(\phi) & \ssin(\phi)\scos(\theta) \\
+	0 & -\ssin(\phi) & \scos(\phi)\scos(\theta)
+\end{bmatrix}
+\begin{bmatrix}
+	\dot{\phi}\\
+	\dot{\theta}\\
+	\dot{\psi}
+\end{bmatrix} .
+\label{eq:B_omega_IB}
+\end{equation}
+
+\subsubsection{Quaternions}\label{sec:trafoquaternion}
+
+Instead of using Euler angles or rotation matrices, the orientation of a quadrotor can also be represented as a quaternion. 
+We denote
+%
+\begin{equation}
+\vect{q}{}{\wfr \bfr} = \begin{bmatrix} \qw & \qx & \qy & \qz \end{bmatrix}^{\top}
+\end{equation}
+%
+as the quaternion that describes the orientation of coordinate frame $\bfr$ with respect to coordinate frame $\wfr$, where $q_w$ is the real part of the quaternion. 
+Note that $\vect{q}{}{\wfr \bfr}$ is what you get from optitrack. 
+The adjoint, norm, and inverse of the quaternion, $\bVec{q}$, are 
+% 
+\begin{align}
+	\bar{\bVec{q}} &= \begin{bmatrix} \qw & -\qx & -\qy & -\qz \end{bmatrix}^{\top},\\
+	 \norm{\bVec{q}} & =  \sqrt{ \qw^2 + \qx^2 + \qy^2 + \qz^2 },\\
+	 \bVec{q}^{-1} & = \frac{ \bar{\bVec{q}} }{ \norm{\bVec{q}}  }.
+\end{align}
+%
+\paragraph{Quaternion Multiplication}
+
+Quaternion multiplication is not commutative. 
+The Quaternion multiplication between quaternions $\bVec{q}$ and $\bVec{p}$ is defined as
+%
+\begin{align}
+\bVec{q} \otimes \bVec{p} = \bVec{Q}\left(\bVec{q}\right) \cdot \bVec{p} = \bar{\bVec{Q}}\left(\bVec{p}\right) \cdot \bVec{q},\\
+%
+\bVec{p} \otimes \bVec{q} = \bVec{Q}\left(\bVec{p}\right) \cdot \bVec{q} = \bar{\bVec{Q}}\left(\bVec{q}\right)\cdot \bVec{p},\\
+\end{align}
+%
+where 
+%
+\begin{equation}
+\bVec{Q}\left(\bVec{q}\right) = 
+\begin{bmatrix} 
+	\qw & -\qx & -\qy & -\qz \\ 
+	\qx &  \qw & -\qz &  \qy \\
+	\qy &  \qz &  \qw & -\qx \\
+	\qz & -\qy &  \qx &  \qw \\
+\end{bmatrix},
+\end{equation}
+%
+\begin{equation}
+\bar{\bVec{Q}}\left(\bVec{q}\right) = 
+\begin{bmatrix} 
+	\qw & -\qx & -\qy & -\qz \\ 
+	\qx &  \qw &  \qz & -\qy \\
+	\qy & -\qz &  \qw &  \qx \\
+	\qz &  \qy & -\qx &  \qw \\
+\end{bmatrix}.
+\end{equation}
+%
+We find that
+%
+\begin{align}
+\bVec{Q}\left(\bar{\bVec{q}}\right) = \bVec{Q}\left(\bVec{q}\right)^{\top},\\
+\bar{\bVec{Q}}\left(\bar{\bVec{q}}\right) = \bar{\bVec{Q}}\left(\bVec{q}\right)^{\top}.
+\end{align}
+
+\paragraph{Rotating a Vector by a Quaternion}
+
+To rotate a vector $\bVec{v}$ by a quaternion $\bVec{q}$ we use the notion $\bVec{q} \odot \bVec{v}$. 
+To rotate a vector $\prescript{}{\bfr}{\bVec{v}}$ represented in body coordinates $\bfr$ into world coordinates $\wfr$ we can apply
+%
+\begin{equation}
+	\begin{bmatrix} 0 \\ \vect{\vel}{\wfr}{} \end{bmatrix} = \begin{bmatrix} 0 \\ \vect{q}{}{\wfr \bfr} \odot \vect{\vel}{\bfr}{} \end{bmatrix} = \bar{\bVec{Q}}^{\top} \left(\vect{q}{}{\wfr \bfr}\right) \cdot \bVec{Q}\left(\vect{q}{}{\wfr \bfr}\right) \cdot \begin{bmatrix} 0 \\ \vect{\vel}{\bfr}{} \end{bmatrix} .
+\end{equation}
+%
+This equation will be more clear by looking at the derivations for transforming a quaternion into a rotation matrix as described in Section~\ref{sec:quat_to_tor_mat}.
+
+\paragraph{Quaternion Rates to Angular Velocity}
+
+The time derivative of the unit quaternion is the vector of quaternion rates. 
+The quaternion rates $\dot{\bVec{q}}$ are related to the angular velocities similar to~\eqref{eq:I_omegahat_IB}.
+%
+\begin{align}
+\begin{bmatrix}
+	0\\
+	\vect{\bodyrates}{\wfr}{\wfr \bfr}
+\end{bmatrix}
+&=
+2 \vectdot{q}{}{\wfr \bfr} \otimes \vectbar{q}{}{\wfr \bfr},
+\\&= 
+2 \bVec{Q}\left( \vectdot{q}{}{\wfr \bfr} \right) \vectbar{q}{}{\wfr \bfr},
+\\&=
+2 \bar{\bVec{Q}}\left( \vectbar{q}{}{\wfr \bfr} \right) \vectdot{q}{}{\wfr \bfr},
+\end{align}
+%
+or in body fixed frame $\bfr$
+%
+\begin{align}
+\begin{bmatrix}
+	0\\
+	\vect{\bodyrates}{\wfr}{\wfr \bfr}
+\end{bmatrix}
+&=
+2 \vectbar{q}{}{\wfr \bfr} \otimes \vectdot{q}{}{\wfr \bfr}.
+\label{eq:omega_from_q_body}
+\end{align}
+%
+More compactly, we can write
+%
+\begin{align}
+\vect{\bodyrates}{\wfr}{\wfr \bfr} = 2\bVec{W}\left( \vect{q}{}{\wfr \bfr} \right) \vectdot{q}{}{\wfr \bfr},\\
+\vect{\bodyrates}{\wfr}{\wfr \bfr} = 2\bVec{W'}\left( \vect{q}{}{\wfr \bfr} \right) \vectdot{q}{}{\wfr \bfr},
+\end{align}
+%
+with $\bVec{W} \left( \vect{q}{}{\wfr \bfr} \right)$ and $\bVec{W'}\left( \vect{q}{}{\wfr \bfr} \right)$ as defined in Section~\ref{sec:quat_to_tor_mat}.
+
+\subsubsection{Changing Transformation Representation}
+
+This section lists the common conversions between different orientation representations.
+
+\paragraph{Rotation Matrix to Euler Angles}
+
+For this conversion, we denote $R_{ij}$ as the element in row $i$ and column $j$ of $\ori{\wfr \bfr}$.
+%
+\begin{align}
+	\phi &= \atantwo(R_{32}, R_{33}) \\
+	\theta &= \atantwo(R_{31}, \sqrt{R_{32}^2 + R_{33}^2}) \\
+	\psi &= \atantwo(R_{21}, R_{11})
+\end{align}
+
+\paragraph{Euler Angles to Rotation Matrix}
+
+\begin{equation}
+\ori{\wfr \bfr} = \begin{bmatrix}
+\scos(\psi)\scos(\theta) & \scos(\psi)\ssin(\theta)\ssin(\phi)-\ssin(\psi)\scos(\phi) & \scos(\psi)\ssin(\theta)\scos(\phi)+\ssin(\psi)\ssin(\phi) \\
+\ssin(\psi)\scos(\theta) & \ssin(\psi)\ssin(\theta)\ssin(\phi)+\scos(\psi)\scos(\phi) & \ssin(\psi)\ssin(\theta)\scos(\phi)-\scos(\psi)\ssin(\phi) \\
+-\ssin(\theta) & \scos(\theta)\ssin(\phi) & \scos(\theta)\scos(\phi)
+\end{bmatrix}
+\end{equation}
+
+\paragraph{Quaternion to Euler Angles}
+
+\begin{align}
+	\phi &= \atantwo(2 q_w q_x + 2 q_y q_z, \; q_w^2 - q_x^2 - q_y^2 + q_z^2) \\
+	\theta &= -\asin(2 q_x q_z - 2 q_w q_y) \\
+	\psi &= \atantwo(2 q_w q_z + 2 q_x q_y, \; q_w^2 + q_x^2 - q_y^2 - q_z^2)
+\end{align}
+
+\paragraph{Euler Angles to Quaternion}
+
+\begin{equation}
+	\vect{q}{}{\wfr \bfr} = \begin{bmatrix} q_w \\ q_x \\ q_y \\ q_z	\end{bmatrix} 
+	= \begin{bmatrix} \cos\left(\frac{\phi}{2}\right) \cos\left(\frac{\theta}{2}\right) \cos\left(\frac{\psi}{2}\right) + \sin\left(\frac{\phi}{2}\right) \sin\left(\frac{\theta}{2}\right) \sin\left(\frac{\psi}{2}\right) \\
+	\sin\left(\frac{\phi}{2}\right) \cos\left(\frac{\theta}{2}\right) \cos\left(\frac{\psi}{2}\right) - \cos\left(\frac{\phi}{2}\right) \sin\left(\frac{\theta}{2}\right) \sin\left(\frac{\psi}{2}\right) \\
+	\cos\left(\frac{\phi}{2}\right) \sin\left(\frac{\theta}{2}\right) \cos\left(\frac{\psi}{2}\right) + \sin\left(\frac{\phi}{2}\right) \cos\left(\frac{\theta}{2}\right) \sin\left(\frac{\psi}{2}\right) \\
+	\cos\left(\frac{\phi}{2}\right) \cos\left(\frac{\theta}{2}\right) \sin\left(\frac{\psi}{2}\right) - \sin\left(\frac{\phi}{2}\right) \sin\left(\frac{\theta}{2}\right) \cos\left(\frac{\psi}{2}\right) \\
+	 \end{bmatrix}
+\end{equation}
+
+\paragraph{Quaternion to Rotation Matrix} \label{sec:quat_to_tor_mat}
+
+Unit quaternions are quaternions with unity norm. 
+Throughout this section, we assume that
+%
+\begin{equation}
+	\| \bVec{q} \| = 1 .
+\end{equation}
+%
+To convert a vector $\bVec{c}$ from the body frame $\bfr$ to the world frame $\wfr$ we use
+%
+\begin{align}
+\begin{bmatrix} 
+	0\\
+	\vect{\thrust}{\wfr}{}
+\end{bmatrix}
+& = 
+\bVec{q} \cdot
+\begin{bmatrix} 
+	0\\
+	\vect{\thrust}{\bfr}{}
+\end{bmatrix} \cdot
+\bVec{q}^{-1},\\
+%
+& = 
+\bVec{q} \cdot
+\begin{bmatrix} 
+	0\\
+	\vect{\thrust}{\bfr}{}
+\end{bmatrix} \cdot
+\bar{\bVec{q}},\\
+% 
+&= 
+\bar{\bVec{Q}}\left(\bVec{q}\right)^{\top}
+\bVec{Q}\left(\bVec{q}\right)
+\begin{bmatrix} 
+	0\\
+	\vect{\thrust}{\bfr}{}
+\end{bmatrix}, \label{eq:d123}\\
+%
+&=
+\begin{bmatrix} 
+	1        & \bVec{0}^{\top}\\
+    \bVec{0} & \ori{\wfr \bfr}
+\end{bmatrix} 
+\begin{bmatrix} 
+	0\\
+	\vect{\thrust}{\bfr}{} 
+\end{bmatrix}. \label{eq:d124}
+\end{align}
+%
+From~\eqref{eq:d123} and~\eqref{eq:d124}, it can be seen that the rotation matrix can be as
+%
+\begin{equation}
+\ori{\wfr \bfr}
+=
+\begin{bmatrix} 
+\qw^2 + \qx^2 - \qy^2 - \qz^2, & 2\qx\qy - 2\qw\qz,         & 2\qw\qy + 2\qx\qz\\
+2\qw\qz + 2\qx\qy,         & \qw^2 - \qx^2 + \qy^2 - \qz^2, & 2\qy\qz - 2\qw\qx\\
+2\qx\qz - 2\qw\qy,         & 2\qw\qx + 2\qy\qz,         & \qw^2 - \qx^2 - \qy^2 + \qz^2\\
+\end{bmatrix}.
+\label{eq:quatToRot}
+\end{equation}
+%
+To rewrite~\eqref{eq:d123} and~\eqref{eq:d124}, we define
+%
+\begin{equation}
+	\bVec{W}(\vect{q}{}{\wfr \bfr}) = \begin{bmatrix} 
+	-q_x & q_w & -q_z & q_y \\
+	-q_y & q_z & q_w & -q_x \\
+	-q_z & -q_y & q_x & q_w 
+	\end{bmatrix},
+\end{equation}
+%
+\begin{equation}
+	\bVec{W'}(\vect{q}{}{\wfr \bfr}) = \begin{bmatrix} 
+	-q_x & q_w & q_z & -q_y \\
+	-q_y & -q_z & q_w & q_x \\
+	-q_z & q_y & -q_x & q_w 
+	\end{bmatrix},
+\end{equation}
+%
+which allows us to write~\eqref{eq:quatToRot} as
+%
+\begin{align}
+\ori{\wfr \bfr} = \bVec{W}(\vect{q}{}{\wfr \bfr}) \bVec{W'}(\vect{q}{}{\wfr \bfr})^{\top} .
+\end{align}
+%
+Note that just as with rotation matrices, sequences of rotations are represented by products of quaternions. 
+That is, for unit quaternions it holds that
+%
+\begin{equation}
+	\ori{}\left( \bVec{q} \cdot \bVec{p} \right) = 
+	\ori{}\left( \bVec{q} \right) \ori{}\left( \bVec{p} \right).
+\end{equation}
+%
+%Furthermore we define the following matrices.
+%
+%Correspondingly, to convert a point $\bVec{p}$ from the body frame $B$ to the world frame $\wfr$ we use
+%
+%\begin{equation}
+%	{_\wfr}\bVec{p} = \bVec{W}(\bVec{q}_{\wfr B}) \cdot \bVec{W'}(\bVec{q}_{\wfr B})^{\top} \cdot {_B}\bVec{p} \; + \; {_\wfr}\bVec{t}_{\wfr B}
+%	\label{eq:quattranspoint}
+%\end{equation}
+%
+%where $\bVec{t}_{\wfr B}$ denotes the translation of coordinate frame $B$ with %respect to coordinate frame $\wfr$.
+%
+Getting a quaternion directly from a rotation matrix is not straight forward but is also not used very often in our applications and if, we let \href{http://eigen.tuxfamily.org/index.php?title=Main_Page}{Eigen} do it.
+
+\subsection{Classical Modeling of a Quadrotor} \label{sec:dynamics}
+
+\subsubsection{Using Euler Angles}\label{sec:dynamicseuler}
+
+In this section we use Euler angles and the corresponding rotation matrices as defined in Section~\ref{sec:traforotmat}, where the rotation matrix $\ori{\wfr \bfr}(\phi, \theta, \psi)$ is a function of the euler angles.
+\newline\newline
+We can evaluate~\eqref{eq:pdot_equal_F} in the world frame as
+%
+\begin{equation}
+	\sVec{\ddot{x}\\ \ddot{y} \\ \ddot{z}} =  
+\sVec{0\\ 0\\ - g} + \ori{\wfr \bfr}(\phi, \theta, \psi) \sVec{0\\ 0\\ c},
+	\label{eq:lindynamics}
+\end{equation}
+%
+or in vectorized form
+%
+\begin{equation}
+	\ddot{\pos} = \vect{\gravityvec}{\wfr}{} + \ori{\wfr \bfr}(\phi, \theta, \psi) \cdot \bVec{c}.
+\end{equation}
+%
+Next, we evaluate~\eqref{eq:ldot_equal_MS} in the body coordinate system $\bfr$
+%
+\begin{align}
+	\begin{bmatrix} 
+    	J_{xx} & 0 & 0 \\ 0 & J_{yy} & 0 \\ 0 & 0 & J_{zz} 
+    \end{bmatrix}  
+    \sVec{\dot{p}\\ \dot{q} \\ \dot{r}}  
+    + 
+	\sVec{p \\ q\\ r} 
+	\times  
+	\begin{bmatrix} 
+		J_{xx} & 0 & 0 \\ 0 & J_{yy} & 0 \\ 0 & 0 & J_{zz} 
+	\end{bmatrix} 
+	\sVec{p \\ q\\ r} 
+&= 
+ \begin{bmatrix} \frac{\sqrt{2}}{2}l(f_1-f_2-f_3+f_4) \\
+							\frac{\sqrt{2}}{2}l(-f_1-f_2+f_3+f_4) \\
+							\kappa(f_1-f_2+f_3-f_4)
+						\end{bmatrix} ,
+\\
+\begin{bmatrix} 
+       J_{xx} \dot{p} + q \cdot r \left( J_{zz} - J_{yy} \right)\\
+       J_{yy} \dot{q} + p \cdot r \left( J_{xx} - J_{zz} \right)\\
+       J_{zz} \dot{r} + p \cdot q \left( J_{yy} - J_{xx} \right)
+\end{bmatrix}   
+  &= 
+ \begin{bmatrix} \frac{\sqrt{2}}{2}l(f_1-f_2-f_3+f_4) \\
+							\frac{\sqrt{2}}{2}l(-f_1-f_2+f_3+f_4) \\
+							\kappa(f_1-f_2+f_3-f_4)
+						\end{bmatrix},
+\label{eq:rotdynamics}
+\end{align}
+%
+or in vectorized form
+%
+\begin{equation}
+	\bVec{J} \cdot \vectdot{\bodyrates}{\bfr}{\wfr \bfr} + \vect{\bodyrates}{\wfr}{\wfr \bfr} \times \bVec{J} \cdot   \vect{\bodyrates}{\wfr}{\wfr \bfr} = \bodytorques .
+	\label{eq:rotdynamicsvector}
+\end{equation}
+%
+Now, we want to write the quadrotor dynamics in state space form. 
+First, we chose the state vector as
+%
+\begin{align}
+	\bVec{s} &= \begin{bmatrix} x & y &z &\dot{x} &\dot{y} &\dot{z} &\phi &\theta &\psi &p &q &r \end{bmatrix}^{\top} ,\label{eq:state} \\
+	&= \begin{bmatrix} \vect{\pos}{\wfr}{\wfr \bfr} & \vect{\vel}{\wfr}{\wfr \bfr} & \phi & \theta & \psi & \vect{\bodyrates}{\wfr}{\wfr \bfr} \end{bmatrix}^{\top} .
+\end{align}
+%
+In the following we rewrite~\eqref{eq:lindynamics} and~\eqref{eq:rotdynamics} in order to fit the state space form. 
+%
+\begin{align}
+\begin{bmatrix} 
+	\dot{x} \\\dot{y} \\\dot{z} 
+\end{bmatrix}
+	&= \begin{bmatrix} 
+	\dot{x} \\\dot{y} \\\dot{z} 
+\end{bmatrix}, \\
+%
+\begin{bmatrix} 
+	\ddot{x} \\\ddot{y} \\\ddot{z} 
+\end{bmatrix}
+	&= \begin{bmatrix} 0\\ 0\\ -g\end{bmatrix} + \ori{\wfr \bfr}(\phi, \theta, \psi) \begin{bmatrix} 0\\ 0\\ c \end{bmatrix},	\\
+%
+\begin{bmatrix}
+	\dot{\phi} \\ \dot{\theta} \\ \dot{\psi} 
+\end{bmatrix} 
+ &=
+\begin{bmatrix} 1 & \stan(\theta)\ssin(\phi) & \stan(\theta)\scos(\phi) \\ 
+0 & \scos(\phi) & -\ssin(\phi) 
+\\ 0 & \frac{\ssin(\phi)}{\scos(\theta)}  & \frac{\scos(\phi)}{\scos(\theta)} \end{bmatrix}    
+\begin{bmatrix}
+	p \\ q \\ r 
+\end{bmatrix}, \label{eq:euleranglerates} \\
+%
+\begin{bmatrix} 
+	\dot{p} \\\dot{q} \\\dot{r} 
+\end{bmatrix}
+	&= 
+\begin{bmatrix} 
+	\frac{1}{J_{xx}}
+		\left( 
+			\frac{\sqrt{2}}{2}l(f_1-f_2-f_3+f_4) 
+			- q \cdot r \left( J_{zz} - J_{yy} \right)
+		\right) \\
+	\frac{1}{J_{yy}}
+		\left( 
+			\frac{\sqrt{2}}{2}l(-f_1-f_2+f_3+f_4)	
+			- p \cdot r \left( J_{xx} - J_{zz} \right) 
+		\right) \\
+	\frac{1}{J_{zz}}
+		\left( 
+			\kappa(f_1-f_2+f_3-f_4)
+			- q \cdot p \left( J_{yy} - J_{xx} \right)		 
+		\right) \\
+\end{bmatrix} ,
+\end{align}
+%
+or in vectorized form
+%
+\begin{align}
+	\vectdot{\pos}{\wfr}{\wfr \bfr} &= \vect{\vel}{\wfr}{\wfr \bfr}, \\
+	\vectdot{\vel}{\wfr}{\wfr \bfr} &= \vect{\gravityvec}{\wfr}{} + \ori{\wfr \bfr}(\phi, \theta, \psi) \cdot \bVec{c}, \\
+	\begin{bmatrix} \dot{\phi} \\ \dot{\theta} \\ \dot{\psi} \end{bmatrix} &=
+	\begin{bmatrix} 1 & \stan(\theta)\ssin(\phi) & \stan(\theta)\scos(\phi) \\ 0 & \scos(\phi) & -\ssin(\phi) \\ 0 & \frac{\ssin(\phi)}{\scos(\theta)}  & \frac{\scos(\phi)}{\scos(\theta)} \end{bmatrix} \vect{\bodyrates}{\wfr}{\wfr \bfr}, \label{eq:eulerangleratesvectorized} \\
+	\vectdot{\bodyrates}{\bfr}{\wfr \bfr} &= \bVec{J}^{-1} \cdot \left( \bodytorques - \vect{\bodyrates}{\wfr}{\wfr \bfr} \times \bVec{J} \cdot \vect{\bodyrates}{\bfr}{\wfr \bfr} \right).
+\end{align}
+%
+Finally, the derivation of the Euler angle derivatives in~\eqref{eq:euleranglerates} and~\eqref{eq:eulerangleratesvectorized} is shown here. 
+They are a function of the Euler angles and the body rates:
+%
+\begin{equation}
+\begin{bmatrix} 
+	\dot{\phi} \\\dot{\theta} \\\dot{\psi} 
+\end{bmatrix}
+= \begin{bmatrix} 
+	\dot{\phi}(\phi,\theta,\psi,p,q,r) \\\dot{\theta}(\phi,\theta,\psi,p,q,r) \\\dot{\psi}(\phi,\theta,\psi,p,q,r) 
+\end{bmatrix}.
+\end{equation}
+%
+For this we use~\eqref{eq:B_omega_IB}:
+%
+\begin{equation}
+\begin{bmatrix}
+	p \\ q \\ r 
+\end{bmatrix} 
+ =
+\begin{bmatrix}
+	1 & 0 & -\ssin(\theta) \\
+	0 & \scos(\phi) & \ssin(\phi)\scos(\theta) \\
+	0 & -\ssin(\phi) & \scos(\phi)\scos(\theta)
+\end{bmatrix} 
+\begin{bmatrix}
+	\dot{\phi}\\
+	\dot{\theta}\\
+	\dot{\psi}
+\end{bmatrix} .
+\label{eq:pqr_as_eulerangles}
+\end{equation}
+%
+Inverting~\eqref{eq:pqr_as_eulerangles} finally leads to 
+%
+\begin{equation}
+\begin{bmatrix}
+	\dot{\phi} \\ \dot{\theta} \\ \dot{\psi} 
+\end{bmatrix} 
+ =
+\begin{bmatrix} 1 & \stan(\theta)\ssin(\phi) & \stan(\theta)\scos(\phi) \\ 0 & \scos(\phi) & -\ssin(\phi) \\ 0 & \frac{\ssin(\phi)}{\scos(\theta)}  & \frac{\scos(\phi)}{\scos(\theta)} \end{bmatrix}
+\begin{bmatrix}
+	p \\ q \\ r 
+\end{bmatrix} .     
+\end{equation}
+
+\subsubsection{Using Rotation Matrices}\label{sec:dynamicsrotmat}
+
+We define $\ori{\wfr \bfr}$ to be the rotation matrix which transforms vectors from $\bfr$ to $\wfr$, but also describes the orientation of the quadrotor. 
+In this section we will use the vectorized forms of the equations only.
+\newline\newline
+We can evaluate~\eqref{eq:pdot_equal_F} in the world frame as
+%
+\begin{equation}
+	\ddot{\pos} = \vect{\gravityvec}{\wfr}{} + \ori{\wfr \bfr} \cdot \bVec{c}.
+\label{eq:lindynamicsrotmat}
+\end{equation}
+%
+Since we use the same representation of the body rates as in Section~\ref{sec:dynamicseuler}, the evaluation of~\eqref{eq:ldot_equal_MS} remains the same as in~\eqref{eq:rotdynamicsvector}.
+\newline\newline
+We chose the state vector as
+%
+\begin{equation}
+	\bVec{s} = \begin{bmatrix} \vect{\pos}{\wfr}{\wfr \bfr} & \vect{\vel}{\wfr}{\wfr \bfr} & \ori{\wfr \bfr} & \vect{\bodyrates}{\wfr}{\wfr \bfr} \end{bmatrix}^{\top}.
+\end{equation}
+%
+In the following, we rewrite~\eqref{eq:lindynamicsrotmat} and~\eqref{eq:rotdynamicsvector} in order to fit the state space form. 
+%
+\begin{align}
+	\vectdot{\pos}{\wfr}{\wfr \bfr} &= \vect{\vel}{\wfr}{\wfr \bfr}, \\
+	\vectdot{\vel}{\wfr}{\wfr \bfr} &= \vect{\gravityvec}{\wfr}{} + \ori{\wfr \bfr} \cdot \bVec{c},	\\
+	\vectdot{\ori{}}{}{\wfr \bfr} &= \ori{\wfr \bfr} \cdot \vect{\hat{\bodyrates}}{\bfr}{\wfr \bfr}, \\
+	\vectdot{\bodyrates}{\bfr}{\wfr \bfr} &= \bVec{J}^{-1} \cdot \left( \bodytorques - \vect{\bodyrates}{\wfr}{\wfr \bfr} \times \bVec{J} \cdot \vect{\bodyrates}{\wfr}{\wfr \bfr} \right).
+\end{align}
+
+\subsubsection{Using Quaternions} \label{sec:dyn_model_quat}
+
+In this section, we use a quaternion $\vect{q}{}{\wfr \bfr}$, as defined in Section~\ref{sec:trafoquaternion}, to represent the orientation of the quadrotor. 
+We will again use the vectorized forms of the equations only.
+\newline\newline
+We can evaluate~\eqref{eq:pdot_equal_F} in the world frame as
+%
+\begin{equation}
+	\ddot{\pos} = \vect{\gravityvec}{\wfr}{} + \vect{q}{}{\wfr \bfr} \odot \bVec{c}.
+	\label{eq:lindynamicsquat}
+\end{equation}
+%
+Since we use the same representation of the body rates as in Section~\ref{sec:dynamicseuler}, the evaluation of~\eqref{eq:ldot_equal_MS} remains the same as in~\eqref{eq:rotdynamicsvector}.
+\newline\newline
+We chose the state vector as
+%
+\begin{equation}
+	\bVec{s} = \begin{bmatrix} \vect{\pos}{\wfr}{\wfr \bfr} & \vect{\vel}{\wfr}{\wfr \bfr} & \vect{q}{}{\wfr \bfr} & \vect{\bodyrates}{\wfr}{\wfr \bfr} \end{bmatrix}^{\top}.
+\end{equation}
+%
+In the following, we rewrite~\eqref{eq:lindynamicsquat} and~\eqref{eq:rotdynamicsvector} in order to fit the state space form.
+%
+\begin{align}
+	\vectdot{\pos}{\wfr}{\wfr \bfr} &= \vect{\vel}{\wfr}{\wfr \bfr}, \\
+	\vectdot{\vel}{\wfr}{\wfr \bfr} &= \vect{\gravityvec}{\wfr}{} + \vect{q}{}{\wfr \bfr} \odot \bVec{c},	\\
+	\vectdot{q}{}{\wfr \bfr} &= \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \vect{q}{}{\wfr \bfr}, \label{eq:quatderivative} \\
+	\vectdot{\bodyrates}{\bfr}{\wfr \bfr} &= \bVec{J}^{-1} \cdot \left( \bodytorques - \vect{\bodyrates}{\wfr}{\wfr \bfr} \times \bVec{J} \cdot \vect{\bodyrates}{\wfr}{\wfr \bfr} \right),
+\end{align}
+%
+where
+%
+\begin{equation}
+	\quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) = \frac{1}{2}
+	\begin{bmatrix} 0 & -p & -q & -r \\ p & 0 & r & -q \\ q & -r & 0 & p \\ r & q & -p & 0 \end{bmatrix} 
+	=
+	\frac{1}{2}
+	\bar{\bVec{Q}}
+		\left( 	
+			\begin{bmatrix}
+				0\\
+				\vect{\bodyrates}{\wfr}{\wfr \bfr}
+			\end{bmatrix} 
+		\right)
+	=
+	\frac{1}{2}
+	\bar{\bVec{Q}}
+		\left( 	
+			\begin{bmatrix}
+				0\\
+				p \\ q \\ r
+			\end{bmatrix} 
+		\right).
+\end{equation}
+%
+We find~\eqref{eq:quatderivative} by using~\eqref{eq:omega_from_q_body}
+\begin{align}
+\vectdot{q}{}{\wfr \bfr}
+& = 
+	\frac{1}{2}
+	\vect{q}{}{\wfr \bfr} 
+	\cdot	
+	\begin{bmatrix}
+		0\\
+		\vect{\bodyrates}{\wfr}{\wfr \bfr}
+	\end{bmatrix},
+\\
+& = 
+	\frac{1}{2}
+	\bar{\bVec{Q}}
+		\left( 	
+			\begin{bmatrix}
+				0\\
+				\vect{\bodyrates}{\wfr}{\wfr \bfr}
+			\end{bmatrix} 
+		\right)
+	\vect{q}{}{\wfr \bfr} .
+\end{align}
+%
+Equation~\eqref{eq:quatderivative} can be integrated as described in Appendix~\ref{sec:appquatint}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Appendix
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\appendix
+\appendixpage
+
+\section{Zeroth Order Integration of a Unit Quaternion} \label{sec:appquatint}
+
+Simply integrating a quaternion derivative component-wise does not guarantee to result in a unit quaternion and requires normalization. 
+Under the assumption of a discrete time step in the interval $[t, t+\Delta t]$ with constant body rates $\vect{\bodyrates}{\wfr}{\wfr \bfr}$, a nice solution for the integration exists (from~\cite{Trawny05tr}) which does not require to normalize the quaternion. 
+%
+First we restate~\eqref{eq:quatderivative}
+%
+\begin{equation}
+	\vectdot{q}{}{\wfr \bfr} = \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \vect{q}{}{\wfr \bfr}.
+\end{equation}
+%
+In literature we find the solution to this differential equation with starting point $\vect{q}{}{\wfr \bfr}(t)$ to be 
+%
+\begin{equation}
+	\vect{q}{}{\wfr \bfr}(t + \Delta t) = e^{\left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \Delta t \right)} \cdot \vect{q}{}{\wfr \bfr}(t).
+\end{equation}
+%
+The matrix exponential is defined as
+%
+\begin{equation}
+	e^{\left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \Delta t \right)} = 
+	\bVec{I}_4 \; + \; \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \Delta t \; + \; \frac{1}{2!} \left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \Delta t \right)^2 \; + \; \frac{1}{3!} \left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \Delta t \right)^3 \; + \; \ldots
+	\label{eq:matrixexponential}
+\end{equation}
+%
+It can easily be verified that
+%
+\begin{equation}
+	\left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \right)^2 = - \frac{1}{4} \lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert^2 \cdot \bVec{I}_4,
+	\label{eq:quatrotsquare}
+\end{equation}
+%
+where
+%
+\begin{equation}
+	\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert = \sqrt{p^2 + q^2 + r^2}.
+\end{equation}
+%
+Using~\eqref{eq:quatrotsquare} and rearranging the terms, \eqref{eq:matrixexponential} can be written as
+%
+\begin{align}
+	e^{\left( \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \Delta t \right)} 
+	&= 
+	\bVec{I}_4 \cdot 
+	\left( 
+		1 
+		- \frac{\left( \lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \frac{\Delta t}{2} \right)^2}{2!} 
+		+ \frac{\left( \lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \frac{\Delta t}{2} \right)^4}{4!} 
+		- \ldots 
+	\right), \\
+	& \quad 
+	+ \frac{2}{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert} \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot 	
+	\left( 
+		\frac{\left( \lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \frac{\Delta t}{2} \right)}{1!} 
+		- \frac{\left( \lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \frac{\Delta t}{2} \right)^3}{3!} 
+		+  \ldots 
+	\right), \nonumber \\
+	&= \bVec{I}_4 \cdot \cos{\left( \frac{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \Delta t}{2} \right)} + \frac{2}{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert} \cdot \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \sin{\left( \frac{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \Delta t}{2} \right)}.
+\end{align}
+%
+So the state update of the quaternion becomes
+%
+\begin{equation}
+	\vect{q}{}{\wfr \bfr}(t + \Delta t) = \left( \bVec{I}_4 \cdot \cos{\left( \frac{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \Delta t}{2} \right)} + \frac{2}{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert} \cdot \quatrot(\vect{\bodyrates}{\wfr}{\wfr \bfr}) \cdot \sin{\left( \frac{\lVert \vect{\bodyrates}{\wfr}{\wfr \bfr}\rVert \Delta t}{2} \right)} \right) \cdot \vect{q}{}{\wfr \bfr}(t) .
+\end{equation}
 
 \section{Proof of not Measuring Gravity in Flight} \label{sec:proof_imu_gravity}
 
