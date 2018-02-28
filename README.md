@@ -21,7 +21,7 @@ If you use this work in an academic context, please cite the following [RA-L 201
 
 M. Faessler, A. Franchi, and D. Scaramuzza: 
 **Differential Flatness of Quadrotor Dynamics Subject to Rotor Drag for Accurate Tracking of High-Speed Trajectories.**
-IEEE Robot. Autom. Lett. (RA-L), vol. 3, no. 2, pp. 620–626, Apr. 2018. [PDF](http://rpg.ifi.uzh.ch/docs/RAL18_Faessler.pdf)
+IEEE Robot. Autom. Lett. (RA-L), vol. 3, no. 2, pp. 620–626, Apr. 2018. [[PDF](http://rpg.ifi.uzh.ch/docs/RAL18_Faessler.pdf)]
 
     @Article{Faessler18ral,
       author        = {Matthias Faessler and Antonio Franchi and Davide Scaramuzza},
