@@ -4,6 +4,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Math
+\usepackage{algorithm}
+\usepackage{algcompatible}
+\usepackage{algpseudocode}
 \usepackage{amsmath}	% package to display formulas, provided by the American Mathematical Society 
 \usepackage{amssymb}  
 %\usepackage{siunitx}	% package to use SI units
@@ -77,6 +80,7 @@
 \newcommand{\stan}[0]{\operatorname{t}}
 \newcommand{\atantwo}[0]{\operatorname{atan2}}
 \newcommand{\asin}[0]{\operatorname{asin}}
+\DeclareMathOperator\sign{sign}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% My symbols
@@ -93,7 +97,6 @@
 \newcommand{\posRef}{\ensuremath{\pos_{ref}}}
 \newcommand{\velRef}{\ensuremath{\bVec{v}_{ref}}}
 \newcommand{\accRef}{\ensuremath{\bVec{a}_{ref}}}
-\newcommand{\yawRef}{\ensuremath{\psi_{ref}}}
 \newcommand{\accDes}{\ensuremath{\bVec{a}_{des}}}
 \newcommand{\posEst}{\ensuremath{\hat{\pos}}}
 \newcommand{\velEst}{\ensuremath{\hat{\bVec{v}}}}
@@ -108,6 +111,7 @@
 \newcommand{\bVec}[1]{\mathbf{#1}}
 \newcommand{\sVec}[1]{\begin{bmatrix} #1 \end{bmatrix}}
 \newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left\lvert#1\right\rvert}
 \newcommand{\diag}[1]{\operatorname{diag}\left(#1 \right) }
 
 \newcommand{\vect}[3]{{_{\mathsmaller{\mathrm{#2}}}\mathbf{#1}_{\mathsmaller{\mathrm{#3}}}}} % vector: _{#2}_{#1}_{#3}
@@ -145,12 +149,21 @@
 \newcommand{\bodytorques}[0]{\boldsymbol{\bodytorque}}
 \newcommand{\thrust}[0]{c} % mass normalized thrust
 \newcommand{\horzthrustcoeff}[0]{k_h} % thrust change coefficient wrt to body horizontal velocity
+\newcommand{\rotthrust}[1]{f_{#1}}
+\newcommand{\armlength}[0]{l}
+\newcommand{\torquecoeff}[1]{\kappa_{#1}}
+\newcommand{\mass}[0]{m}
+\newcommand{\rottorque}[1]{\tau_{#1}}
+\newcommand{\motinput}[1]{u_{#1}}
+\newcommand{\mapcoeff}[2]{k_{#2}^{#1}}
+\newcommand{\motdyn}[0]{\alpha_{\mathsmaller{\mathrm{mot}}}}
 
 \newcommand{\dragcoeff}[1]{\ensuremath{d}_{\!\mathsmaller{\mathrm{#1}}}} % rotor drag coefficient
 \newcommand{\dragmat}[0]{\bVec{D}} % rotor drag matrix
 \newcommand{\amat}[0]{\bVec{A}} % 
 \newcommand{\bmat}[0]{\bVec{B}} % 
 
+\newcommand{\yawRef}[0]{\heading_{\mathsmaller{\mathrm{ref}}}} % 
 \newcommand{\uvec}[0]{\bVec{e}} % symbol for unit vector
 
 \newcommand{\abserr}[0]{\ensuremath{E_a}} % Absolut tracking error
@@ -180,12 +193,20 @@
 
 \section{Introduction}
 
+\begin{figure}[t]
+   \centering
+   \includegraphics[width=0.8\textwidth]{img/quad_picture.pdf}
+   \caption{First-person-view racing inspired quadrotor platform used for the experiments presented in~\cite{Faessler18ral}.}
+   \label{fig:quad_picture}
+\end{figure}
+
 In this document, we summarized the theory and math behind the quadrotor control algorithms developed at the \emph{Robotics and Perception Group} as they are implemented in our \href{https://github.com/uzh-rpg/rpg_quadrotor_control}{rpg\_quadrotor\_control} repository.
 If you spot any typos or mistakes or want to improve or add something, please open an issue or send us a pull request on \url{https://github.com/uzh-rpg/rpg_quadrotor_control}.
+The control algorithms presented here are published in~\cite{Faessler18ral}, for which we developed the quadrotor shown in Fig.~\ref{fig:quad_picture}, and in~\cite{Faessler17ral}.
 
 \section{Nomenclature} \label{sec:nomenclature}
 
-\begin{figure}[t]
+\begin{figure}[h]
    \centering
    \includegraphics[width=0.8\textwidth]{img/quadrotor.pdf}
    \caption{Schematics of the considered quadrotor model with the used coordinate systems and rotor forces.}
@@ -194,162 +215,327 @@ If you spot any typos or mistakes or want to improve or add something, please op
 
 In this work, we make use of a world frame $\wfr$ with orthonormal basis ${\left\{ \vect{x}{}{\wfr}, \vect{y}{}{\wfr}, \vect{z}{}{\wfr} \right\}}$ represented in world coordinates and a body frame $\bfr$ with orthonormal basis ${\left\{ \vect{x}{}{\bfr}, \vect{y}{}{\bfr}, \vect{z}{}{\bfr} \right\}}$ also represented in world coordinates.
 The body frame is fixed to the quadrotor with an origin coinciding with its center of mass as depicted in Fig.~\ref{fig:quad}.
+The rotor numbering and rotation directions can also be seen in Fig.~\ref{fig:quad}.
 The quadrotor is subject to a gravitational acceleration $\gravacc$ in negative $\vect{z}{}{\wfr}$ direction.
 We denote the position of the quadrotor's center of mass as $\pos$, and its derivatives, velocity, acceleration, jerk, and snap as $\vel$, $\acc$, $\jerk$, and $\snap$, respectively.
 We represent the quadrotor's orientation as a rotation matrix ${\ori{} = \sVec{\vect{x}{}{\bfr} & \vect{y}{}{\bfr} & \vect{z}{}{\bfr}}}$ and its body rates (i.e., the angular velocity) as $\bodyrates$ represented in body coordinates.
 Finally, we denote quantities that can be computed from a reference trajectory as \emph{reference values} and quantities that are computed by an outer loop feedback control law and passed to an inner loop controller as \emph{desired values}.
 A reference trajectory consists of the reference position $\vect{\pos}{}{ref}$, the reference velocity $\vect{\vel}{}{ref}$, the reference acceleration $\vect{\acc}{}{ref}$, the reference jerk $\vect{\jerk}{}{ref}$, and the reference snap $\vect{\snap}{}{ref}$, as well as a reference heading $\heading_{\mathsmaller{\mathrm{ref}}}$, a reference heading rate $\dot{\heading}_{\mathsmaller{\mathrm{ref}}}$, and a reference heading acceleration $\ddot{\heading}_{\mathsmaller{\mathrm{ref}}}$.
 
-\section{Maybe reuse this part on old Dynamics of a Quadrotor} \label{sec:dynamics}
+\section{Dynamical Model} \label{sec:dynamical_model}
 
-\subsection{Coordinate System}
-
-For all our quadrotor math, we make use of the coordinate conventions as illustrated in Fig.~\ref{fig:quad} with the $x$-axis $\vect{x}{}{\bfr}$ pointing forward, the $y$-axis $\vect{y}{}{\bfr}$ pointing left and the $z$-axis $\vect{z}{}{\bfr}$ pointing up.
-Therefore, we define the gravity vector as $\bVec{g} = [ 0 \; 0 \; -g ]^{\top}$. 
-The rotor numbering and rotation directions can also be seen in Fig.~\ref{fig:quad}.
-
-\subsection{Variables and Parameters}\label{sec:dynamicsvarpar}
-Here we define some variables and parameters which we will use later
-\begin{itemize}
-	\item $m$ Mass of the quadrotor.
-	\item $l$ Length of a quadrotor arm.
-	\item $f_{i}$ Thrust produced by propeller $i$.
-	\item $\kappa$ Torque constant relating rotor thrust to its drag torque
-	\item $\bVec{c} = \sVec{0\\ 0\\ c} = \sVec{0\\ 0\\ \frac{1}{m} \Sigma f_i}$ Mass normalized, collective thrust of all the propellers.
-	\item $M_{i}$ Drag torque produced by propeller $i$.
-	\item $\bodytorques = \begin{bmatrix} \frac{\sqrt{2}}{2}l(f_1-f_2-f_3+f_4) \\
-							\frac{\sqrt{2}}{2}l(-f_1-f_2+f_3+f_4) \\
-							\kappa(f_1-f_2+f_3-f_4)
-						\end{bmatrix}$ Torques acting on the body caused by the rotor thrusts.
-	\item $\vect{\gravityvec}{\wfr}{} = \begin{bmatrix} 0 \\ 0 \\ -g \end{bmatrix}$ Gravitation vector in the world frame $\wfr$, where $\gravacc=9.81\unitfrac{m}{s^2}$.
-	\item $\bVec{J} = \begin{bmatrix} J_{xx} & 0 & 0 \\ 0 & J_{yy} & 0 \\ 0 & 0 & J_{zz} \end{bmatrix} $ Moment of inertia matrix for rotations around the center of mass.
-	\item $\vect{\pos}{\wfr}{\wfr \bfr} = \begin{bmatrix} x \\ y \\ z \end{bmatrix}$ Position of the quadrotor in the world frame $\wfr$.
-	\item $\vect{\vel}{\wfr}{\wfr \bfr} = \begin{bmatrix} \dot{x} \\ \dot{y} \\ \dot{z} \end{bmatrix}$ Velocity of the quadrotor in the world frame $\wfr$.
-	\item $\vect{\bodyrates}{\wfr}{\wfr \bfr} = \vect{\Omega}{\bfr}{} = \sVec{p \\ q\\ r} $  Angular velocity of the quadrotor in body coordinates $\bfr$. 
-	Note that the $\bfr$ system is attached to the quadrotor body frame, hence $\vect{\bodyrates}{\wfr}{\wfr \bfr} = \vect{\Omega}{\bfr}{}$.
-\end{itemize}
-
-\section{Control}
-
-TODO: Adapt according to \cite{Faessler17ral} and \cite{Faessler18ral}.
-
-This section describes our control algorithms that are used for OptiTrack based as well as for vision-based flying with our quadrotors.
-The controller is split into a high-level part and a low-level part.
-The high-level controller enables the quadrotor to track desired positions and velocities, whereas the low-level controller enables it to track desired attitudes or body rates.
-
-\subsection{Control Structure Overview}
-
-We can fly our quadrotors in two different set-ups namely when flying based only on on-board sensors (a camera and an IMU) and when flying in an OptiTrack motion capture system.
-The schematics of the control architecture for vision based flight are illustrated in Fig.~\ref{fig:vision_based_contr_schem}.
-In vision based flight, all the state estimation and high-level control runs on the Odroid which sends attitude commands to the PX4.
-In this setting, the user laptop is only used for feedback and some very high level inputs.
-
-The schematics of the control architecture for OptiTrack based flight are illustrated in Fig.~\ref{fig:optitrack_based_contr_schem}.
-In OptiTrack based flight, the Odroid only serves as a relay for feedback from the PX4 via the WiFi link.
-In this setting, the user laptop receives pose measurements from the OptiTrack and uses them to compute a state estimate.
-To compensate for the round trip delay from when a pose was measured until the corresponding control command is received on the quadrotor, we also predict the state forward in time to compensate for this delay.
-This predicted state is then used on the laptop to compute body rate commands which are sent through Laird modules directly to the PX4.
-
-\subsection{Nomenclature}
-
-When describing the control and state estimation, we make use of some notation that we introduce here for clarity.
-We use a hat (e.g. $\hat{v}$) and a tilde (e.g. $\tilde{v}$) to denote an estimated and measured value, respectively.
-To describe the multiplication of two quaternions $\bVec{q}_1$ and $\bVec{q}_2$ we write $\bVec{q}_1 \otimes \bVec{q}_2$, and we write $\bVec{q} \odot \bVec{v}$ for the rotation of a vector $\bVec{v}$ by the quaternion $\bVec{q}$.
-Furthermore, we express the basis vectors of a coordinate system as e.g. $\vect{x}{}{\bfr}$ which denotes the $x$-basis vector of the body coordinate system, as illustrated in Fig.~\ref{fig:quad}.
-A prescript (e.g. $\prescript{}{\bfr}{\bVec{v}}$) indicates that the vector $\bVec{v}$ is expressed in the body coordinate system. 
-In this section, for simplicity, vectors that are expressed in world coordinates do not have prescripts with the exception of the body rates $\bomega$, which are always expressed in body coordinates.
-
-\subsection{Summary of the used Dynamical Model} \label{sec:dynamics}
-
-For state estimation and control, we make use of the following dynamical model (as derived in Section~\ref{sec:dyn_model_quat}) for our quadrotor:
+We consider a quadrotor that is modeled as a rigid body which is controlled by four single rotor thrusts $\rotthrust{i}$ as illustrated in Fig.~\ref{fig:quad}.
+By changing these four single rotor thrusts, a three axis torque $\bodytorques$ and a mass normalized collective thrust $\thrust$ can be applied on the quadrotor's body.
+The relation of the single rotor thrusts to the collective thrust and the body torques can be formulated using the coordinate system of Fig.~\ref{fig:quad} as
 %
 \begin{align}
-	\dot{\ori{}} &= \bVec{v}, \label{eq:dynamics_1} \\
-	\dot{\bVec{v}} &= \bVec{g} + \bVec{q} \odot \bVec{c},\label{eq:dynamics_2}	\\
-	\dot{\bVec{q}} &= \quatrot(\bomega) \cdot \bVec{q}, \label{eq:dynamics_3}\\
-	\dot{\bomega} &= \bVec{J}^{-1} \cdot \left( \bodytorques - \bomega \times \bVec{J} \cdot \bomega \right) \label{eq:dynamics_4},
+	\bodytorques &= \begin{bmatrix} \frac{\sqrt{2}}{2}\armlength(\rotthrust{1} - \rotthrust{2} - \rotthrust{3} + \rotthrust{4}) \\
+							\frac{\sqrt{2}}{2}\armlength(-\rotthrust{1} - \rotthrust{2} + \rotthrust{3} + \rotthrust{4}) \\
+							\torquecoeff{1}\rotthrust{1} - \torquecoeff{2}\rotthrust{2} + \torquecoeff{3}\rotthrust{3} - \torquecoeff{4}\rotthrust{4}
+						\end{bmatrix}, \label{eq:torque_mixing}\\
+    \mass \thrust &= \rotthrust{1} + \rotthrust{2} + \rotthrust{3} + \rotthrust{4}, \label{eq:collective_thrust_mixing}
 \end{align}
 %
-where $\ori{} = [x \; y \; z]^{\top}$ and $\bVec{v} = [v_x \; v_y \; v_z]^{\top}$ are the position and velocity in world coordinates, $\bVec{q} = [q_w \; q_x \; q_y \; q_z]^{\top}$ is the orientation of the quadrotor's body coordinates with respect to the world coordinates, and $\bomega = [p \; q \; r]^{\top}$ denotes the body rates (roll, pitch and yaw, respectively) expressed in body coordinates. 
-The skew-symmetric matrix $\quatrot(\bomega)$ is defined as
-%
-\begin{equation}
-	\quatrot(\bomega) = \frac{1}{2}
-	\begin{bmatrix} 0 & -p & -q & -r \\ p & 0 & r & -q \\ q & -r & 0 & p \\ r & q & -p & 0 \end{bmatrix}.
-\end{equation}
-%
-We define the gravity vector as $\bVec{g} = [0 \; 0 \; -g]^{\top}$ with $g = \SI{9.81}{\meter \per \second \squared}$ and the second-order moment-of-inertia matrix of the quadrotor as $\bVec{J} = \diag{J_{xx}, \; J_{yy}, \; J_{zz}}$.
-The mass-normalized thrust vector is $\bVec{c} = [0 \; 0 \; c]^{\top}$, with
-\begin{equation}
-	m c = f_1 + f_2 + f_3 + f_4,
-	\label{eq:col_thrust}
-\end{equation}
-where $m$ is the mass of the quadrotor and $f_{i}$ are the four motor thrusts as illustrated in Fig.~\ref{fig:quad}.
-The torque inputs $\bodytorques$ are composed of the single-rotor thrusts as
+where $\armlength$ is the quadrotor's arm length, ${\torquecoeff{i} = \torquecoeff{}(\rotthrust{i})}$ is a coefficient relating the drag torque and the thrust of a single rotor, and $\mass$ is the quadrotor's mass.
+Note that unlike in~\cite{Lupashin14mech} and~\cite{Faessler16jfr}, we consider the rotor drag torque coefficient $\torquecoeff{}$ to be a function of the rotor thrust (cf. Fig~\ref{fig:kappa_load_cell}) and \emph{not a constant}.
 
+We model the single rotor thrust $\rotthrust{}$ and drag torque $\rottorque{}$ as quadratic polynomials of the motor input $\motinput{}$ as
+%
+\begin{align}
+	\rotthrust{}(\motinput{}) &= \mapcoeff{\rotthrust{}}{2} \motinput{}^2 + \mapcoeff{\rotthrust{}}{1} \motinput{} + \mapcoeff{\rotthrust{}}{0}, \label{eq:thrust_mapping}\\
+	\rottorque{}(\motinput{}) &= \mapcoeff{\rottorque{}}{2} \motinput{}^2 + \mapcoeff{\rottorque{}}{1} \motinput{} + \mapcoeff{\rottorque{}}{0}, \label{eq:torque_mapping}
+\end{align}
+%
+where the coefficients $\mapcoeff{\rotthrust{}}{j}$ and $\mapcoeff{\rottorque{}}{j}$ are identified by running a single motor with a propeller on a load cell and measuring the resulting forces and moments.
+The motor input $\motinput{}$ corresponds to the command we can send to our electronic speed controllers in the range $[-1, \; 1]$.
+We chose to have three coefficients since it approximates the measured values better than modeling the rotor thrust and drag torque with only a quadratic term, as proposed in e.g.~\cite{Michael10ram}. 
+Fig.~\ref{fig:thrust_mapping_fit} compares the two methods for fitting the thrust mapping.
+%
+\begin{figure}[t]
+   \centering
+   \includegraphics[width=0.8\textwidth]{img/thrust_mapping_fit_fpv.pdf}
+   \caption{To approximate the thrust mapping for a single motor with propeller, we fit a second order polynomial into raw thrust measurements obtained by running the motor on a load cell. The polynomial fit approximates the measurements much better than a purely quadratic fit of the form $\rotthrust{}(\motinput{}) = \mapcoeff{\rotthrust{}}{2} \motinput{}^2$. Data is captured with stiff 6x4.5 inch propellers, Cobra CM-2208/20 2000Kv motors, and DYS XSD20A electronic speed controllers which are commanded through the Dshot300 protocol (Setup shown in Fig.~\ref{fig:quad_picture}).}
+   \label{fig:thrust_mapping_fit}
+\end{figure}
+%
+From~\eqref{eq:thrust_mapping} and~\eqref{eq:torque_mapping}, we can compute the rotor drag torque coefficient as
+%
 \begin{equation}
-	\bodytorques = \begin{bmatrix} \frac{\sqrt{2}}{2}l(f_1-f_2-f_3+f_4) \\
-							\frac{\sqrt{2}}{2}l(-f_1-f_2+f_3+f_4) \\
-							\kappa(f_1-f_2+f_3-f_4)
-						\end{bmatrix},
-	\label{eq:body_torques}
+	 \torquecoeff{}(\rotthrust{}) = \frac{\rottorque{} \left( u = \frac{-\mapcoeff{\rotthrust{}}{1} + \sqrt{\left( \mapcoeff{\rotthrust{}}{1} \right)^2 - 4 \mapcoeff{\rotthrust{}}{2} \left( \mapcoeff{\rotthrust{}}{0} - \rotthrust{} \right)}}{2 \mapcoeff{\rotthrust{}}{2}} \right)}{\rotthrust{}}. 
+	 \label{eq:rotor_drag_torque_coeff}
 \end{equation}
 %
-where $l$ is the quadrotor arm length and $\kappa$ is the rotor-torque coefficient. 
-Our coordinate-system conventions and rotor numbering are illustrated in Fig.~\ref{fig:quad}.
+Fig.~\ref{fig:kappa_load_cell} shows the identified values for the rotor drag torque coefficient and how it varies by about \SI{10}{\percent} over the entire range of available motor inputs.
+%
+\begin{figure}[t]
+   \centering
+   \includegraphics[width=0.8\textwidth]{img/kappa_load_cell_fpv.pdf}
+   \caption{Values for $\torquecoeff{}$ estimated from load cell data obtained by dividing drag torque and thrust values for a motor and propeller. The fitted curve is the ratio of the fitted quadratic functions for measured thrust and drag torque in~\eqref{eq:thrust_mapping} and~\eqref{eq:torque_mapping}. Data is captured with stiff 6x4.5 inch propellers, Cobra CM-2208/20 2000Kv motors, and DYS XSD20A electronic speed controllers which are commanded through the Dshot300 protocol (Setup shown in Fig.~\ref{fig:quad_picture}).}
+   \label{fig:kappa_load_cell}
+\end{figure}
+%
+We consider the dynamical model of a quadrotor with rotor drag developed in~\cite{Kai17ifac} with no wind, stiff propellers, and no dependence of the rotor drag on the thrust.
+Additionally, as in~\cite{Faessler17ral}, we model the dynamics of the single rotor thrusts as first order systems
+%
+\begin{equation}
+	\dot{\rotthrust{}} = \frac{1}{\motdyn} \left( \rotthrust{des} - \rotthrust{} \right)
+		\label{eq:motor_dynamics}
+\end{equation}
+%
+where the time constant $\motdyn$ is identified from applying step inputs to a single motor with propeller on a load cell as illustrated in Fig.~\ref{fig:thrust_transients}.
+%
+\begin{figure}[t]
+   \centering
+   \includegraphics[width=0.8\textwidth]{img/thrust_transient.pdf}
+   \caption{Thrust transients of a single motor with propeller on a load cell for a step up (blue) and a step down (red). A first order system fit for both is overlaid in red. Data is captured with stiff 6x4.5 inch propellers, Cobra CM-2208/20 2000Kv motors, and DYS XSD20A electronic speed controllers which are commanded through the Dshot300 protocol (Setup shown in Fig.~\ref{fig:quad_picture}).}
+   \label{fig:thrust_transients}
+\end{figure}
+%
+From these load-cell experiments we found that for modern ESCs that actively break the motor when spinning down, the time constant is almost identical when spinning a motor up or down and we therefore do not need to separate those cases.
+Because of that, also the bod torques have first order dynamics with the same time constant as the single rotor thrusts.
+According to these models in~\cite{Kai17ifac} and~\cite{Faessler17ral}, the dynamics of the position $\pos$, velocity $\vel$, orientation $\ori{}$, body rates $\bodyrates$, and body torques $\bodytorques$ can be written as
+%
+\begin{align}
+	\dot{\pos} &= \vel \label{eq:position_dynamics} \\
+	\dot{\vel} &= - \gravacc \vect{z}{}{\wfr} + \thrust \vect{z}{}{\bfr} - \ori{} \dragmat \vecttrans{\ori{}}{}{} \vel \label{eq:velocity_dynamics} \\
+	\dot{\ori{}} &= \ori{} \hat{\bodyrates} \label{eq:orientation_dynamics} \\
+	\dot{\bodyrates} &= \inertia^{-1} \left( \bodytorques - \bodyrates \times \inertia \bodyrates - \gyrotorques - \amat \vecttrans{\ori{}}{}{} \vel - \bmat \bodyrates \right) \label{eq:body_rate_dynamics} \\
+	\dot{\bodytorques} &= \frac{1}{\motdyn} \left( \vect{\bodytorques}{}{des} - \bodytorques \right)
+	\label{eq:body_torque_dynamics}
+\end{align}
+%
+where $\thrust$ is the mass-normalized collective thrust, ${\dragmat = \diag{\dragcoeff{x}, \dragcoeff{y}, \dragcoeff{z}}}$ is a constant diagonal matrix formed by the rotor-drag coefficients, $\hat{\bodyrates}$ is a skew-symmetric matrix formed from $\bodyrates$, $\inertia$ is the quadrotor's inertia matrix, $\bodytorques$ are the torque inputs, $\gyrotorques$ are gyroscopic torques from the propellers, and $\amat$ and $\bmat$ are constant matrices of the form
+%
+\begin{equation}
+	\amat = \begin{bmatrix}
+		0 & \ast & 0 \\
+		\ast & 0 & 0 \\
+		0 & 0 & 0
+	\end{bmatrix}, \text{and} \quad 
+	\bmat = \begin{bmatrix}
+		\ast & 0 & 0 \\
+		0 & \ast & 0 \\
+		0 & 0 & \ast
+	\end{bmatrix} .
+\end{equation}
+%
+For the derivations and more details about these terms, please refer to~\cite{Kai17ifac}.
+In this model, we consider the motor dynamics for the rotational states but neglect them for the collective thrust $\thrust$.
+We do this because the collective thrust is computed in a high-level position controller, which typically runs at a frequency comparable to the motor dynamics and therefore too slow to consider these dynamics in the control method.
+In this work, we adopt the thrust model presented in~\cite{Svacha17icuas}
+%
+\begin{equation}
+	\thrust = \thrust_{\mathsmaller{\mathrm{cmd}}} + \horzthrustcoeff v_h^2 \label{eq:thrust_model}
+\end{equation}
+%
+where $\thrust_{\mathsmaller{\mathrm{cmd}}}$ is the commanded collective thrust input, $\horzthrustcoeff$ is a constant, and ${v_h = \vecttrans{v}{}{}( \vect{x}{}{\bfr} + \vect{y}{}{\bfr})}$.
+The term $\horzthrustcoeff v_h^2$ acts as a quadratic velocity-dependent input disturbance which adds up to the input $\thrust_{\mathsmaller{\mathrm{cmd}}}$.
+The additional linear velocity-dependent disturbance in the $\vect{z}{}{\bfr}$ direction of the thrust model in~\cite{Svacha17icuas} is lumped by $\dragcoeff{z}$ directly in~\eqref{eq:velocity_dynamics} by neglecting its dependency on the rotor speeds.
+Note that this dynamical model of a quadrotor is a generalization of the common model found, e.g., in~\cite{Mellinger11icra}, in which the linear rotor drag components are typically neglected, i.e., $\dragmat$, $\amat$ and $\bmat$ are considered null matrices.
+
+\section{Control} \label{sec:control}
+
+In this section, we present our proposed quadrotor control scheme, which is split into a high-level part for position control and a low-level part for attitude control.
+The high-level position control outputs the desired orientation, desired body rates, and the desired angular accelerations.
+These desired values are then tracked by the low-level attitude controller, which directly commands the four motors.
+This controller is implemented in our open-source software on \href{https://github.com/uzh-rpg/rpg_quadrotor_control}{https://github.com/uzh-rpg/rpg\_quadrotor\_control}
 
 \subsection{High-Level Control}
 
-TODO: Control from \cite{Faessler18ral}, reference to TR \cite{Faessler17tr}.
+\subsubsection{Reference Inputs}
 
-The high-level controller takes a reference state as input and computes the desired attitude or desired body rates, which are then sent to the low-level controller.
-A reference state consists of a reference position $\posRef$, a reference velocity $\velRef$, a reference acceleration $\accRef$, and a reference heading $\yawRef$.
-First, we describe the position controller, followed by the attitude controller. 
-The two high-level control loops are synchronized and run at \SI{50}{\Hz}.
+To achieve accurate tracking of a reference trajectory, a quadrotor position controller requires reference inputs which it uses as feed-forward terms.
+In this section, we show how the reference orientation, thrust, body rates, and angular accelerations can be computed from a reference trajectory through the differential flatness property of quadrotor dynamics subject to rotor drag as proved in~\cite{Faessler18ral}.
+For brevity, we omit a \emph{ref} subscript of the values computed in this section since they are all reference values.
 
-\subsubsection{Position Controller} \label{sec::Position_Controller}
-
-To track a reference trajectory, we implemented a PD controller with feed-forward terms on the reference acceleration from the sampled trajectory and gravity:
+We first compute the reference orientation $\ori{}$, which is defined by~\eqref{eq:velocity_dynamics} and the reference heading $\heading$.
+From~\eqref{eq:velocity_dynamics}, we can derive the constraints
 %
+\begin{align}
+	\vecttrans{x}{}{\bfr} \boldsymbol{\alpha} = 0, \; \text{with} \quad \boldsymbol{\alpha} = \acc + \gravacc \vect{z}{}{\wfr} + \dragcoeff{x} \vel \label{eq:x_body_constraint}\\
+	\vecttrans{y}{}{\bfr} \boldsymbol{\beta} = 0, \; \text{with} \quad \boldsymbol{\beta} = \acc + \gravacc \vect{z}{}{\wfr} + \dragcoeff{y} \vel . \label{eq:y_body_constraint}
+\end{align}
+%
+To enforce a reference heading $\heading$, we furthermore constrain the projection of the $\vect{x}{}{\bfr}$ axis into the $\vect{x}{}{\wfr} - \vect{y}{}{\wfr}$ plane to be collinear with $\vect{x}{}{\cfr}$ (cf. Fig.\ref{fig:quad}), where
+%
+\begin{align}
+	\vect{x}{}{\cfr} &= \begin{bmatrix}
+		\cos(\heading) & \sin(\heading) & 0
+	\end{bmatrix}^{\top} \\
+	\vect{y}{}{\cfr} &= \begin{bmatrix}
+		-\sin(\heading) & \cos(\heading) & 0
+	\end{bmatrix}^{\top} . \label{eq:y_c}
+\end{align}
+%
+From this, \eqref{eq:x_body_constraint} and \eqref{eq:y_body_constraint}, and the constraints that $\vect{x}{}{\bfr}$, $\vect{y}{}{\bfr}$, and $\vect{z}{}{\bfr}$ must be orthogonal to each other and of unit length, we can construct $\ori{}$ with
+%
+\begin{align}
+	\vect{x}{}{\bfr} &= \frac{\vect{y}{}{\cfr} \times \boldsymbol{\alpha}}{\norm{\vect{y}{}{\cfr} \times \boldsymbol{\alpha}}} \label{eq:x_body_computation} \\
+	\vect{y}{}{\bfr} &= \frac{\boldsymbol{\beta} \times \vect{x}{}{\bfr}}{\norm{\boldsymbol{\beta} \times \vect{x}{}{\bfr}}} \\
+	\vect{z}{}{\bfr} &= \vect{x}{}{\bfr} \times \vect{y}{}{\bfr}
+\end{align}
+%
+as
 \begin{equation}
-	\accDes{} = 
-	\bVec{P}_{pos}
-	\cdot
-	\left(
-		\posRef - \posEst
-	\right)
-	+
-	\bVec{D}_{pos}
-	\cdot
-	\left(
-		\velRef - \velEst
-	\right)
-	+\accRef
-	-\bVec{g},
-	\label{eq:position_controller}
+	\ori{} = \sVec{\vect{x}{}{\bfr} & \vect{y}{}{\bfr} & \vect{z}{}{\bfr}} .
 \end{equation}
 %
-with gain matrices $\bVec{P}_{pos}=\diag{p_{xy},p_{xy},p_{z}}$ and $\bVec{D}_{pos} = \diag{d_{xy},d_{xy},d_{z}}$.
-To compute the desired normalized thrust $c_{des}$, we project the desired acceleration onto the current $\prescript{}{\wfr}{\bVec{e}}_{z}^{\bfr}$ axis
+One can verify that these vectors are of unit length, perpendicular to each other, and satisfy the constraints~\eqref{eq:x_body_constraint} - \eqref{eq:y_c}.
+If $\vect{y}{}{\cfr}$ is collinear to $\boldsymbol{\alpha}$ or $\boldsymbol{\beta}$ is collinear to $\vect{x}{}{\bfr}$, the computation of the orientation is affected by a singularity which we tackle as described in Appendix~\ref{sec:singularities}.
+
+The collective reference thrust can then be computed as
 %
 \begin{equation}
-	c_{des} = \bVec{a}_{des} \cdot \bVec{e}_{z}^B.
+	\vect{\thrust}{}{} = \vecttrans{z}{}{\bfr} \left( \acc + \gravacc \vect{z}{}{\wfr} + \dragcoeff{z} \vel \right) .
+\end{equation}
+%
+Then the collective thrust input can be computed as a function of $\thrust$, $\ori{}$, and the flat outputs, as
+%
+\begin{equation}
+	\thrust_{\mathsmaller{\mathrm{cmd}}} = \thrust - \horzthrustcoeff (\vecttrans{v}{}{}( \vect{x}{}{\bfr} + \vect{y}{}{\bfr}))^2 .
+\end{equation}
+
+By following~\cite{Faessler18ral}, we can compute the reference body rates by solving the following linear system of equations
+%
+\begin{align}
+	\bodyrate_y & \left( \thrust - \left( \dragcoeff{z} - \dragcoeff{x} \right) \left( \vecttrans{z}{}{\bfr} \vel \right) \right) - \bodyrate_z \left( \dragcoeff{x} - \dragcoeff{y} \right) \left( \vecttrans{y}{}{\bfr} \vel \right) \nonumber \\
+	\quad &= \vecttrans{x}{}{\bfr} \jerk + \dragcoeff{x} \vecttrans{x}{}{\bfr} \acc \label{eq:rate_lin_sys_of_eq_x}  \\
+	\bodyrate_x & \left( \thrust + \left( \dragcoeff{y} - \dragcoeff{z} \right) \left( \vecttrans{z}{}{\bfr} \vel \right) \right) + \bodyrate_z \left( \dragcoeff{x} - \dragcoeff{y} \right) \left( \vecttrans{x}{}{\bfr} \vel \right) \nonumber \\
+	\quad &= -\vecttrans{y}{}{\bfr} \jerk - \dragcoeff{y} \vecttrans{y}{}{\bfr} \acc \label{eq:rate_lin_sys_of_eq_y} \\
+	\bodyrate_z &= \frac{1}{\norm{\vect{y}{}{\cfr} \times \vect{z}{}{\bfr}}} \left( \dot{\heading} \vecttrans{x}{}{\cfr} \vect{x}{}{\bfr} + \bodyrate_y \vecttrans{y}{}{\cfr} \vect{z}{}{\bfr} \right) \label{eq:rate_lin_sys_of_eq_z} 
+\end{align}
+%
+for $\bodyrate_x$, $\bodyrate_y$, and $\bodyrate_z$ as
+%
+\begin{align}
+	\bodyrate_x &= \frac{
+		- \mathcal{B}_1 \mathcal{C}_2 \mathcal{D}_3	+	
+		\mathcal{B}_1 \mathcal{C}_3 \mathcal{D}_2 -
+		\mathcal{B}_3 \mathcal{C}_1 \mathcal{D}_2 +
+		\mathcal{B}_3 \mathcal{C}_2 \mathcal{D}_1}
+		{\mathcal{A}_2 \left( \mathcal{B}_1 \mathcal{C}_3 -
+		\mathcal{B}_3 \mathcal{C}_1 \right)} \label{eq:omega_x_computation} \\
+	\bodyrate_y &= \frac{
+		- \mathcal{C}_1 \mathcal{D}_3 + \mathcal{C}_3 \mathcal{D}_1 }
+		{\mathcal{B}_1 \mathcal{C}_3 - \mathcal{B}_3 \mathcal{C}_1} \\
+	\bodyrate_z &= \frac{
+		\mathcal{B}_1 \mathcal{D}_3 - \mathcal{B}_3 \mathcal{D}_1}
+		{\mathcal{B}_1 \mathcal{C}_3 - \mathcal{B}_3 \mathcal{C}_1} \label{eq:omega_z_computation}
+\end{align}
+%
+where
+%
+\begin{align}
+	\mathcal{B}_1 &= \thrust - \left( \dragcoeff{z} - \dragcoeff{x} \right) \left( \vecttrans{z}{}{\bfr} \vel \right) \label{eq:b_1_definition} \\
+	\mathcal{C}_1 &= -\left( \dragcoeff{x} - \dragcoeff{y} \right) \left( \vecttrans{y}{}{\bfr} \vel \right) \\
+	\mathcal{D}_1 &= \vecttrans{x}{}{\bfr} \jerk + \dragcoeff{x} \vecttrans{x}{}{\bfr} \acc \\
+	\mathcal{A}_2 &= \thrust + \left( \dragcoeff{y} - \dragcoeff{z} \right) \left( \vecttrans{z}{}{\bfr} \vel \right) \\
+	\mathcal{C}_2 &= \left( \dragcoeff{x} - \dragcoeff{y} \right) \left( \vecttrans{x}{}{\bfr} \vel \right) \\
+	\mathcal{D}_2 &= -\vecttrans{y}{}{\bfr} \jerk - \dragcoeff{y} \vecttrans{y}{}{\bfr} \acc \\
+	\mathcal{B}_3 &= - \vecttrans{y}{}{\cfr} \vect{z}{}{\bfr} \\
+	\mathcal{C}_3 &= \norm{\vect{y}{}{\cfr} \times \vect{z}{}{\bfr}} \\
+	\mathcal{D}_3 &= \dot{\heading} \vecttrans{x}{}{\cfr} \vect{x}{}{\bfr} . \label{eq:d_3_definition}
+\end{align}
+%
+To compute the reference angular accelerations, we take the derivative of the linear system of equations~\eqref{eq:rate_lin_sys_of_eq_x}-\eqref{eq:rate_lin_sys_of_eq_z} and solve it for $\dot{\bodyrate}_x$, $\dot{\bodyrate}_y$, and $\dot{\bodyrate}_z$ as
+%
+\begin{align}
+	\dot{\bodyrate}_x &= \frac{
+		- \mathcal{B}_1 \mathcal{C}_2 \mathcal{E}_3	+	
+		\mathcal{B}_1 \mathcal{C}_3 \mathcal{E}_2 -
+		\mathcal{B}_3 \mathcal{C}_1 \mathcal{E}_2 +
+		\mathcal{B}_3 \mathcal{C}_2 \mathcal{E}_1}
+		{\mathcal{A}_2 \left( \mathcal{B}_1 \mathcal{C}_3 -
+		\mathcal{B}_3 \mathcal{C}_1 \right)} \label{eq:omega_dot_x_computation} \\
+	\dot{\bodyrate}_y &= \frac{
+		- \mathcal{C}_1 \mathcal{E}_3 + \mathcal{C}_3 \mathcal{E}_1 }
+		{\mathcal{B}_1 \mathcal{C}_3 - \mathcal{B}_3 \mathcal{C}_1} \\
+	\dot{\bodyrate}_z &= \frac{
+		\mathcal{B}_1 \mathcal{E}_3 - \mathcal{B}_3 \mathcal{E}_1}
+		{\mathcal{B}_1 \mathcal{C}_3 - \mathcal{B}_3 \mathcal{C}_1} \label{eq:omega_dot_z_computation}
+\end{align}
+%
+where
+%
+\begin{align}
+	\mathcal{E}_1 &= \vecttrans{x}{}{\bfr} \snap - 2 \dot{\thrust} \bodyrate_y - \thrust \bodyrate_x \bodyrate_z + \vecttrans{x}{}{\bfr} \boldsymbol{\xi}\\
+	\mathcal{E}_2 &= - \vecttrans{y}{}{\bfr} \snap - 2 \dot{\thrust} \bodyrate_x + \thrust \bodyrate_y \bodyrate_z - \vecttrans{y}{}{\bfr} \boldsymbol{\xi}\\
+	\mathcal{E}_3 &= \ddot{\heading} \vecttrans{x}{}{\cfr} \vect{x}{}{\bfr} + 2 \dot{\heading} \bodyrate_z \vecttrans{x}{}{\cfr} \vect{y}{}{\bfr} - 2 \dot{\heading} \omega_y \vecttrans{x}{}{\cfr} \vect{z}{}{\bfr} \nonumber \\
+	& \quad - \bodyrate_x \bodyrate_y \vecttrans{y}{}{\cfr} \vect{y}{}{\bfr} - \bodyrate_x \bodyrate_z \vecttrans{y}{}{\cfr} \vect{z}{}{\bfr} \\
+	\dot{\thrust} &= \vecttrans{z}{}{\bfr} \jerk + \bodyrate_x \left( \dragcoeff{y} - \dragcoeff{z} \right) \left( \vecttrans{y}{}{\bfr} \vel \right) \nonumber \\
+	& \quad + \bodyrate_y \left( \dragcoeff{z} - \dragcoeff{x} \right) \left( \vecttrans{x}{}{\bfr} \vel \right) + \dragcoeff{z} \vecttrans{z}{}{\bfr} \acc \\
+	\boldsymbol{\xi} &= \ori{} \left( \vectss{\hat{\bodyrates}}{}{}{2} \dragmat + \dragmat \vectss{\hat{\bodyrates}}{}{}{2} + 2 \hat{\bodyrates} \dragmat \vecttrans{\hat{\bodyrates}}{}{} \right) \vecttrans{\ori{}}{}{} \vect{\vel}{}{} \nonumber \\
+	& \quad + 2 \ori{} \left( \hat{\bodyrates} \dragmat + \dragmat \vecttrans{\hat{\bodyrates}}{}{} \right) \vecttrans{\ori{}}{}{} \vect{\acc}{}{} + \ori{} \dragmat \vecttrans{\ori{}}{}{} \vect{\jerk}{}{} .
+\end{align}
+
+The computation of the body rates and angular acceleration may be affected by singularities, which we treat as described in Appendix~\ref{sec:singularities}.
+More details of these derivations can be found in our technical report~\cite{Faessler17tr}.
+
+\subsubsection{High-Level Control Law}
+
+In our high-level position controller, which is adapted from~\cite{Faessler15icra}, we compute the desired orientation $\ori{des}$, collective thrust $\vect{\thrust}{}{des}$, body rates $\vect{\bodyrates}{}{des}$, angular accelerations $\vectdot{\bodyrates}{}{des}$, and angular jerk $\vectddot{\bodyrates}{}{des}$, which are then applied by the low-level controller described in the next section.
+As a first step in the position controller, we compute the desired acceleration of the quadrotor's body as
+%
+\begin{align}
+	\vect{\acc}{}{des} &= 
+	\vect{\acc}{}{fb}
+	+ \vect{\acc}{}{ref}
+	- \vect{\acc}{}{rd}
+	+ \gravacc \vect{z}{}{\wfr}
+	\label{eq:position_controller}
+\end{align}
+%
+where $\vect{\acc}{}{fb}$ are the PD feedback-control terms computed from the position and velocity control errors as 
+%
+\begin{equation}
+	\vect{\acc}{}{fb} = -\vect{K}{}{pos} \left( \pos - \vect{\pos}{}{ref} \right) - \vect{K}{}{vel} \left( \vel - \vect{\vel}{}{ref} \right)
+\end{equation}
+%
+where $\vect{K}{}{pos}$ and $\vect{K}{}{vel}$ are constant diagonal matrices.
+The reference acceleration $\vect{\acc}{}{ref}$ is obtained directly from the reference trajectory and the acceleration due to rotor drag $\vect{\acc}{}{rd}$ is computed according to~\eqref{eq:velocity_dynamics} as
+%
+\begin{equation}
+	\vect{\acc}{}{rd} = - \ori{ref} \dragmat \vecttrans{\ori{}}{}{ref} \vect{\vel}{}{ref} .
+\end{equation}
+%
+We compute the desired orientation $\ori{des}$ such that ${\vect{z}{}{\bfr,des} = \vect{\acc}{}{des} / \norm{\vect{\acc}{}{des}}}$ and the reference heading $\vect{\heading}{}{ref}$ is respected.
+This is achieved with
+%
+\begin{align}
+	\vect{z}{}{\bfr,des} &= \frac{\vect{\acc}{}{des}}{\norm{\vect{\acc}{}{des}}} \\
+	\vect{x}{}{\bfr,des} &= \frac{\vect{y}{}{\cfr} \times \vect{z}{}{\bfr,des}}{\norm{\vect{y}{}{\cfr} \times \vect{z}{}{\bfr,des}}} \\
+	\vect{y}{}{\bfr,des} &= \vect{z}{}{\bfr,des} \times \vect{x}{}{\bfr,des}
+\end{align}
+%
+as
+%
+\begin{equation}
+	\ori{des} = \sVec{\vect{x}{}{\bfr,des} & \vect{y}{}{\bfr,des} & \vect{z}{}{\bfr,des}} .
+\end{equation}
+%
+By projecting the desired accelerations onto the actual body $z$-axis and considering the thrust model~\eqref{eq:thrust_model}, we can then compute the collective thrust input as
+%
+\begin{equation}
+	\thrust_{\mathsmaller{\mathrm{cmd}}} = \vecttrans{\acc}{}{des} \vect{z}{}{\bfr} - \horzthrustcoeff (\vecttrans{v}{}{}( \vect{x}{}{\bfr}+ \vect{y}{}{\bfr}))^2.
 	\label{eq:norm_thrust}
 \end{equation}
 %
-The output of the position controller is the desired accelerations $\accDes{}$.
-The desired acceleration, together with the reference heading $\yawRef$, encodes the desired orientation as well as a mass normalized thrust $c_{des}$.
+Finally, we compute the desired body rates, the angular accelerations, and the angular jerk by transforming the reference body rates into the current body frame and take its derivatives as
+%
+\begin{align}
+	\vect{\bodyrates}{}{des} &= \vecttrans{\ori{}}{}{} \ori{ref} \vect{\bodyrates}{}{ref} \\
+	\vectdot{\bodyrates}{}{des} &= \vecttrans{\ori{}}{}{} \ori{ref} \vectdot{\bodyrates}{}{ref} - \hat{\bodyrates} \vecttrans{\ori{}}{}{} \ori{ref} \vect{\bodyrates}{}{ref}
+\end{align}
 
-\subsubsection{Attitude Controller} \label{sec::attitude_controller}
+\subsection{Low-Level Control}
 
-Since a quadrotor can only accelerate in its body $z$ direction, $\accDes{}$ enforces two degrees of freedom of the desired attitude.
-The third degree of freedom is enforced by reference heading $\yawRef$.
-Note that the rotation around the body $z$ axis has no influence on the translational behaviour of the quadrotor.
-Therefore, we want to align the body $z$ axis with the desired acceleration $\accDes{}$ by rotating around the body $x$ and $y$ axes and use rotations around the body $z$ axis only to control the heading.
-Our quadrotors have much more attitude control authority on the $x$ and $y$ axes than on the $z$ axis because there, they can make use of thrust differences as opposed to differences in rotor drag torques.
-The moment due to the maximum-possible thrust difference is much larger than the maximum possible difference of rotor drag torques.
-For this reason, we separate the attitude control into two parts as described in the following.
+This section introduces the low-level which we implemented in our \href{https://github.com/uzh-rpg/rpg_quadrotor_control/tree/master/simulation/rpg_rotors_interface}{rpg\_rotors\_interface} except for the attitude controller which is implemented in \href{https://github.com/uzh-rpg/rpg_quadrotor_control/tree/master/control/position_controller}{position\_controller}.
 
+\subsubsection{Attitude Control}
+
+TODO: Similar to \cite{Brescianini13tr}, as implemented in position controller
+
+Replace the following
 \subsubsection*{Desired Roll and Pitch Rates} \label{sec:roll_pitch_control}
 
 From the current attitude estimate and the desired acceleration, we can compute the current and the desired body $z$ axis, respectively, as
@@ -397,14 +583,6 @@ From the error quaternion $\bVec{q}_{e,rp}$, we can then compute the desired rol
 It can be shown that this control law is globally asymptotically stable and its discrete implementation is robust to measurement noise~\cite{Brescianini13tr, Mayhew11ac}.
 
 \subsubsection*{Desired Yaw Rate} \label{sec:yaw_control}
-
-\begin{figure}[t]
-   \centering
-   \includegraphics[width=0.8\textwidth]{img/coordinate_systems.pdf}
-   \caption{Coordinate frames used in the attitude controller.
-  We make use of the coordinate frame $C$, which is obtained by rotating the world frame ($\wfr$) by the reference heading $\yawRef$ to construct, together with the desired acceleration $\bVec{a}_{des}$, the full desired orientation of the body frame ($\bfr$).}
-   \label{fig:att_cont_frames}
-\end{figure}
 
 To compute the desired yaw rate $r_{des}$, we look at the heading error that remains after aligning $\hat{\bVec{e}}_{z}^{\bfr}$ with $\bVec{e}_{z,des}^{\bfr}$ with the above control law.
 To do so, we first compute the full desired attitude.
@@ -454,51 +632,134 @@ Similarly to the desired roll and pitch rate, we can now compute the desired yaw
 %
 Splitting the attitude control into these two parts allows us to have different gains for $p_{rp}$ and $p_{yaw}$, which is desirable due to different control limits.
 
-\subsection{Low-Level Control} \label{sec:low_level_cont}
+\subsubsection{Body-Rate Control}
 
-TODO: Update to \cite{Faessler17ral}.
+TODO: from \cite{Faessler17ral}
 
-The commands sent to the low-level control on the PX4 are the desired body rates $\bomega_{des}$ and the desired mass-normalized thrust $c_{des}$.
-From the desired body rates $\bomega_{des}$ and the measured body rates $\tilde{\bomega}$, we can compute the desired torques $\bodytorques_{des}$ with a feedback linearizing control scheme:
+\subsubsection{Iterative Thrust Mixing} \label{sec:mixer}
+
+To compute the single rotor thrusts that achieve the desired body torques $\bodytorques_{des}$ and collective thrust $\thrust_{des}$, which we denote as \emph{mixer inputs}, we have to solve~\eqref{eq:torque_mixing} and~\eqref{eq:collective_thrust_mixing} for $\rotthrust{i}$.
+Since we consider the rotor drag torque coefficients to be a function of the rotor thrust, we cannot solve this system of equations directly, but we can do so iteratively, as proposed in our previous work~\cite{Faessler17ral}.
+
+To initialize the iteration, we start by setting the single rotor thrusts equal such that they achieve the desired collective thrust:
 %
 \begin{equation}
-	\bodytorques_{des}
-	= \bVec{J} \cdot \bVec{P}_{att} \cdot \left( \bomega_{des} - \hat{\bomega} \right)
-	+ \hat{\bomega} \times \bVec{J} \cdot \hat{\bomega},
+	\rotthrust{i} = \frac{\mass \thrust_{des}}{4}.
 \end{equation}
 %
-where $\bVec{P}_{att}=\diag{p_{pq},p_{pq},p_{r}}$.
-Then, we can substitute $\bodytorques_{des}$ and $c_{des}$ into~\eqref{eq:body_torques} and~\eqref{eq:col_thrust} and solve them for the desired nominal rotor thrusts (see Section~\ref{sec:self_calibration}) that must be applied:
-%
-\begin{equation}
-	\begin{bmatrix}
-		\check{f}_1 \\ \check{f}_2\\ \check{f}_3 \\ \check{f}_4
-	\end{bmatrix}
-	= 
-	\begin{bmatrix}
-		\frac{1}{4 \lambda_1} \cdot \left(m \cdot c_{des} + \frac{1}{\kappa} \cdot \bodytorques_{des}^{y} - \frac{\sqrt{2}}{l} \cdot \bodytorques_{des}^{p} + \frac{\sqrt{2}}{l} \cdot \bodytorques_{des}^{r} \right) \\
- \frac{1}{4 \lambda_2} \cdot \left(m \cdot c_{des} - \frac{1}{\kappa} \cdot \bodytorques_{des}^{y} - \frac{\sqrt{2}}{l} \cdot \bodytorques_{des}^{p} - \frac{\sqrt{2}}{l} \cdot \bodytorques_{des}^{r} \right) \\
-  \frac{1}{4 \lambda_3} \cdot \left(m \cdot c_{des} + \frac{1}{\kappa} \cdot \bodytorques_{des}^{y} + \frac{\sqrt{2}}{l} \cdot \bodytorques_{des}^{p} - \frac{\sqrt{2}}{l} \cdot \bodytorques_{des}^{r} \right) \\
-  \frac{1}{4 \lambda_4} \cdot \left(m \cdot c_{des} - \frac{1}{\kappa} \cdot \bodytorques_{des}^{y} + \frac{\sqrt{2}}{l} \cdot \bodytorques_{des}^{p} + \frac{\sqrt{2}}{l} \cdot \bodytorques_{des}^{r} \right)
-	\end{bmatrix} ,
-\end{equation}
-%
-with $\kappa$ being the rotor-torque coefficient and $\lambda_i$ being the rotor fitness coefficients as described in Section~\ref{sec:self_calibration}.
+Note that these values are only used to compute the rotor drag torque coefficients in the first iteration.
+Then, we start the iteration with the following two steps: i) solve~\eqref{eq:rotor_drag_torque_coeff} to get $\torquecoeff{i}$, and ii) solve~\eqref{eq:torque_mixing} and~\eqref{eq:collective_thrust_mixing} with $\bodytorques_{des}$ and $\thrust_{des}$ for $\rotthrust{i}$.
 
-\subsubsection{Rotor Thrusts Saturation}
+\subsubsection{Saturation with Input Priorities}
 
-TODO: Describe how we saturate the single rotor thrusts according to \cite{Faessler17ral}.
+Once we have computed the desired single rotor thrusts, we have to make sure that they lie within the feasible range $[\rotthrust{min}, \rotthrust{max}]$ for each single motor, which we do as proposed in our previous work~\cite{Faessler17ral}.
+Naively, feasible inputs can be achieved by clipping each rotor thrust if its desired value is outside this range.
+This is a simple and fast procedure with the drawback that none of the desired mixer inputs $\bodytorques_{des}$ and $\thrust_{des}$ is achieved exactly if one of the rotor thrusts is clipped.
+Nonetheless, not all these mixer inputs are equally important in terms of the quadrotor's ability to stabilize and track a trajectory.
+Since a quadrotor can only produce a collective thrust in its body upwards direction, it has to be aligned with the desired acceleration for following a trajectory in 3D space.
+The rotation around the thrust direction is irrelevant for the translational motion of the quadrotor.
+Therefore, we want to give least priority to achieve the desired yaw torque in case of an input saturation.
+On the other hand, the quadrotor uses roll and pitch torques to change its thrust direction which enables stabilization and therefore makes them the most important inputs.
+Furthermore, state of the art control methods for quadrotors (e.g.~\cite{Mellinger11icra}, \cite{Lupashin14mech}, \cite{Faessler15icra}) are based on the assumption that the orientation of the thrust vector can be changed quickly.
+For these reasons, in case of an input saturation, we want to give highest priority to applying the desired roll and pitch torques, second highest priority to applying the desired collective thrust, and lowest priority to applying the desired yaw torque.
+%
+\begin{algorithm}
+\caption{Rotor Thrust Saturation}
+\label{alg:rotor_thrust_saturation}
+\begin{algorithmic}
+\State Compute $\rotthrust{i}$ as detailed in Section~\ref{sec:mixer}
+\State{\bf{Perform yaw-torque saturation:}}
+\If{Motor saturated \textbf{AND} $\abs{\bodytorque_{z,des}} > \bodytorque_{z,assured}$}
+    \State{Find rotor $j$ that violates thrust limits the most}
+    \State{$\rotthrust{j} \leftarrow \rotthrust{limit}$}
+    \State{Solve \eqref{eq:torque_mixing} and \eqref{eq:collective_thrust_mixing} for $\rotthrust{i \smallsetminus j}$ and $\bodytorque_{z}$}
+    \If{$\sign(\bodytorque_{z,des}) \cdot \bodytorque_{z} < \bodytorque_{z,assured}$}
+    	\State{$\bodytorque_{z} \leftarrow \sign(\bodytorque_{z,des}) \cdot \bodytorque_{z,assured}$}
+        \State{Solve \eqref{eq:torque_mixing} and \eqref{eq:collective_thrust_mixing} for $\rotthrust{i}$}
+    \EndIf
+\EndIf
+\State{\bf{Perform collective-thrust saturation:}}
+\If{Motor saturated}
+	\If{\textbf{NOT}(upper \textbf{AND} lower saturation reached)}
+    	\State{Find rotor $j$ that violates thrust limits the most}
+    	\State{Shift $\rotthrust{i}$ equally s.t. $\rotthrust{j} = \rotthrust{limit}$}
+    \EndIf
+\EndIf
+\State{Enforce single rotor thrust limits by thrust clipping}
+\end{algorithmic}
+\end{algorithm}
+
+\paragraph{Yaw-Torque Saturation}
+
+We achieve this prioritization by a saturation scheme as summarized in Algorithm~\ref{alg:rotor_thrust_saturation}.
+First, the single rotor thrusts are computed according to Section~\ref{sec:mixer}.
+If one of the single rotor thrusts exceeds its limits, we try to change the applied yaw torque to avoid saturation, given that the desired yaw torque is above a certain minimum $\bodytorque_{z,assured}$, which we can optionally impose.
+Such an assured yaw torque might be desired for applications where we want to guarantee that we always have some control on the heading of a quadrotor.
+In case of saturation, we do not apply the iterative mixer in order to save time since we are unable to apply the desired yaw torque anyways.
+To do the yaw-torque saturation, we find the rotor that violates the input limit the most, set it to the corresponding limit and then solve~\eqref{eq:torque_mixing} and~\eqref{eq:collective_thrust_mixing} for the remaining rotor thrusts and the yaw torque.
+If the resulting yaw torque is still above the value we want to assure, we successfully enforced all the rotor-thrust limits by only changing the applied yaw torque.
+In other words, in this case, Algorithm~\ref{alg:rotor_thrust_saturation} guarantees that the quadrotor applies the desired roll and pitch torques and the desired collective thrust, but \emph{not} the desired yaw torque.
+If the resulting yaw torque is below the value we want to assure, we set it to the assured value $\bodytorque_{z,assured}$ and recompute the rotor thrusts.
+
+\paragraph{Collective-Thrust Saturation}
+
+If one of the rotor-thrust limits is still violated, we try to change the applied collective thrust to avoid saturation.
+This is only possible if two rotors do not violate the upper and the lower limit simultaneously, in which case it is impossible to achieve the desired roll and pitch torques by changing the applied collective thrust.
+If only one limit is violated, we find the rotor that violates the input limit the most, set it to its limit and shift the remaining rotor thrusts by the same amount.
+In this case, Algorithm~\ref{alg:rotor_thrust_saturation} ensures that the quadrotor applies the desired roll and pitch torques but \emph{not} the desired collective thrust and \emph{not} the desired yaw torque.
+
+\paragraph{Thrust Clipping}
+
+At this point, if a rotor still violates its input limits, we have to apply thrust clipping and can therefore not achieve any of the desired mixer inputs precisely.
 
 \subsection{Delay Compensation}
 
 TODO: about \href{https://github.com/uzh-rpg/rpg_quadrotor_common/tree/master/state_predictor}{state predictor}
+
+\subsection{Battery Voltage Compensation} \label{sec:battery_voltage_compensation}
+
+Since we use electronic speed controllers that control the percentage of input voltage, the resulting rotor thrust for a given command depends on the battery voltage.
+To improve the trajectory tracking performance of our quadrotors, we compensate for this voltage dependency.
+By performing thrust mapping identifications with different voltages which are controlled by a power supply unit, in Fig.~\ref{fig:volt_dep_thrust_mapping}, we found that they are related by a constant factor to each other.
+Furthermore, by letting a quadrotor hover for an entire battery charge while applying the thrust mapping identified at \SI{12}{\volt}, we found that this factor, which depicts the ratio of the commanded thrust to the actually produced thrust, is a linear function of the battery voltage (see Fig.~\ref{fig:thrust_corr_coeff_est}).
+The collective thrust command that compensates for the varying battery voltage can therefore be obtained as
+%
+\begin{equation}
+	\thrust_{\mathsmaller{\mathrm{cmd,comp}}} = \left( \mapcoeff{v}{1} v_{bat} + \mapcoeff{v}{0} \right) \thrust_{\mathsmaller{\mathrm{cmd}}}
+\end{equation}
+%
+where $v_{bat}$ is the measured battery voltage and $\mapcoeff{v}{1}$ and $\mapcoeff{v}{0}$ are the identified coefficients of the linear function describing the voltage dependent thrust ratio.
+Compared to~\cite{Podhradsky13icuas}, our method only needs to measure the battery voltage not the state of charge of the battery.
+Furthermore, since other influences on the thrust, such as the air density, are also multiplicative, we can identify all of them lumped together with this procedure.
+The benefits of this procedure are illustrated in Fig.~\ref{fig:voltage_comp_validation}.
+
+\begin{figure}[]
+   \centering
+   \includegraphics[width=0.8\textwidth]{img/voltage_dep_thrust_mapping.pdf}
+   \caption{Second order polynomial thrust mapping (c.f.~\eqref{eq:thrust_mapping}) for different voltages between \SI{10.8}{\volt} and \SI{12.6}{\volt} identified on an ATI Mini40 load cell.}
+   \label{fig:volt_dep_thrust_mapping}
+\end{figure}
+
+\begin{figure}[]
+   \centering
+   \includegraphics[width=0.8\textwidth]{img/vbat_dep_function_id.pdf}
+   \caption{Estimation of thrust correction coefficient.}
+   \label{fig:thrust_corr_coeff_est}
+\end{figure}
+
+\begin{figure}[]
+   \centering
+   \includegraphics[width=0.8\textwidth]{img/vbat_dep_validation.pdf}
+   \caption{Validation of voltage compensation.}
+   \label{fig:voltage_comp_validation}
+\end{figure}
 
 \section{Trajectory Generation}
 
 \subsection{Computing Relevant Maxima from a Reference State}
 
 When designing a trajectory, it is often desired to enforce some limits which need to be computed from a desired state.
-This section shows how to compute to most relevant values for quadrotors, namely the speed, the collective thrust, and the norm of the roll and pitch rates (especially relevant for vision-based quadrotors).
+This section shows how to compute to most relevant values for quadrotors, namely the speed, the collective thrust, and the norm of the roll and pitch rates (especially relevant for vision-based quadrotors) as it is implemented in our \href{https://github.com/uzh-rpg/rpg_quadrotor_control/tree/master/trajectory_planning/polynomial_trajectories}{polynomial\_trajectories} library.
 We assume that from a sample point on a given trajectory, we can get the reference state $\bVec{s}_{des}$ containing the position, velocity, acceleration, and jerk.
 %
 \begin{equation}
@@ -1507,6 +1768,57 @@ Equation~\eqref{eq:quatderivative} can be integrated as described in Appendix~\r
 \newpage
 \appendix
 \appendixpage
+
+\section{Singularities in Reference Inputs} \label{sec:singularities}
+
+In this section, we present some practical workarounds for some special cases where the presented math is not valid.
+These workarounds typically only work if we can assume that these special cases only occur for very short durations at a time.
+
+\paragraph{Case - ${\vect{y}{}{\cfr} \times \boldsymbol{\alpha} = \bVec{0}}$}
+
+This case occurs if either $\vect{y}{}{\cfr}$ is aligned with $\boldsymbol{\alpha}$ (defined in~\eqref{eq:x_body_constraint}) or $\boldsymbol{\alpha} = \bVec{0}$.
+In this case, any $\vect{x}{}{\bfr}$ that is perpendicular to $\vect{y}{}{\cfr}$ satisfies the constraint~\eqref{eq:x_body_constraint}.
+To overcome this ambiguity, we compute $\vect{x}{}{\bfr}$ by projecting the estimated body $x$-axis into the $\vect{x}{}{\cfr} - \vect{z}{}{\cfr}$ plane and normalizing it as
+%
+\begin{equation}
+	\vect{x}{}{\bfr} = \frac{\vect{x}{}{\bfr,est} - \left( \vecttrans{x}{}{\bfr,est} \vect{y}{}{\cfr} \right) \vect{y}{}{\cfr}}{\norm{\vect{x}{}{\bfr,est} - \left( \vecttrans{x}{}{\bfr,est} \vect{y}{}{\cfr} \right) \vect{y}{}{\cfr}}} .
+\end{equation}
+%
+If the obtained ${\norm{\vect{x}{}{\bfr,est} - \left( \vecttrans{x}{}{\bfr,est} \vect{y}{}{\cfr} \right) \vect{y}{}{\cfr}} = \bVec{0}}$, we set $\vect{x}{}{\bfr} = \vect{x}{}{\cfr}$.
+Note that this might lead to jumps in the desired orientation.
+By assuming that this special case only occurs for a short duration it might be better to just remember the last desired orientation that was computed before the special case occurred.
+
+\paragraph{Case - ${\boldsymbol{\beta} \times \vect{x}{}{\bfr} = \bVec{0}}$}
+
+This case occurs if either $\vect{x}{}{\bfr}$ is aligned with $\boldsymbol{\beta}$ (defined in~\eqref{eq:y_body_constraint}) or $\boldsymbol{\beta} = \bVec{0}$.
+In this case, any $\vect{y}{}{\bfr}$ that is perpendicular to $\vect{x}{}{\bfr}$ satisfies the constraint~\eqref{eq:y_body_constraint}.
+To overcome this ambiguity, we compute $\vect{y}{}{\bfr}$ by the cross product of the estimated body $z$-axis $\vect{z}{}{\bfr,est}$ and $\vect{x}{}{\bfr}$ and normalizing it as
+%
+\begin{equation}
+	\vect{y}{}{\bfr} = \frac{\vect{z}{}{\bfr,est} \times \vect{x}{}{\bfr}}{\norm{\vect{z}{}{\bfr,est} \times \vect{x}{}{\bfr}}} .
+\end{equation}
+%
+If the obtained ${\norm{\vect{z}{}{\bfr,est} \times \vect{x}{}{\bfr}} = \bVec{0}}$, we set $\vect{y}{}{\bfr} = \vect{y}{}{\cfr}$.
+Note that this might lead to jumps in the desired orientation.
+By assuming that this special case only occurs for a short duration it might be better to just remember the last desired orientation that was computed before the special case occurred.
+
+\paragraph{Case - Inverted Flight where ${\vecttrans{z}{}{\wfr} \boldsymbol{\alpha} < 0}$}
+
+In the case where ${\vecttrans{z}{}{\wfr} \boldsymbol{\alpha} < 0}$, \eqref{eq:x_body_computation} leads to a body $x$-axis $\vect{x}{}{\bfr}$ which has a projection into the $\vect{x}{}{\wfr} - \vect{y}{}{\wfr}$ plane that points into the $-\vect{x}{}{\cfr}$ direction.
+It is still collinear to $\vect{x}{}{\cfr}$ but this causes the actual heading to be off by \SI{180}{\degree} from the reference heading $\vect{\heading}{}{ref}$.
+Enforcing the reference heading during inverted flight by changing the sign of the desired $\vect{x}{}{\bfr}$ axis might lead to a jump in the desired orientation.
+However, to the best of our knowledge, it is not possible to prevent jumps in the orientation for any trajectory.
+For example, when performing a vertical loop where parts of it are flown upside down, we end up with a continuous orientation of the quadrotor for a reference heading $\vect{\heading}{}{ref} = \SI{0}{\degree}$ when allowing the quadrotor to have its actual heading \SI{180}{\degree} off as long as it flies upside down.
+When doing the same with a reference heading $\vect{\heading}{}{ref} = \SI{90}{\degree}$, we do not end up with a continuous orientation of the quadrotor when applying the same method.
+In this particular case, changing the sign of $\vect{x}{}{\bfr}$ when the quadrotor is inverted, would lead to a continuous orientation over the entire loop.
+In summary, the presented computation of the desired orientation is not well suited for inverted flights, which require special considerations.
+
+\paragraph{Case - $\mathcal{A}_2 = 0$ or $\left( \mathcal{B}_1 \mathcal{C}_3 - \mathcal{B}_3 \mathcal{C}_1 \right) = 0$}
+
+The solutions of the body rates~\eqref{eq:omega_x_computation}-\eqref{eq:omega_z_computation} and angular accelerations~\eqref{eq:omega_dot_x_computation}-\eqref{eq:omega_dot_z_computation} are obtained by divisions where the denominator is composed of coefficients as defined in~\eqref{eq:b_1_definition}-\eqref{eq:d_3_definition}.
+These denominators can become zero which makes the body rates and angular accelerations undefined.
+Similarly to $\boldsymbol{\alpha} = \bVec{0}$ and $\boldsymbol{\beta} = \bVec{0}$, this is the case where the quadrotor is executing ballistic trajectories.
+In such cases we set $\bodyrates = \bVec{0}$ and $\dot{\bodyrates} = \bVec{0}$.
 
 \section{Zeroth Order Integration of a Unit Quaternion} \label{sec:appquatint}
 
