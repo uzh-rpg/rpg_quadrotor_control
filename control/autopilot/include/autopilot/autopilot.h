@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <list>
 #include <mutex>
 #include <thread>
 
@@ -12,6 +13,7 @@
 #include <quadrotor_common/control_command.h>
 #include <quadrotor_common/quad_state_estimate.h>
 #include <quadrotor_common/trajectory_point.h>
+#include <quadrotor_common/trajectory.h>
 #include <quadrotor_msgs/ControlCommand.h>
 #include <quadrotor_msgs/LowLevelFeedback.h>
 #include <quadrotor_msgs/Trajectory.h>
@@ -79,6 +81,10 @@ private:
       const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand followReference(
       const quadrotor_common::QuadStateEstimate& state_estimate);
+  quadrotor_common::ControlCommand executeTrajectory(
+      const quadrotor_common::QuadStateEstimate& state_estimate,
+      ros::Duration* trajectory_execution_left_duration,
+      int* trajectories_left_in_queues);
 
   void setAutoPilotState(const States& new_state);
   void setAutoPilotStateForced(const States& new_state);
@@ -167,6 +173,10 @@ private:
   geometry_msgs::PoseStamped requested_go_to_pose_;
   bool received_go_to_pose_command_;
   std::atomic_bool stop_go_to_pose_thread_;
+
+  // Trajectory execution variables
+  std::list<quadrotor_common::Trajectory> trajectory_queue_;
+  ros::Time time_start_trajectory_execution_;
 
   // Watchdog
   std::thread watchdog_thread_;

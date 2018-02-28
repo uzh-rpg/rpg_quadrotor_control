@@ -3,7 +3,6 @@
 #include <quadrotor_common/geometry_eigen_conversions.h>
 #include <quadrotor_common/math_common.h>
 #include <quadrotor_common/parameter_helper.h>
-#include <quadrotor_common/trajectory.h>
 #include <quadrotor_msgs/AutopilotFeedback.h>
 #include <trajectory_generation_helper/heading_trajectory_helper.h>
 #include <trajectory_generation_helper/polynomial_trajectory_helper.h>
@@ -12,21 +11,15 @@ namespace autopilot
 {
 
 AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
-    nh_(nh), pnh_(pnh), state_predictor_(nh_, pnh_), reference_state_(),
-    received_state_est_(), desired_velocity_command_(),
-    reference_state_input_(), received_low_level_feedback_(),
-    autopilot_state_(States::OFF), state_before_rc_manual_flight_(States::OFF),
-    state_estimate_available_(false), time_of_switch_to_current_state_(),
-    first_time_in_new_state_(true), initial_start_position_(),
-    initial_land_position_(), time_to_ramp_down_(false),
-    time_started_ramping_down_(), initial_drop_thrust_(0.0),
-    time_last_velocity_command_handled_(),
-    time_last_reference_state_input_received_(),
-    desired_state_after_breaking_(States::HOVER), requested_go_to_pose_(),
-    received_go_to_pose_command_(false), stop_go_to_pose_thread_(false),
-    stop_watchdog_thread_(false), time_last_state_estimate_received_(),
-    time_started_emergency_landing_(), destructor_invoked_(false),
-    time_last_autopilot_feedback_published_()
+    nh_(nh), pnh_(pnh), state_predictor_(nh_, pnh_), reference_state_(), received_state_est_(), desired_velocity_command_(), reference_state_input_(), received_low_level_feedback_(), autopilot_state_(
+        States::OFF), state_before_rc_manual_flight_(States::OFF), state_estimate_available_(
+        false), time_of_switch_to_current_state_(), first_time_in_new_state_(
+        true), initial_start_position_(), initial_land_position_(), time_to_ramp_down_(
+        false), time_started_ramping_down_(), initial_drop_thrust_(0.0), time_last_velocity_command_handled_(), time_last_reference_state_input_received_(), desired_state_after_breaking_(
+        States::HOVER), requested_go_to_pose_(), received_go_to_pose_command_(
+        false), stop_go_to_pose_thread_(false), trajectory_queue_(), time_start_trajectory_execution_(), stop_watchdog_thread_(
+        false), time_last_state_estimate_received_(), time_started_emergency_landing_(), destructor_invoked_(
+        false), time_last_autopilot_feedback_published_()
 
 {
   if (!loadParameters())
@@ -166,7 +159,6 @@ void AutoPilot::watchdogThread()
 }
 
 // Planning thread for planning GO_TO_POSE actions
-// -> when done call trajectoryCallback with computed trajectory
 void AutoPilot::goToPoseThread()
 {
   ros::Rate idle_rate(kGoToPoseIdleFrequency_);
@@ -210,15 +202,30 @@ void AutoPilot::goToPoseThread()
       trajectory_generation_helper::heading::addConstantHeadingRate(
           start_state.heading, end_state.heading, &go_to_pose_traj);
 
-      quadrotor_msgs::Trajectory::Ptr go_to_pose_traj_ptr(
-                new quadrotor_msgs::Trajectory);
-      *go_to_pose_traj_ptr = go_to_pose_traj.toRosMessage();
+      {
+        // Push computed trajectory into the queue and set the autopilot
+        // to the TRAJECTORY_CONTROL state
+        std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+        if (autopilot_state_ == States::GO_TO_POSE)
+        {
+          trajectory_queue_.clear();
+          trajectory_queue_.push_back(go_to_pose_traj);
+          setAutoPilotState(States::TRAJECTORY_CONTROL);
+        }
+        else
+        {
+          ROS_WARN("[%s] Autopilot state switched to another state from "
+                   "GO_TO_POSE while computing a go to pose trajectory. "
+                   "Therefore, trajectory will not be executed.",
+                   pnh_.getNamespace().c_str());
+        }
+      }
 
       received_go_to_pose_command_ = false;
-      trajectoryCallback(go_to_pose_traj_ptr);
     }
 
-    // Mutex is unlocked because it goes out of scope here
+    // Go to pose mutex is unlocked because it goes out of scope here
   }
 }
 
@@ -308,10 +315,9 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       control_cmd = followReference(predicted_state);
       break;
     case States::TRAJECTORY_CONTROL:
-      // TODO: Set trajectory_execution_left_duration
-      // TODO: Set trajectories_left_in_queues
-      // NOTE: This function also needs to set the reference_state_ variable
-      // according to the currently used trajectory sample
+      control_cmd = executeTrajectory(predicted_state,
+                                      &trajectory_execution_left_duration,
+                                      &trajectories_left_in_queues);
       break;
     case States::COMMAND_FEEDTHROUGH:
       // Do nothing here, command is being published in the command input
@@ -400,13 +406,19 @@ void AutoPilot::poseCommandCallback(
   std::lock_guard<std::mutex> main_lock(main_mutex_);
 
   // Idea: A trajectory is planned to the desired pose in a separate
-  // thread. Once the thread is done it calls the trajectoryCallback with
-  // the computed trajectory
+  // thread. Once the thread is done it pushes the computed trajectory into the
+  // trajectory queue and switches to TRAJECTORY_CONTROL mode
   if (autopilot_state_ == States::HOVER)
   {
     setAutoPilotState(States::GO_TO_POSE);
     requested_go_to_pose_ = *msg;
     received_go_to_pose_command_ = true;
+  }
+  else
+  {
+    ROS_WARN("[%s] Will not execute go to pose action since autopilot is "
+             "not in HOVER",
+             pnh_.getNamespace().c_str());
   }
 
   // Mutexes are unlocked because they go out of scope here
@@ -492,9 +504,66 @@ void AutoPilot::trajectoryCallback(
 
   std::lock_guard<std::mutex> main_lock(main_mutex_);
 
-  // TODO: Idea: trajectories are being pushed into a queue and consecutively
+  // Idea: trajectories are being pushed into a queue and consecutively
   // executed if there are no jumps in the beginning and between them
-  // Only allowed from HOVER state
+
+  if (autopilot_state_ != States::HOVER
+      && autopilot_state_ != States::TRAJECTORY_CONTROL)
+  {
+    return;
+  }
+  if (msg->type == msg->UNDEFINED || msg->points.size() == 0)
+  {
+    ROS_WARN("[%s] Received invalid trajectory, will ignore trajectory",
+             pnh_.getNamespace().c_str());
+    return;
+  }
+  if (trajectory_queue_.empty())
+  {
+    // Before executing the first trajectory segment, the autopilot must be in
+    // HOVER state
+    if (autopilot_state_ != States::HOVER)
+    {
+      ROS_WARN("[%s] Received first trajectory but autopilot is not in HOVER, "
+               "will ignore trajectory",
+               pnh_.getNamespace().c_str());
+      return;
+    }
+    // Check if there is a jump in the beginning of the trajectory
+    if ((reference_state_.position
+        - quadrotor_common::geometryToEigen(
+            msg->points[0].pose.position)).norm()
+        > kPositionJumpTolerance_)
+    {
+      ROS_WARN(
+          "[%s] First received trajectory segment does not start at current "
+          "position, will ignore trajectory",
+          pnh_.getNamespace().c_str());
+      return;
+    }
+  }
+  else
+  {
+    // Check that there is no jump from the last trajectory in the queue to the
+    // newly received one
+    if ((trajectory_queue_.back().points.back().position
+        - quadrotor_common::geometryToEigen(
+            msg->points.front().pose.position)).norm()
+        > kPositionJumpTolerance_)
+    {
+      ROS_WARN("[%s] Received trajectory has a too large jump from the last "
+               "trajectory in the queue, will ignore trajectory",
+               pnh_.getNamespace().c_str());
+      return;
+    }
+  }
+
+  trajectory_queue_.push_back(quadrotor_common::Trajectory(*msg));
+
+  if (autopilot_state_ != States::TRAJECTORY_CONTROL)
+  {
+    setAutoPilotState(States::TRAJECTORY_CONTROL);
+  }
 
   // Mutex is unlocked because it goes out of scope here
 }
@@ -568,8 +637,9 @@ void AutoPilot::startCallback(const std_msgs::Empty::ConstPtr& msg)
   }
   else
   {
-    ROS_WARN("[%s] Autopilot is not OFF, will not switch to START",
-             pnh_.getNamespace().c_str());
+    ROS_WARN_THROTTLE(1.0,
+                      "[%s] Autopilot is not OFF, will not switch to START",
+                      pnh_.getNamespace().c_str());
   }
 
   // Mutex is unlocked because it goes out of scope here
@@ -774,8 +844,6 @@ quadrotor_common::ControlCommand AutoPilot::land(
 quadrotor_common::ControlCommand AutoPilot::breakVelocity(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
-  quadrotor_common::ControlCommand command;
-
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
@@ -797,8 +865,9 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
     setAutoPilotStateForced(desired_state_after_breaking_);
   }
 
-  command = base_controller_.run(state_estimate, reference_state_,
-                                 base_controller_params_);
+  const quadrotor_common::ControlCommand command = base_controller_.run(
+      state_estimate, reference_state_, base_controller_params_);
+
   return command;
 }
 
@@ -827,8 +896,6 @@ quadrotor_common::ControlCommand AutoPilot::waitForGoToPoseAction(
 quadrotor_common::ControlCommand AutoPilot::velocityControl(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
-  quadrotor_common::ControlCommand command;
-
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
@@ -876,8 +943,8 @@ quadrotor_common::ControlCommand AutoPilot::velocityControl(
 
   time_last_velocity_command_handled_ = ros::Time::now();
 
-  command = base_controller_.run(state_estimate, reference_state_,
-                                 base_controller_params_);
+  const quadrotor_common::ControlCommand command = base_controller_.run(
+      state_estimate, reference_state_, base_controller_params_);
 
   return command;
 }
@@ -885,8 +952,6 @@ quadrotor_common::ControlCommand AutoPilot::velocityControl(
 quadrotor_common::ControlCommand AutoPilot::followReference(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
-  quadrotor_common::ControlCommand command;
-
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
@@ -898,8 +963,75 @@ quadrotor_common::ControlCommand AutoPilot::followReference(
     setAutoPilotState(States::HOVER);
   }
 
-  command = base_controller_.run(state_estimate, reference_state_,
-                                 base_controller_params_);
+  const quadrotor_common::ControlCommand command = base_controller_.run(
+      state_estimate, reference_state_, base_controller_params_);
+
+  return command;
+}
+
+quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
+    const quadrotor_common::QuadStateEstimate& state_estimate,
+    ros::Duration* trajectory_execution_left_duration,
+    int* trajectories_left_in_queues)
+{
+  const ros::Time time_now = ros::Time::now();
+  if (first_time_in_new_state_)
+  {
+    first_time_in_new_state_ = false;
+    time_start_trajectory_execution_ = time_now;
+  }
+
+  if (trajectory_queue_.empty())
+  {
+    ROS_ERROR(
+        "[%s] Trajectory queue was unexpectedly emptied, going back to HOVER",
+        pnh_.getNamespace().c_str());
+    *trajectory_execution_left_duration = ros::Duration(0.0);
+    *trajectories_left_in_queues = 0;
+    setAutoPilotState(States::HOVER);
+    return base_controller_.run(state_estimate, reference_state_,
+                                base_controller_params_);
+  }
+
+  if ((time_now - time_start_trajectory_execution_)
+      > trajectory_queue_.front().points.back().time_from_start)
+  {
+    if (trajectory_queue_.size() == 1)
+    {
+      // This was the last trajectory in the queue -> go back to hover
+      reference_state_ = trajectory_queue_.back().points.back();
+      *trajectory_execution_left_duration = ros::Duration(0.0);
+      *trajectories_left_in_queues = 0;
+      setAutoPilotState(States::HOVER);
+      return base_controller_.run(state_estimate, reference_state_,
+                                  base_controller_params_);
+    }
+    else
+    {
+      time_start_trajectory_execution_ +=
+          trajectory_queue_.front().points.back().time_from_start;
+      trajectory_queue_.pop_front();
+    }
+  }
+
+  const ros::Duration dt = time_now - time_start_trajectory_execution_;
+  reference_state_ = trajectory_queue_.front().getStateAtTime(dt);
+  *trajectory_execution_left_duration =
+      trajectory_queue_.front().points.back().time_from_start
+          - reference_state_.time_from_start;
+  if (trajectory_queue_.size() > 1)
+  {
+    std::list<quadrotor_common::Trajectory>::const_iterator it;
+    for (it = std::next(trajectory_queue_.begin(), 1);
+        it != trajectory_queue_.end(); it++)
+    {
+      *trajectory_execution_left_duration += it->points.back().time_from_start;
+    }
+  }
+  *trajectories_left_in_queues = trajectory_queue_.size();
+
+  const quadrotor_common::ControlCommand command = base_controller_.run(
+      state_estimate, reference_state_, base_controller_params_);
 
   return command;
 }
@@ -914,15 +1046,14 @@ void AutoPilot::setAutoPilotState(const States& new_state)
       && new_state != States::COMMAND_FEEDTHROUGH
       && new_state != States::RC_MANUAL)
   {
-    autopilot_state_ = States::EMERGENCY_LAND;
-    time_started_emergency_landing_ = ros::Time::now();
+    setAutoPilotStateForced(States::EMERGENCY_LAND);
     return;
   }
 
   if (new_state == States::HOVER || new_state == States::LAND)
   {
     desired_state_after_breaking_ = new_state;
-    autopilot_state_ = States::BREAKING;
+    setAutoPilotStateForced(States::BREAKING);
     return;
   }
   if (new_state == States::RC_MANUAL)
@@ -941,7 +1072,7 @@ void AutoPilot::setAutoPilotState(const States& new_state)
     time_started_emergency_landing_ = ros::Time::now();
   }
 
-  autopilot_state_ = new_state;
+  setAutoPilotStateForced(new_state);
 }
 
 void AutoPilot::setAutoPilotStateForced(const States& new_state)
@@ -952,6 +1083,10 @@ void AutoPilot::setAutoPilotStateForced(const States& new_state)
   if (new_state == States::EMERGENCY_LAND)
   {
     time_started_emergency_landing_ = ros::Time::now();
+  }
+  if (new_state != States::TRAJECTORY_CONTROL && !trajectory_queue_.empty())
+  {
+    trajectory_queue_.clear();
   }
 }
 
