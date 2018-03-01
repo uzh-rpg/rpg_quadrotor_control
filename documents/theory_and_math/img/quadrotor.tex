@@ -1,0 +1,28 @@
+\documentclass[crop]{standalone}
+
+\usepackage{float}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{textcomp}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{tikz-3dplot}
+\usepackage{relsize}
+
+\newcommand{\bVec}[1]{\mathbf{#1}}
+
+\newcommand{\vect}[3]{{_{\mathsmaller{\mathrm{#2}}}\mathbf{#1}_{\mathsmaller{\mathrm{#3}}}}} % vector: _{#2}_{#1}_{#3}
+
+\newcommand{\wfr}[0]{\ensuremath{W}} % world frame
+\newcommand{\bfr}[0]{\ensuremath{B}} % body frame
+\newcommand{\cfr}[0]{\ensuremath{C}} % C-frame
+
+\newcommand{\heading}[0]{\psi}
+
+\begin{document}
+
+\resizebox{7.8cm}{!}{
+    \input{quadrotor.tikz}
+}
+
+\end{document}
