@@ -21,7 +21,8 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     time_started_ramping_down_(), initial_drop_thrust_(0.0),
     time_last_velocity_command_handled_(),
     time_last_reference_state_input_received_(),
-    desired_state_after_breaking_(States::HOVER), requested_go_to_pose_(),
+    desired_state_after_breaking_(States::HOVER),
+    state_before_emergency_landing_(States::OFF), requested_go_to_pose_(),
     received_go_to_pose_command_(false), stop_go_to_pose_thread_(false),
     trajectory_queue_(), time_start_trajectory_execution_(),
     stop_watchdog_thread_(false), time_last_state_estimate_received_(),
@@ -132,12 +133,17 @@ void AutoPilot::watchdogThread()
 
     const ros::Time time_now = ros::Time::now();
 
-    if (autopilot_state_ != States::OFF
-        && autopilot_state_ != States::EMERGENCY_LAND
+    if (state_estimate_available_
         && time_now - time_last_state_estimate_received_
             > ros::Duration(state_estimate_timeout_))
     {
+      ROS_ERROR("[%s] Lost state estimate", pnh_.getNamespace().c_str());
       state_estimate_available_ = false;
+    }
+
+    if (!state_estimate_available_ && autopilot_state_ != States::OFF
+        && autopilot_state_ != States::EMERGENCY_LAND)
+    {
       setAutoPilotStateForced(States::EMERGENCY_LAND);
     }
 
@@ -159,6 +165,17 @@ void AutoPilot::watchdogThread()
       control_cmd.expected_execution_time = control_cmd.timestamp
           + ros::Duration(control_command_delay_);
       publishControlCommand(control_cmd);
+
+      // Publish autopilot feedback throttled down to a maximum frequency
+      if ((ros::Time::now() - time_last_autopilot_feedback_published_)
+          >= ros::Duration(1.0 / kMaxAutopilotFeedbackPublishFrequency_))
+      {
+        publishAutopilotFeedback(autopilot_state_,
+                                 ros::Duration(control_command_delay_),
+                                 ros::Duration(0.0), ros::Duration(0.0), 0,
+                                 received_low_level_feedback_, reference_state_,
+                                 quadrotor_common::QuadStateEstimate());
+      }
     }
 
     // Mutex is unlocked because it goes out of scope here
@@ -324,8 +341,17 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       if (state_estimate_available_)
       {
         // If we end up here it means that we have regained a valid state
-        // estimate, so lets go back to HOVER state
-        setAutoPilotState(States::HOVER);
+        // estimate, so lets go back to HOVER state unless we were about
+        // to land before the emergency landing happened
+        ROS_INFO("[%s] Regained state estimate", pnh_.getNamespace().c_str());
+        if (state_before_emergency_landing_ == States::LAND)
+        {
+          setAutoPilotState(States::LAND);
+        }
+        else
+        {
+          setAutoPilotState(States::HOVER);
+        }
         control_cmd = hover(predicted_state);
       }
       break;
@@ -513,6 +539,16 @@ void AutoPilot::referenceStateCallback(
                "from current position, will not go to REFERENCE_CONTROL mode.",
                pnh_.getNamespace().c_str(), kPositionJumpTolerance_);
     }
+  }
+  else if ((reference_state_.position
+      - quadrotor_common::geometryToEigen(msg->pose.position)).norm()
+      < kPositionJumpTolerance_)
+  {
+    ROS_WARN_THROTTLE(
+        0.5, "[%s] Received reference state that is more than %fm away "
+        "from current reference position and is therefore rejected.",
+        pnh_.getNamespace().c_str(), kPositionJumpTolerance_);
+    return;
   }
 
   time_last_reference_state_input_received_ = ros::Time::now();
@@ -1083,9 +1119,6 @@ quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
 
 void AutoPilot::setAutoPilotState(const States& new_state)
 {
-  time_of_switch_to_current_state_ = ros::Time::now();
-  first_time_in_new_state_ = true;
-
   if (!state_estimate_available_ && new_state != States::OFF
       && new_state != States::EMERGENCY_LAND
       && new_state != States::COMMAND_FEEDTHROUGH
@@ -1122,17 +1155,69 @@ void AutoPilot::setAutoPilotState(const States& new_state)
 
 void AutoPilot::setAutoPilotStateForced(const States& new_state)
 {
-  time_of_switch_to_current_state_ = ros::Time::now();
-  first_time_in_new_state_ = true;
-  autopilot_state_ = new_state;
+  const ros::Time time_now = ros::Time::now();
   if (new_state == States::EMERGENCY_LAND)
   {
-    time_started_emergency_landing_ = ros::Time::now();
+    time_started_emergency_landing_ = time_now;
+    if (autopilot_state_ == States::BREAKING)
+    {
+      state_before_emergency_landing_ = desired_state_after_breaking_;
+    }
+    else
+    {
+      state_before_emergency_landing_ = autopilot_state_;
+    }
   }
   if (new_state != States::TRAJECTORY_CONTROL && !trajectory_queue_.empty())
   {
     trajectory_queue_.clear();
   }
+  time_of_switch_to_current_state_ = time_now;
+  first_time_in_new_state_ = true;
+  autopilot_state_ = new_state;
+
+  std::string state_name;
+  switch (autopilot_state_)
+  {
+    case States::OFF:
+      state_name = "OFF";
+      break;
+    case States::START:
+      state_name = "START";
+      break;
+    case States::HOVER:
+      state_name = "HOVER";
+      break;
+    case States::LAND:
+      state_name = "LAND";
+      break;
+    case States::EMERGENCY_LAND:
+      state_name = "EMERGENCY_LAND";
+      break;
+    case States::BREAKING:
+      state_name = "BREAKING";
+      break;
+    case States::GO_TO_POSE:
+      state_name = "GO_TO_POSE";
+      break;
+    case States::VELOCITY_CONTROL:
+      state_name = "VELOCITY_CONTROL";
+      break;
+    case States::REFERENCE_CONTROL:
+      state_name = "REFERENCE_CONTROL";
+      break;
+    case States::TRAJECTORY_CONTROL:
+      state_name = "TRAJECTORY_CONTROL";
+      break;
+    case States::COMMAND_FEEDTHROUGH:
+      state_name = "COMMAND_FEEDTHROUGH";
+      break;
+    case States::RC_MANUAL:
+      state_name = "RC_MANUAL";
+      break;
+  }
+  ROS_INFO("[%s] Switched to %s state", pnh_.getNamespace().c_str(),
+           state_name.c_str());
 }
 
 double AutoPilot::timeInCurrentState() const
