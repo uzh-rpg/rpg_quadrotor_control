@@ -91,15 +91,7 @@
 \newcommand{\jerk}[0]{\bVec{j}} % jerk
 \newcommand{\snap}[0]{\bVec{s}} % snap
 
-\newcommand{\bomega}[0]{\boldsymbol{\omega}}
 \newcommand{\quatrot}[0]{\boldsymbol{\Lambda}}
-\newcommand{\magvec}[0]{\mathbf{h}}
-\newcommand{\posRef}{\ensuremath{\pos_{ref}}}
-\newcommand{\velRef}{\ensuremath{\bVec{v}_{ref}}}
-\newcommand{\accRef}{\ensuremath{\bVec{a}_{ref}}}
-\newcommand{\accDes}{\ensuremath{\bVec{a}_{des}}}
-\newcommand{\posEst}{\ensuremath{\hat{\pos}}}
-\newcommand{\velEst}{\ensuremath{\hat{\bVec{v}}}}
 
 \newcommand{\qx}[0]{\ensuremath{q_x}}
 \newcommand{\qy}[0]{\ensuremath{q_y}}
@@ -130,8 +122,6 @@
 \newcommand{\bfr}[0]{\ensuremath{B}} % body frame
 \newcommand{\cfr}[0]{\ensuremath{C}} % C-frame
 
-
-
 \newcommand{\gravacc}[0]{\ensuremath{g}} % gravitational acceleration
 \newcommand{\gravityvec}[0]{\bVec{\gravacc}} % gravity vector
 
@@ -158,6 +148,10 @@
 \newcommand{\mapcoeff}[2]{k_{#2}^{#1}}
 \newcommand{\motdyn}[0]{\alpha_{\mathsmaller{\mathrm{mot}}}}
 
+\newcommand{\klqr}[0]{\ensuremath{\bVec{K}_{lqr}}}
+\newcommand{\lqrstate}[0]{\ensuremath{\bVec{s}}}
+\newcommand{\lqrinput}[0]{\ensuremath{\bVec{u}}}
+
 \newcommand{\dragcoeff}[1]{\ensuremath{d}_{\!\mathsmaller{\mathrm{#1}}}} % rotor drag coefficient
 \newcommand{\dragmat}[0]{\bVec{D}} % rotor drag matrix
 \newcommand{\amat}[0]{\bVec{A}} % 
@@ -165,10 +159,6 @@
 
 \newcommand{\yawRef}[0]{\heading_{\mathsmaller{\mathrm{ref}}}} % 
 \newcommand{\uvec}[0]{\bVec{e}} % symbol for unit vector
-
-\newcommand{\abserr}[0]{\ensuremath{E_a}} % Absolut tracking error
-\newcommand{\relerr}[0]{\ensuremath{E_r}} % Relative tracking error
-\newcommand{\poserr}[0]{\ensuremath{E_p}} % Position error
 
 % Title page
 \title{Theory and Math Behind RPG Quadrotor Control}
@@ -336,7 +326,7 @@ Note that this dynamical model of a quadrotor is a generalization of the common 
 \section{Control} \label{sec:control}
 
 In this section, we present our proposed quadrotor control scheme, which is split into a high-level part for position control and a low-level part for attitude control.
-The high-level position control outputs the desired orientation, desired body rates, and the desired angular accelerations.
+The high-level position control outputs the desired orientation, desired collective thrust command, desired body rates, and the desired angular accelerations.
 These desired values are then tracked by the low-level attitude controller, which directly commands the four motors.
 This controller is implemented in our open-source software on \href{https://github.com/uzh-rpg/rpg_quadrotor_control}{https://github.com/uzh-rpg/rpg\_quadrotor\_control}
 
@@ -386,7 +376,7 @@ If $\vect{y}{}{\cfr}$ is collinear to $\boldsymbol{\alpha}$ or $\boldsymbol{\bet
 The collective reference thrust can then be computed as
 %
 \begin{equation}
-	\vect{\thrust}{}{} = \vecttrans{z}{}{\bfr} \left( \acc + \gravacc \vect{z}{}{\wfr} + \dragcoeff{z} \vel \right) .
+	\thrust = \vecttrans{z}{}{\bfr} \left( \acc + \gravacc \vect{z}{}{\wfr} + \dragcoeff{z} \vel \right) .
 \end{equation}
 %
 Then the collective thrust input can be computed as a function of $\thrust$, $\ori{}$, and the flat outputs, as
@@ -473,7 +463,7 @@ More details of these derivations can be found in our technical report~\cite{Fae
 
 \subsubsection{High-Level Control Law}
 
-In our high-level position controller, which is adapted from~\cite{Faessler15icra}, we compute the desired orientation $\ori{des}$, collective thrust $\vect{\thrust}{}{des}$, body rates $\vect{\bodyrates}{}{des}$, angular accelerations $\vectdot{\bodyrates}{}{des}$, and angular jerk $\vectddot{\bodyrates}{}{des}$, which are then applied by the low-level controller described in the next section.
+In our high-level position controller, which is adapted from~\cite{Faessler15icra}, we compute the desired orientation $\ori{des}$, collective thrust command $\thrust_{\mathsmaller{\mathrm{cmd}}}$, body rates $\vect{\bodyrates}{}{des}$, angular accelerations $\vectdot{\bodyrates}{}{des}$, and angular jerk $\vectddot{\bodyrates}{}{des}$, which are then applied by the low-level controller described in the next section.
 As a first step in the position controller, we compute the desired acceleration of the quadrotor's body as
 %
 \begin{align}
@@ -529,132 +519,128 @@ Finally, we compute the desired body rates, the angular accelerations, and the a
 
 \subsection{Low-Level Control}
 
-This section introduces the low-level which we implemented in our \href{https://github.com/uzh-rpg/rpg_quadrotor_control/tree/master/simulation/rpg_rotors_interface}{rpg\_rotors\_interface} except for the attitude controller which is implemented in \href{https://github.com/uzh-rpg/rpg_quadrotor_control/tree/master/control/position_controller}{position\_controller}.
+The low-level controller is responsible for tracking the desired desired orientation, desired body rates, and the desired angular accelerations as computed by the high-level controller.
+This can be achieved by controllers such as presented in~\cite{Lee10cdc} or~\cite{Mellinger11icra} but they are often not practical due to the unavailability of an attitude estimate in the low-level control loop.
+Therefore, we split the low-level controller into an attitude part that runs with the high-level controller and a separate body-rate controller which does not require an attitude estimate.
+This section introduces the low-level control which we implemented in our \href{https://github.com/uzh-rpg/rpg_quadrotor_control/tree/master/simulation/rpg_rotors_interface}{rpg\_rotors\_interface} except for the attitude controller which is implemented in \href{https://github.com/uzh-rpg/rpg_quadrotor_control/tree/master/control/position_controller}{position\_controller}.
 
 \subsubsection{Attitude Control}
 
-TODO: Similar to \cite{Brescianini13tr}, as implemented in position controller
-
-Replace the following
-\subsubsection*{Desired Roll and Pitch Rates} \label{sec:roll_pitch_control}
-
-From the current attitude estimate and the desired acceleration, we can compute the current and the desired body $z$ axis, respectively, as
-%
-\begin{align}
-	\hat{\bVec{e}}_{z}^{\bfr} &= \hat{\bVec{q}} \odot [0 \; 0 \; 1]^{\top}, \\
-	\bVec{e}_{z,des}^{\bfr} &= \frac{\accDes{}}{\norm{\accDes{}}}.
-\end{align}
-%
-Now, we design an error quaternion that describes the necessary rotation to align these two vectors.
-To do so, we compute the angle $\alpha$ between the two vectors and a normal vector $\bVec{n}$ to both of them:
-%
-\begin{align}
-	\alpha &= \arccos(\hat{\bVec{e}}_{z}^{\bfr} \cdot \bVec{e}_{z,des}^{\bfr}), \\
-	\bVec{n} &= \frac{\hat{\bVec{e}}_{z}^{\bfr} \times \bVec{e}_{z,des}^{\bfr}}
-					{\norm{\hat{\bVec{e}}_{z}^{\bfr} \times \bVec{e}_{z,des}^{\bfr}}},
-\end{align}
-%
-where $\bVec{n}$, $\alpha$ are the rotation axis and angle of the error quaternion.
-Since we want to apply this rotation with respect to the current body orientation, we have to transform the rotation axis $\bVec{n}$ into body coordinates using the current attitude estimate $\hat{\bVec{q}}$
-%
-\begin{equation}
-	\prescript{}{\bfr}{\bVec{n}} = \hat{\bVec{q}}^{-1} \odot \bVec{n}.
-\end{equation}
-%
-The error quaternion can then be constructed as
-%
-\begin{equation}	
-	\bVec{q}_{e,rp} = \begin{bmatrix} 
-			\cos(\frac{\alpha}{2}) \\  
-			\prescript{}{\bfr}{\bVec{n}} \sin(\frac{\alpha}{2})
-		\end{bmatrix}.
-\end{equation}
-%
-Note that if $\alpha = 0$, the rotation axis is undetermined and we set the error quaternion $\bVec{q}_{e,rp}$ to be the identity directly.
-Also note that by construction, the $z$ component of $\bVec{q}_{e,rp}$ is always zero, which assures that no rotation around the body $z$ axis is necessary to align $\hat{\bVec{e}}_{z}^{\bfr}$ with $\bVec{e}_{z,des}^{\bfr}$.
-From the error quaternion $\bVec{q}_{e,rp}$, we can then compute the desired roll and pitch rates with the following control law:
-%
-\begin{equation}
-	\begin{bmatrix} p \\ q \end{bmatrix}_{des} = \begin{cases} 2 \cdot p_{rp} \cdot \bVec{q}_{e,rp}^{(x,y)} &\mbox{if } \bVec{q}_{e,rp}^{(w)} \geq 0 \\
-						- 2 \cdot p_{rp} \cdot \bVec{q}_{e,rp}^{(x,y)} &\mbox{if } \bVec{q}_{e,rp}^{(w)} < 0 
-					\end{cases}.
-\end{equation}
-%
+Our attitude controller is based on quaternion representations of the attitude and is similar to \cite{Brescianini13tr}.
 It can be shown that this control law is globally asymptotically stable and its discrete implementation is robust to measurement noise~\cite{Brescianini13tr, Mayhew11ac}.
+This controller is implemented in our \href{https://github.com/uzh-rpg/rpg_quadrotor_control/tree/master/control/position_controller}{position\_controller}.
 
-\subsubsection*{Desired Yaw Rate} \label{sec:yaw_control}
-
-To compute the desired yaw rate $r_{des}$, we look at the heading error that remains after aligning $\hat{\bVec{e}}_{z}^{\bfr}$ with $\bVec{e}_{z,des}^{\bfr}$ with the above control law.
-To do so, we first compute the full desired attitude.
-For this, we make use of an intermediate coordinate system $C$, which is the world frame rotated around its $z$ axis by the desired heading $\yawRef$ as illustrated in Fig.~\ref{fig:att_cont_frames}.
-The $x$ and $y$ axes of the coordinate system $C$ are defined as
-%
-\begin{align}
-	\bVec{e}_{x}^{C} &= [\cos(\yawRef) \; \sin(\yawRef) \; 0]^{\top}, \\
-	\bVec{e}_{y}^{C} &= [-\sin(\yawRef) \; \cos(\yawRef) \; 0]^{\top}.
-\end{align}
-%
-The goal of rotating around the quadrotor's $z$ axis is to align the projection of its $x$ axis onto the world $x-y$ plane with $\bVec{e}_{x}^{C}$.
-This forces the desired body $x$ axis $\bVec{e}_{x,des}^{\bfr}$ to lie in a plane spanned by $\bVec{e}_{x}^{C}$ and $\bVec{e}_{x}^{\wfr}$, which is fulfilled by
+We first compute the attitude error as an error quaternion as
 %
 \begin{equation}
-	\bVec{e}_{x,des}^{\bfr} = \frac{\bVec{e}_{y}^{C} \times \bVec{e}_{z,des}^{\bfr}}
-								{\norm{\bVec{e}_{y}^{C} \times \bVec{e}_{z,des}^{\bfr}}}.
+	\vect{q}{}{e} = \vectss{q}{}{}{-1} \otimes \vect{q}{}{des} .
 \end{equation}
 %
-Note that if this cross product is zero, there are infinitely many rotations around the desired body $z$ axis that achieve the desired heading.
-Therefore, in that case, we apply a desired yaw rate $r = 0$.
-\newline\newline
-If the desired body $z$ axis has a negative $z$ component (i.e. $\bVec{e}_{z,des}^{\bfr}$ is pointing downwards), the projection of the computed desired body $x$ axis into the horizontal plane will point in the opposite direction of $\bVec{e}_{x}^{C}$, therefore we use the negation of it.
-From $\bVec{e}_{x,des}^{\bfr}$ and $\bVec{e}_{z,des}^{\bfr}$, we can then compute $\bVec{e}_{y,des}^{\bfr}$ as
+From the elements of the error quaternion we can then directly compute the feedback body rates as
 %
 \begin{equation}
-	\bVec{e}_{y,des}^{\bfr} = \frac{\bVec{e}_{z,des}^{\bfr} \times \bVec{e}_{x,des}^{\bfr}}
-								{\norm{\bVec{e}_{z,des}^{\bfr} \times \bVec{e}_{x,des}^{\bfr}}}.
+	\vect{\bodyrates}{}{fb} = \begin{cases} 
+		2 \cdot \vect{K}{}{att} \cdot \vect{q}{}{e} &\mbox{if } \vect{q}{}{e,w} \geq 0 \\
+		- 2 \cdot \vect{K}{}{att} \cdot \vect{q}{}{e} &\mbox{if } \vect{q}{}{e,w} < 0 \end{cases}
 \end{equation}
 %
-Now, the full desired attitude $\bVec{q}_{des}$ can be built from the three desired body axes $\bVec{e}_{x,des}^{\bfr}$, $\bVec{e}_{y,des}^{\bfr}$ and $\bVec{e}_{z,des}^{\bfr}$.
-Our definition of the heading has the advantage of being meaningful for any orientation of the quadrotor, which is not the case, for instance, when using a definition based on Euler angles.
-From this, we can then compute an error quaternion that describes the necessary rotation to achieve the full desired attitude after rotating by $\bVec{q}_{e,rp}$ as
+where the error quaternion $\vect{q}{}{e}$ is defined according to the convention in~\eqref{eq:quat_convention} and $\vect{q}{}{e,w}$ is its real part and
 %
 \begin{equation}
-	\bVec{q}_{e,y} = (\hat{\bVec{q}} \otimes \bVec{q}_{e,rp})^{-1} \otimes \bVec{q}_{des}.
+	\vect{K}{}{att} = \begin{bmatrix}
+		0 & k_{rp} & 0 & 0 \\
+		0 & 0 & k_{rp} & 0 \\
+		0 & 0 & 0 & k_{y} \\
+	\end{bmatrix}
 \end{equation}
 %
-Note that the $x$ and $y$ components of $\bVec{q}_{e,y}$ are always zero.
-Similarly to the desired roll and pitch rate, we can now compute the desired yaw rate from $\bVec{q}_{e,y}^{(z)}$ with a gain $p_{yaw}$ as
-%
-\begin{equation}
-	r_{des} = \begin{cases} 2 \cdot p_{yaw} \cdot \bVec{q}_{e,y}^{(z)} &\mbox{if } \bVec{q}_{e,y}^{(w)} \geq 0 \\
-						- 2 \cdot p_{yaw} \cdot \bVec{q}_{e,y}^{(z)} &\mbox{if } \bVec{q}_{e,y}^{(w)} < 0 
-					\end{cases}.
-\end{equation}
-%
-Splitting the attitude control into these two parts allows us to have different gains for $p_{rp}$ and $p_{yaw}$, which is desirable due to different control limits.
+where $k_{rp}$ and $k_{y}$ are attitude control gains.
 
 \subsubsection{Body-Rate Control}
 
-TODO: from \cite{Faessler17ral}
+In this section, we present a body-rate controller that provides good tracking and disturbance rejection performance by considering the dynamics of the body rates and body torques~\eqref{eq:body_rate_dynamics} and \eqref{eq:body_torque_dynamics} as suggested in our work~\cite{Faessler17ral}.
+We achieve this by designing an LQR controller for a dynamical system containing the body rates and body torques as state.
+The inputs to this controller are the desired body rates $\vect{\bodyrates}{}{des}$, the feedback body rates $\vect{\bodyrates}{}{fb}$, and the desired mass normalized collective thrust $\thrust_{\mathsmaller{\mathrm{cmd}}}$, which are given from the high-level position and attitude controller.
+
+Linearizing~\eqref{eq:body_rate_dynamics} and~\eqref{eq:body_torque_dynamics} around ${\bodyrates = \bVec{0}}$ and ${\bodytorques = \bVec{0}}$ leads to the system
+%
+\begin{equation}
+	\begin{bmatrix}
+		\dot{\bodyrates} \\ 
+		\dot{\bodytorques}
+	\end{bmatrix}
+	=
+	\begin{bmatrix}
+		\bVec{0} & \inertia^{-1} \\
+		\bVec{0} & -\frac{1}{\motdyn} \bVec{I}_3
+	\end{bmatrix}
+	\begin{bmatrix}
+		\bodyrates \\ 
+		\bodytorques
+	\end{bmatrix}
+	+
+	\begin{bmatrix}
+		\bVec{0} \\
+		\frac{1}{\motdyn} \bVec{I}_3
+	\end{bmatrix}
+	\vect{\bodytorques}{}{des}
+	\label{eq:rates_dyn_dystem}
+\end{equation}
+%
+which we can use to design an infinite-horizon LQR control law ${\lqrinput = -\klqr \lqrstate}$ that minimizes the cost function
+%
+\begin{equation}
+	\int \lqrstate^{\top} \bVec{Q} \lqrstate + \lqrinput^{\top} \bVec{R} \lqrinput \, dt
+\end{equation}
+%
+where $\bVec{Q}$ is a diagonal weight matrix and $\bVec{R}$ is the identity matrix.
+The solution to the formulated LQR problem is a gain matrix of the form
+%
+\begin{equation}
+	\klqr = \begin{bmatrix}
+		k_{\bodyrate_{xy}} & 0 & 0 & k_{\bodytorque_{xy}} & 0 & 0 \\
+		0 & k_{\bodyrate_{xy}} & 0 & 0 & k_{\bodytorque_{xy}} & 0 \\
+		0 & 0 & k_{\bodyrate_{z}} & 0 & 0 & k_{\bodytorque_{z}}
+	\end{bmatrix}
+\end{equation}
+%
+which corresponds to a PD controller of the body rates.
+Additionally, we add feed forward terms such that $\vect{\bodyrates}{}{des}$ is reached with ${\dot{\bodyrates} = \vectdot{\bodyrates}{}{des}}$, resulting in the control policy
+%
+\begin{equation}
+	\vect{\bodytorques}{}{des} = \klqr \begin{bmatrix}
+		\vect{\bodyrates}{}{des} + \vect{\bodyrates}{}{fb} - \bodyrates \\
+		\vect{\bodytorques}{}{ref} - \bodytorques
+	\end{bmatrix}
+	+ \bodyrates \times \inertia \bodyrates
+	+ \inertia \vectdot{\bodyrates}{}{des},
+	\label{eq:lqr_controller}
+\end{equation}
+%
+with ${\vect{\bodytorques}{}{ref} = \vect{\bodyrates}{}{des} \times \inertia \vect{\bodyrates}{}{des} + \inertia \vectdot{\bodyrates}{}{des}}$ computed from~\eqref{eq:body_rate_dynamics}.
+The vector $\bodyrates$ are the estimated body rates measured by the onboard gyroscopes, and $\bodytorques$ are the estimated body torques obtained by estimating the single rotor thrusts with~\eqref{eq:motor_dynamics} and using~\eqref{eq:torque_mixing} to transform them into body torques.
+Also note that this estimation can be improved if feedback of the rotor speeds is available.
+In the controller~\eqref{eq:lqr_controller}, the term ${\bodyrates \times \inertia \bodyrates}$ provides feedback linearization, compensating for the coupling terms in the body-rate dynamics, and ${\inertia \vectdot{\bodyrates}{}{des}}$ is a feed-forward term on desired angular accelerations.
 
 \subsubsection{Iterative Thrust Mixing} \label{sec:mixer}
 
-To compute the single rotor thrusts that achieve the desired body torques $\bodytorques_{des}$ and collective thrust $\thrust_{des}$, which we denote as \emph{mixer inputs}, we have to solve~\eqref{eq:torque_mixing} and~\eqref{eq:collective_thrust_mixing} for $\rotthrust{i}$.
+To compute the single rotor thrusts that achieve the desired body torques $\vect{\bodytorques}{}{des}$ and collective thrust $\thrust_{\mathsmaller{\mathrm{cmd}}}$, which we denote as \emph{mixer inputs}, we have to solve~\eqref{eq:torque_mixing} and~\eqref{eq:collective_thrust_mixing} for $\rotthrust{i}$.
 Since we consider the rotor drag torque coefficients to be a function of the rotor thrust, we cannot solve this system of equations directly, but we can do so iteratively, as proposed in our previous work~\cite{Faessler17ral}.
 
 To initialize the iteration, we start by setting the single rotor thrusts equal such that they achieve the desired collective thrust:
 %
 \begin{equation}
-	\rotthrust{i} = \frac{\mass \thrust_{des}}{4}.
+	\rotthrust{i} = \frac{\mass \thrust_{\mathsmaller{\mathrm{cmd}}}}{4}.
 \end{equation}
 %
 Note that these values are only used to compute the rotor drag torque coefficients in the first iteration.
-Then, we start the iteration with the following two steps: i) solve~\eqref{eq:rotor_drag_torque_coeff} to get $\torquecoeff{i}$, and ii) solve~\eqref{eq:torque_mixing} and~\eqref{eq:collective_thrust_mixing} with $\bodytorques_{des}$ and $\thrust_{des}$ for $\rotthrust{i}$.
+Then, we start the iteration with the following two steps: i) solve~\eqref{eq:rotor_drag_torque_coeff} to get $\torquecoeff{i}$, and ii) solve~\eqref{eq:torque_mixing} and~\eqref{eq:collective_thrust_mixing} with $\vect{\bodytorques}{}{des}$ and $\thrust_{\mathsmaller{\mathrm{cmd}}}$ for $\rotthrust{i}$.
 
 \subsubsection{Saturation with Input Priorities}
 
 Once we have computed the desired single rotor thrusts, we have to make sure that they lie within the feasible range $[\rotthrust{min}, \rotthrust{max}]$ for each single motor, which we do as proposed in our previous work~\cite{Faessler17ral}.
 Naively, feasible inputs can be achieved by clipping each rotor thrust if its desired value is outside this range.
-This is a simple and fast procedure with the drawback that none of the desired mixer inputs $\bodytorques_{des}$ and $\thrust_{des}$ is achieved exactly if one of the rotor thrusts is clipped.
+This is a simple and fast procedure with the drawback that none of the desired mixer inputs $\vect{\bodytorques}{}{des}$ and $\thrust_{\mathsmaller{\mathrm{cmd}}}$ is achieved exactly if one of the rotor thrusts is clipped.
 Nonetheless, not all these mixer inputs are equally important in terms of the quadrotor's ability to stabilize and track a trajectory.
 Since a quadrotor can only produce a collective thrust in its body upwards direction, it has to be aligned with the desired acceleration for following a trajectory in 3D space.
 The rotation around the thrust direction is irrelevant for the translational motion of the quadrotor.
@@ -804,10 +790,10 @@ Therefore we can say
 Taking the derivative leads to
 %
 \begin{align}
-	\ori{WB} \cdot \hat{\bomega} \cdot \begin{bmatrix}
+	\ori{WB} \cdot \hat{\bodyrates} \cdot \begin{bmatrix}
 		0 \\ 0 \\ 1
 	\end{bmatrix} &= \dot{\bar{\bVec{f}}}, \\
-	\hat{\bomega} \cdot \begin{bmatrix}
+	\hat{\bodyrates} \cdot \begin{bmatrix}
 		0 \\ 0 \\ 1
 	\end{bmatrix} &= \ori{WB}^{\top} \cdot \dot{\bar{\bVec{f}}}, \\
 	\begin{bmatrix}
@@ -1226,7 +1212,7 @@ Instead of using Euler angles or rotation matrices, the orientation of a quadrot
 We denote
 %
 \begin{equation}
-\vect{q}{}{\wfr \bfr} = \begin{bmatrix} \qw & \qx & \qy & \qz \end{bmatrix}^{\top}
+\vect{q}{}{\wfr \bfr} = \begin{bmatrix} \qw & \qx & \qy & \qz \end{bmatrix}^{\top} \label{eq:quat_convention}
 \end{equation}
 %
 as the quaternion that describes the orientation of coordinate frame $\bfr$ with respect to coordinate frame $\wfr$, where $q_w$ is the real part of the quaternion. 
@@ -1949,7 +1935,7 @@ Nonetheless, when the quadrotor has contact to a static object, and therefore is
 
 %=============================
 \newpage
-\bibliographystyle{plain}
+\bibliographystyle{ieeetr}
 \bibliography{./library}
 
 \end{document}
