@@ -9,7 +9,7 @@ namespace sbus_bridge
 
 enum class ControlMode
 {
-  RATE, ANGLE
+  NONE, ATTITUDE, BODY_RATES
 };
 
 enum class ArmState
@@ -40,7 +40,7 @@ struct SBusMsg
 
   SBusMsg();
   SBusMsg(const sbus_bridge::SbusRosMessage& sbus_ros_msg);
-  ~SBusMsg();
+  virtual ~SBusMsg();
 
   sbus_bridge::SbusRosMessage toRosMessage() const;
 
@@ -49,13 +49,12 @@ struct SBusMsg
 
   // Setting sbus command helpers
   void setThrottleCommand(const uint16_t throttle_cmd);
-  void enforceSpinningThrottleCommand();
   void setRollCommand(const uint16_t roll_cmd);
   void setPitchCommand(const uint16_t pitch_cmd);
   void setYawCommand(const uint16_t yaw_cmd);
   void setControlMode(const ControlMode& control_mode);
-  void setControlModeRate();
-  void setControlModeAngle();
+  void setControlModeAttitude();
+  void setControlModeBodyRates();
   void setArmState(const ArmState& arm_state);
   void setArmStateArmed();
   void setArmStateDisarmed();

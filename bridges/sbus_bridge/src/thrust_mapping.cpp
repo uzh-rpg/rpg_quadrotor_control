@@ -1,6 +1,6 @@
 #include "sbus_bridge/thrust_mapping.h"
 
-#include <quad_common/parameter_helper.h>
+#include <quadrotor_common/parameter_helper.h>
 #include <ros/ros.h>
 
 namespace thrust_mapping
@@ -68,7 +68,7 @@ bool CollectiveThrustMapping::loadParameters()
   ros::NodeHandle pnh("~");
 
 #define GET_PARAM(name) \
-if (!quad_common::getParam(#name, name ## _, pnh)) \
+if (!quadrotor_common::getParam(#name, name ## _, pnh)) \
   return false
 
   GET_PARAM(thrust_map_a);

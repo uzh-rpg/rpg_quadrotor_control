@@ -4,7 +4,7 @@
 #include <mutex>
 #include <thread>
 
-#include <quad_msgs/ControlCommand.h>
+#include <quadrotor_msgs/ControlCommand.h>
 #include <ros/ros.h>
 #include <sbus_bridge/sbus_serial_port.h>
 #include <std_msgs/Bool.h>
@@ -39,17 +39,18 @@ private:
   void watchdogThread();
 
   void handleReceivedSbusMessage(const SBusMsg& received_sbus_msg) override;
-  void controlCommandCallback(const quad_msgs::ControlCommand::ConstPtr& msg);
+  void controlCommandCallback(
+      const quadrotor_msgs::ControlCommand::ConstPtr& msg);
   void sendSBusMessageToSerialPort(const SBusMsg& sbus_msg);
 
   SBusMsg generateSBusMessageFromControlCommand(
-      const quad_msgs::ControlCommand::ConstPtr& control_command) const;
+      const quadrotor_msgs::ControlCommand::ConstPtr& control_command) const;
 
   void setBridgeState(const BridgeState& desired_bridge_state);
 
   void armBridgeCallback(const std_msgs::BoolConstPtr& msg);
   void batteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg);
-  void publishOnboardStatus(const ros::TimerEvent& time) const;
+  void publishLowLevelFeedback(const ros::TimerEvent& time) const;
 
   bool loadParameters();
 
@@ -75,7 +76,7 @@ private:
   mutable std::mutex battery_voltage_mutex_;
 
   // Publishers
-  ros::Publisher onboard_status_pub_;
+  ros::Publisher low_level_feedback_pub_;
   ros::Publisher received_sbus_msg_pub_;
 
   // Subscribers
@@ -84,7 +85,7 @@ private:
   ros::Subscriber battery_voltage_sub_;
 
   // Timer
-  ros::Timer onboard_status_pub_timer_;
+  ros::Timer low_level_feedback_pub_timer_;
 
   // Watchdog
   std::thread watchdog_thread_;
@@ -130,7 +131,7 @@ private:
   int n_lipo_cells_;
 
   // Constants
-  static constexpr double kOnboardStatusPublishFrequency_ = 50.0;
+  static constexpr double kLowLevelFeedbackPublishFrequency_ = 50.0;
 
   static constexpr int kSmoothingFailRepetitions_ = 5;
 
