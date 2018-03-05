@@ -178,6 +178,9 @@ quadrotor_common::Trajectory samplePolynomial(
 
   trajectory.points.push_back(polynomial.end_state);
 
+  trajectory.trajectory_type =
+      quadrotor_common::Trajectory::TrajectoryType::GENERAL;
+
   return trajectory;
 }
 
