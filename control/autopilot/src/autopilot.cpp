@@ -639,11 +639,18 @@ void AutoPilot::controlCommandInputCallback(
     return;
   }
 
+  if (!msg->armed)
+  {
+    return;
+  }
+
   std::lock_guard<std::mutex> main_lock(main_mutex_);
 
-  if (autopilot_state_ != States::OFF && autopilot_state_ != States::HOVER)
+  if (autopilot_state_ != States::OFF && autopilot_state_ != States::HOVER
+      && autopilot_state_ != States::COMMAND_FEEDTHROUGH)
   {
     // Only allow this if the current state is OFF or HOVER
+    // or already in COMMAND_FEEDTHROUGH
     return;
   }
 
