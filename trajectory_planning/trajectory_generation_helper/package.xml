@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>trajectory_generation_helper</name>
+  <version>0.0.0</version>
+  <description>The trajectory_generation_helper package</description>
+
+  <maintainer email="faessler@ifi.uzh.ch">Matthias Faessler</maintainer>
+  <license>TODO</license>
+
+  <author>Matthias Faessler</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>eigen_catkin</depend>
+  <depend>polynomial_trajectories_new</depend>
+  <depend>quadrotor_common</depend>
+  <depend>roscpp</depend>
+
+  <export>
+    
+  </export>
+</package>
+

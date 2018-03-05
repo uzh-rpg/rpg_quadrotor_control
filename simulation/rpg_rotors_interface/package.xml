@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>rpg_rotors_interface</name>
+  <version>0.0.0</version>
+  <description>The rpg_rotors_interface package</description>
+
+  <maintainer email="faessler@ifi.uzh.ch">Matthias Faessler</maintainer>
+  <license>TODO</license>
+
+  <author>Matthias Faessler</author>
+  <author>Davide Falanga</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <depend>eigen_catkin</depend>
+  <depend>mav_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>quadrotor_common</depend>
+  <depend>quadrotor_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>std_srvs</depend>
+  
+  <export>
+    <!-- 
+    gazebo_ros_paths_plugin automatically adds these to
+    GAZEBO_PLUGIN_PATH and GAZEBO_MODEL_PATH when you do this export inside
+    the package.xml file. You can than use URIs of type model://my_package/stuff.
+    -->
+    <gazebo_ros
+      gazebo_plugin_path="${prefix}/lib"
+      gazebo_model_path="${prefix}/.."
+      gazebo_resource_path="${prefix}/.." /> 
+  </export>
+</package>

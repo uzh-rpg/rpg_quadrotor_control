@@ -1,0 +1,114 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="quad_name"/>
+  <arg name="world_name"/>
+  <arg name="paused"/>
+  <arg name="gui"/>
+  <arg name="use_ground_truth"/>
+
+  <arg name="mav_name"/>
+  <arg name="model"/>
+  <arg name="enable_logging"/>
+  <arg name="enable_ground_truth"/>
+  <arg name="log_file"/>
+
+  <arg name="x_init"/>
+  <arg name="y_init"/>
+
+  <arg name="debug"/>
+  <arg name="verbose"/>
+
+  <!-- Gazebo stuff to spawn the world !-->
+  <env name="GAZEBO_MODEL_PATH" 
+      value="${GAZEBO_MODEL_PATH}:$(find rotors_gazebo)/models"/>
+  <env name="GAZEBO_RESOURCE_PATH" 
+      value="${GAZEBO_RESOURCE_PATH}:$(find rotors_gazebo)/models"/>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(arg world_name)" />
+    <arg name="debug" value="$(arg debug)" />
+    <arg name="paused" value="$(arg paused)" />
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="verbose" value="$(arg verbose)"/>
+  </include>
+
+  <!-- RotorS stuff to spawn the quadrotor !-->
+  <group ns="$(arg mav_name)">
+    <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
+      <arg name="mav_name" value="$(arg mav_name)" />
+      <arg name="model" value="$(arg model)" />
+      <arg name="enable_logging" value="$(arg enable_logging)" />
+      <arg name="enable_ground_truth" value="$(arg enable_ground_truth)" />
+      <arg name="log_file" value="$(arg log_file)"/>
+      <arg name="x" value="$(arg x_init)" />
+      <arg name="y" value="$(arg y_init)" />
+    </include>
+  </group>
+
+  <!-- RPG stuff !-->
+  <group ns="$(arg quad_name)" >
+
+    <group if="$(arg use_ground_truth)">
+      <node pkg="rpg_rotors_interface" type="rpg_rotors_interface" 
+          name="rpg_rotors_interface" output="screen" >
+        <rosparam file="$(find rpg_rotors_interface)/parameters/rpg_rotors_interface.yaml" />
+        
+        <remap from="odometry" to="ground_truth/odometry" />
+      </node>
+
+      <!-- Autopilot -->
+      <node pkg="autopilot" type="autopilot" name="autopilot" output="screen">
+        <rosparam file="$(find state_predictor)/parameters/hummingbird.yaml" />
+        <rosparam file="$(find rpg_rotors_interface)/parameters/position_controller.yaml" />
+        <rosparam file="$(find rpg_rotors_interface)/parameters/autopilot.yaml" />
+        
+        <param name="position_controller/use_rate_mode" value="True" />
+        
+        <param name="velocity_estimate_in_world_frame" value="false" />
+        <param name="state_estimate_timeout" value="0.1" />
+        <param name="control_command_delay" value="0.05" />
+        
+        <remap from="autopilot/state_estimate" to="ground_truth/odometry" />
+      </node>
+    </group>
+
+    <group unless="$(arg use_ground_truth)">
+      <node pkg="rpg_rotors_interface" type="rpg_rotors_interface" 
+          name="rpg_rotors_interface" output="screen" >
+        <rosparam file="$(find rpg_rotors_interface)/parameters/rpg_rotors_interface.yaml" />
+
+        <remap from="odometry" to="odometry_sensor1/odometry" />
+      </node>
+
+      <!-- Autopilot -->
+      <node pkg="autopilot" type="autopilot" name="autopilot" output="screen">
+        <rosparam file="$(find state_predictor)/parameters/hummingbird.yaml" />
+        <rosparam file="$(find rpg_rotors_interface)/parameters/position_controller.yaml" />
+        <rosparam file="$(find rpg_rotors_interface)/parameters/autopilot.yaml" />
+        
+        <param name="position_controller/use_rate_mode" value="True" />
+        
+        <param name="velocity_estimate_in_world_frame" value="false" />
+        <param name="state_estimate_timeout" value="0.1" />
+        <param name="control_command_delay" value="0.05" />
+        
+        <remap from="autopilot/state_estimate" to="odometry_sensor1/odometry" />
+      </node>
+    </group>
+
+    <node pkg="joy" type="joy_node" name="joy_node">
+      <param name="autorepeat_rate" value="10"/>
+    </node>
+
+    <node pkg="manual_flight_assistant" type="manual_flight_assistant" 
+        name="manual_flight_assistant" output="screen">
+      <rosparam file="$(find rpg_rotors_interface)/parameters/manual_flight_assistant.yaml"/>
+    </node>
+
+    <node name="rqt_gui_quad" pkg="rqt_gui" type="rqt_gui" 
+        args="-s rqt_quad.vision_flight.VisionFlight --args 
+        --quad_name $(arg quad_name)" />
+
+  </group> 
+
+</launch>

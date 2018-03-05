@@ -1,0 +1,48 @@
+\tdplotsetmaincoords{65}{10}
+\begin{tikzpicture}[tdplot_main_coords, scale=2]
+
+% frame
+\draw[very thick] (-1.4,0,1) -- (1.4,0,1);
+\draw[very thick] (0,-1.4,1) -- (0,1.4,1);
+
+% rotors
+\draw[draw=none, fill=gray!40, opacity=0.8] (0,1.4,1) circle (0.8);
+\draw[draw=none, fill=gray!40, opacity=0.8] (1.4,0,1) circle (0.8);
+\draw[draw=none, fill=gray!40, opacity=0.8] (0,-1.4,1) circle (0.8);
+\draw[draw=none, fill=gray!40, opacity=0.8] (-1.4,0,1) circle (0.8);
+
+% forces
+\draw[very thick,->] (0,1.4,1) -- (0,1.4,1.5);
+\draw[very thick,->] (1.4,0,1) -- (1.4,0,1.5);
+\draw[very thick,->] (0,-1.4,1) -- (0,-1.4,1.5);
+\draw[very thick,->] (-1.4,0,1) -- (-1.4,0,1.5);	
+
+% propeller rotation
+\draw[thick,->] (0,2.0,1) arc (90:0:0.6);
+\draw[thick,<-] (2.0,0,1) arc (0:-90:0.6);
+\draw[thick,->] (0.6,-1.4,1) arc (0:-90:0.6);
+\draw[thick,->] (-2.0,0,1) arc (180:270:0.6);
+
+% quad frame
+\draw[thick,->,color=red,text=black] (0,0,1) -- (0.7071,0.7071,1) node[right] {$\vect{x}{}{\bfr}$};
+\draw[thick,->,color=green,text=black] (0,0,1) -- (-0.7071,0.7071,1) node[above] {$\vect{y}{}{\bfr}$};	
+\draw[thick,->,color=blue,text=black] (0,0,1) -- (0,0,2) node[left] {$\vect{z}{}{\bfr}$};		
+\node[draw=none] at (0.2,0,0.85) {Body};	
+
+% world frame
+\draw[thick,->,color=red,text=black] (-1.5,-1,-0.5) -- (-0.7,-1,-0.5) node[right] {$\vect{x}{}{\wfr}$};		
+\draw[thick,->,color=green,text=black] (-1.5,-1,-0.5) -- (-1.5,-0.2,-0.5) node[right] {$\vect{y}{}{\wfr}$};		
+\draw[thick,->,color=blue,text=black] (-1.5,-1,-0.5) -- (-1.5,-1,0.3) node[above] {$\vect{z}{}{\wfr} = \vect{z}{}{\cfr}$};	
+\node[draw=none] at (-1.6,0,-1.1) {World};
+
+% C-frame
+\draw[thick,dashed,->,color=red,text=black] (-1.5,-1,-0.5) -- (-0.9343,-0.4343,-0.5) node[right] {$\vect{x}{}{\cfr}$};
+\draw[thick,dashed,->,color=green,text=black] (-1.5,-1,-0.5) -- (-2.0657,-0.4343,-0.5) node[above] {$\vect{y}{}{\cfr}$};   
+
+% Yaw
+\draw[thin,->] (-1.0,-1,-0.5) arc (0:45:0.5) node[midway, right] {$\heading$};
+
+% gravity
+\draw[very thick,->,color=black,text=black] (2,-1.0,0.8) -- node[right] {$-g \vect{z}{}{\wfr}$} (2,-1.0,0);
+
+\end{tikzpicture}

@@ -1,0 +1,28 @@
+cameras:
+- camera:
+    distortion:
+      parameters:
+        cols: 1
+        rows: 0
+        data: []
+      type: none
+    image_height: 480
+    image_width: 640
+    intrinsics:
+      cols: 1
+      rows: 4
+      data: [268.5116780299728, 268.5116780299728, 320.5, 240.5]
+    label: cam0
+    line-delay-nanoseconds: 0
+    type: pinhole
+  T_B_C:
+    cols: 4
+    rows: 4
+    data: [ 1., 0., 0., 0.0,
+            0., 1., 0., 0.,
+            0., 0., 1., 0.0,
+            0., 0., 0., 1.]
+  serial_no: 0
+  calib_date: 0
+  description: 'ROTORS'
+label: ROTORS

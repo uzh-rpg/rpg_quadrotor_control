@@ -1,5 +1,6 @@
 #include "sbus_bridge/sbus_bridge.h"
 
+#include <Eigen/Dense>
 #include <quadrotor_common/geometry_eigen_conversions.h>
 #include <quadrotor_common/math_common.h>
 #include <quadrotor_common/parameter_helper.h>

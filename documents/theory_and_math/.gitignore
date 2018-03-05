@@ -1,0 +1,16 @@
+.svn
+.aux
+.dvi
+.log
+.toc
+*~
+*.synctex.gz
+*.bbl
+*.blg
+*.aux
+*.dvi
+*.log
+*.toc
+*.out
+*.bak
+.DS_Store
