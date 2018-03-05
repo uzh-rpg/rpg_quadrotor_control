@@ -33,10 +33,12 @@ PolynomialTrajectory generateMinimumSnapTrajectory(
   minimum_snap_trajectory.segment_times = segment_times;
 
   minimum_snap_trajectory.start_state = start_state;
+  minimum_snap_trajectory.start_state.time_from_start = ros::Duration(0.0);
   minimum_snap_trajectory.end_state = end_state;
 
   minimum_snap_trajectory.optimization_cost = 0.0; // will be reset later on
-  minimum_snap_trajectory.T = segment_times.sum();
+  minimum_snap_trajectory.T = ros::Duration(segment_times.sum());
+  minimum_snap_trajectory.end_state.time_from_start = minimum_snap_trajectory.T;
 
   // Ensure trajectory settings that result in feasible optimization problem
   const int min_poly_order = 2
@@ -399,7 +401,7 @@ PolynomialTrajectory generateMinimumSnapRingTrajectory(
   minimum_snap_trajectory.segment_times = segment_times;
 
   minimum_snap_trajectory.optimization_cost = 0.0; // will be reset later on
-  minimum_snap_trajectory.T = segment_times.sum();
+  minimum_snap_trajectory.T = ros::Duration(segment_times.sum());
 
   // Ensure trajectory settings that result in feasible optimization problem
   PloynomialTrajectorySettings new_trajectory_settings = trajectory_settings;
@@ -466,7 +468,8 @@ PolynomialTrajectory generateMinimumSnapRingTrajectory(
 
   // Set start and end state after computing trajectory
   quadrotor_common::TrajectoryPoint quad_state;
-  quad_state = getPointFromTrajectory(minimum_snap_trajectory, 0.0);
+  quad_state = getPointFromTrajectory(minimum_snap_trajectory,
+                                      ros::Duration(0.0));
   minimum_snap_trajectory.start_state = quad_state;
   quad_state = getPointFromTrajectory(minimum_snap_trajectory,
                                       minimum_snap_trajectory.T);
@@ -975,7 +978,7 @@ Eigen::VectorXd computeSearchDirection(
   // we want |segment_times + search_direction| /
   //     normalization_factor = trajectory.T
   double normalization_factor = (initial_trajectory.segment_times
-      + search_direction).sum() / initial_trajectory.T;
+      + search_direction).sum() / initial_trajectory.T.toSec();
 
   // and we want (segment_times + search_direction) / normalization_factor =
   //     segment_times + adjusted_search_direction
@@ -1118,7 +1121,7 @@ PolynomialTrajectory enforceMaximumVelocityAndThrust(
   {
     Eigen::Vector3d new_intersections =
         (desired_maxima - prev_maxima).cwiseQuotient(maxima_gradient)
-            + trajectory.T * Eigen::Vector3d::Ones();
+            + trajectory.T.toSec() * Eigen::Vector3d::Ones();
 
     for (int i = 0; i < 3; i++)
     {
@@ -1134,7 +1137,7 @@ PolynomialTrajectory enforceMaximumVelocityAndThrust(
     bool exhaustivly_search_minimum = false;
     Eigen::Vector3d maxima;
 
-    if (new_intersections.maxCoeff() > initial_trajectory.T)
+    if (new_intersections.maxCoeff() > initial_trajectory.T.toSec())
     {
       // the ratio of segment times remains with scaling the execution time so
       // only compute trajectory without segment refinement
@@ -1144,7 +1147,7 @@ PolynomialTrajectory enforceMaximumVelocityAndThrust(
               == polynomial_trajectories::TrajectoryType::MINIMUM_SNAP_OPTIMIZED_SEGMENTS)
       {
         trajectory = generateMinimumSnapTrajectory(
-            trajectory.segment_times / trajectory.T
+            trajectory.segment_times / trajectory.T.toSec()
                 * new_intersections.maxCoeff(),
             initial_trajectory.start_state, initial_trajectory.end_state,
             trajectory_settings);
@@ -1155,7 +1158,7 @@ PolynomialTrajectory enforceMaximumVelocityAndThrust(
               == polynomial_trajectories::TrajectoryType::MINIMUM_SNAP_RING_OPTIMIZED_SEGMENTS)
       {
         trajectory = generateMinimumSnapRingTrajectory(
-            trajectory.segment_times / trajectory.T
+            trajectory.segment_times / trajectory.T.toSec()
                 * new_intersections.maxCoeff(),
             trajectory_settings);
       }
@@ -1300,7 +1303,7 @@ bool computeMaximaGradient(
                             &gradient_trajectory_maxima.z());
 
   *gradient = (gradient_trajectory_maxima - maxima)
-      / (gradient_trajectory.T - trajectory.T);
+      / (gradient_trajectory.T - trajectory.T).toSec();
 
   return true;
 }

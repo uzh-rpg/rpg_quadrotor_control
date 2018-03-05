@@ -52,27 +52,48 @@
       <node pkg="rpg_rotors_interface" type="rpg_rotors_interface" 
           name="rpg_rotors_interface" output="screen" >
         <rosparam file="$(find rpg_rotors_interface)/parameters/rpg_rotors_interface.yaml" />
-        <param name="add_noise_to_state_estimate" value="False" />
-        <param name="noise_mean" value="0.0" />
-        <param name="noise_stdv" value="0.0" />
+        
+        <remap from="odometry" to="ground_truth/odometry" />
       </node>
 
       <!-- Autopilot -->
-
+      <node pkg="autopilot" type="autopilot" name="autopilot" output="screen">
+        <rosparam file="$(find state_predictor)/parameters/hummingbird.yaml" />
+        <rosparam file="$(find rpg_rotors_interface)/parameters/position_controller.yaml" />
+        <rosparam file="$(find rpg_rotors_interface)/parameters/autopilot.yaml" />
+        
+        <param name="position_controller/use_rate_mode" value="True" />
+        
+        <param name="velocity_estimate_in_world_frame" value="false" />
+        <param name="state_estimate_timeout" value="0.1" />
+        <param name="control_command_delay" value="0.05" />
+        
+        <remap from="autopilot/state_estimate" to="ground_truth/odometry" />
+      </node>
     </group>
+
     <group unless="$(arg use_ground_truth)">
       <node pkg="rpg_rotors_interface" type="rpg_rotors_interface" 
           name="rpg_rotors_interface" output="screen" >
         <rosparam file="$(find rpg_rotors_interface)/parameters/rpg_rotors_interface.yaml" />
-        <param name="add_noise_to_state_estimate" value="False" />
-        <param name="noise_mean" value="0.0" />
-        <param name="noise_stdv" value="0.0" />
 
-        <remap from="state_estimate" to="ground_truth/state_estimate" />
+        <remap from="odometry" to="odometry_sensor1/odometry" />
       </node>
 
       <!-- Autopilot -->
-
+      <node pkg="autopilot" type="autopilot" name="autopilot" output="screen">
+        <rosparam file="$(find state_predictor)/parameters/hummingbird.yaml" />
+        <rosparam file="$(find rpg_rotors_interface)/parameters/position_controller.yaml" />
+        <rosparam file="$(find rpg_rotors_interface)/parameters/autopilot.yaml" />
+        
+        <param name="position_controller/use_rate_mode" value="True" />
+        
+        <param name="velocity_estimate_in_world_frame" value="false" />
+        <param name="state_estimate_timeout" value="0.1" />
+        <param name="control_command_delay" value="0.05" />
+        
+        <remap from="autopilot/state_estimate" to="odometry_sensor1/odometry" />
+      </node>
     </group>
 
     <node pkg="joy" type="joy_node" name="joy_node">
@@ -81,7 +102,7 @@
 
     <node pkg="manual_flight_assistant" type="manual_flight_assistant" 
         name="manual_flight_assistant" output="screen">
-      <rosparam file="$(find manual_flight_assistant)/parameters/default.yaml"/>
+      <rosparam file="$(find rpg_rotors_interface)/parameters/manual_flight_assistant.yaml"/>
     </node>
 
     <node name="rqt_gui_quad" pkg="rqt_gui" type="rqt_gui" 

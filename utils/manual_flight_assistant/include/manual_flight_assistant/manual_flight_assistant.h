@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Eigen/Dense>
+#include <geometry_msgs/TwistStamped.h>
 #include <ros/ros.h>
 #include <sbus_bridge/SbusRosMessage.h>
 #include <sensor_msgs/Joy.h>
@@ -27,6 +27,9 @@ private:
   bool joypadAvailable();
   bool rcSbusAvailable();
 
+  void publishVelocityCommand(
+      const geometry_msgs::TwistStamped& velocity_command);
+
   bool loadParameters();
 
   ros::NodeHandle nh_;
@@ -49,6 +52,7 @@ private:
   sbus_bridge::SbusRosMessage previous_sbus_command_;
   ros::Time time_last_sbus_msg_;
   bool sbus_needs_to_go_through_zero_;
+  bool velocity_command_is_zero_;
 
   // Parameters
   double joypad_timeout_;
@@ -58,6 +62,10 @@ private:
   double vmax_xy_;
   double vmax_z_;
   double rmax_yaw_;
+
+  // Constants
+  static constexpr double kLoopFrequency_ = 50.0;
+  static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
 };
 
 } // namespace manual_flight_assistant

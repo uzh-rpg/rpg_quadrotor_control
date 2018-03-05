@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>sbus_bridge</name>
+  <name>trajectory_generation_helper</name>
   <version>0.0.0</version>
-  <description>The sbus_bridge package</description>
+  <description>The trajectory_generation_helper package</description>
 
   <maintainer email="faessler@ifi.uzh.ch">Matthias Faessler</maintainer>
   <license>TODO</license>
@@ -13,13 +13,12 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>eigen_catkin</depend>
-  <depend>message_generation</depend>
-  <depend>quad_common</depend>
-  <depend>quad_msgs</depend>
+  <depend>polynomial_trajectories_new</depend>
+  <depend>quadrotor_common</depend>
   <depend>roscpp</depend>
-  <depend>std_msgs</depend>
 
   <export>
     
   </export>
 </package>
+

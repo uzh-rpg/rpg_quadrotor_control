@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>sbus_bridge</name>
+  <name>autopilot</name>
   <version>0.0.0</version>
-  <description>The sbus_bridge package</description>
+  <description>The autopilot package</description>
 
   <maintainer email="faessler@ifi.uzh.ch">Matthias Faessler</maintainer>
   <license>TODO</license>
@@ -13,11 +13,15 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>eigen_catkin</depend>
-  <depend>message_generation</depend>
-  <depend>quad_common</depend>
-  <depend>quad_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>position_controller</depend>
+  <depend>quadrotor_common</depend>
+  <depend>quadrotor_msgs</depend>
   <depend>roscpp</depend>
+  <depend>state_predictor</depend>
   <depend>std_msgs</depend>
+  <depend>trajectory_generation_helper</depend>
 
   <export>
     

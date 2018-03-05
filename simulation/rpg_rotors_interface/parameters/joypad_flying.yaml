@@ -1,7 +1,0 @@
-joypad_timeout:   0.5
-vmax_xy:          1.5
-vmax_z:           0.7
-rmax_yaw:         1.5
-looprate:         0.025
-tau_velocity:     0.5
-

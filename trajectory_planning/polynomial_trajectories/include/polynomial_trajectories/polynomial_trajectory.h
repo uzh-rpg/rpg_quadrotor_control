@@ -4,6 +4,7 @@
 
 #include <Eigen/Dense>
 #include <quadrotor_common/trajectory_point.h>
+#include <ros/duration.h>
 
 namespace polynomial_trajectories
 {
@@ -24,7 +25,7 @@ struct PolynomialTrajectory
   // Each element of this vector contains the coefficients for one polynomial
   // segment (rows: dimension, columns: order)
   std::vector<Eigen::MatrixXd> coeff;
-  double T;
+  ros::Duration T;
   quadrotor_common::TrajectoryPoint start_state;
   quadrotor_common::TrajectoryPoint end_state;
   int number_of_segments;

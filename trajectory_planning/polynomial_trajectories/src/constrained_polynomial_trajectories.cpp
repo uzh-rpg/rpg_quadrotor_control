@@ -56,13 +56,15 @@ PolynomialTrajectory computeTimeOptimalTrajectory(
   initial_trajectory.trajectory_type =
       polynomial_trajectories::TrajectoryType::FULLY_CONSTRAINED;
   initial_trajectory.start_state = s0;
+  initial_trajectory.start_state.time_from_start = ros::Duration(0.0);
   initial_trajectory.end_state = s1;
   initial_trajectory.number_of_segments = 1;
-  initial_trajectory.T = init_trajectory_duration;
+  initial_trajectory.T = ros::Duration(init_trajectory_duration);
+  initial_trajectory.end_state.time_from_start = initial_trajectory.T;
   initial_trajectory.coeff = implementation::computeTrajectoryCoeff(
-      s0, s1, order_of_continuity, initial_trajectory.T);
+      s0, s1, order_of_continuity, initial_trajectory.T.toSec());
   initial_trajectory.segment_times.resize(1);
-  initial_trajectory.segment_times(0) = initial_trajectory.T;
+  initial_trajectory.segment_times(0) = initial_trajectory.T.toSec();
 
   PolynomialTrajectory trajectory = initial_trajectory;
   Eigen::Vector3d desired_maxima = Eigen::Vector3d(max_velocity,
@@ -86,10 +88,11 @@ PolynomialTrajectory computeTimeOptimalTrajectory(
       return trajectory;
     }
 
-    trajectory.T = 0.9 * trajectory.T;
-    trajectory.segment_times(0) = trajectory.T;
+    trajectory.T = ros::Duration(0.9 * trajectory.T.toSec());
+    trajectory.end_state.time_from_start = trajectory.T;
+    trajectory.segment_times(0) = trajectory.T.toSec();
     trajectory.coeff = implementation::computeTrajectoryCoeff(
-        s0, s1, order_of_continuity, trajectory.T);
+        s0, s1, order_of_continuity, trajectory.T.toSec());
 
     computeQuadRelevantMaxima(trajectory, &prev_maxima.x(), &prev_maxima.y(),
                               &prev_maxima.z());
@@ -105,7 +108,7 @@ PolynomialTrajectory computeTimeOptimalTrajectory(
   {
     Eigen::Vector3d new_intersections =
         (desired_maxima - prev_maxima).cwiseQuotient(maxima_gradient)
-            + trajectory.T * Eigen::Vector3d::Ones();
+            + trajectory.T.toSec() * Eigen::Vector3d::Ones();
 
     for (int i = 0; i < 3; i++)
     {
@@ -121,13 +124,14 @@ PolynomialTrajectory computeTimeOptimalTrajectory(
     bool exhaustivly_search_minimum = false;
     Eigen::Vector3d maxima;
 
-    if (new_intersections.maxCoeff() > initial_trajectory.T)
+    if (new_intersections.maxCoeff() > initial_trajectory.T.toSec())
     {
       // recompute trajectory with new duration
-      trajectory.T = new_intersections.maxCoeff();
-      trajectory.segment_times(0) = trajectory.T;
+      trajectory.T = ros::Duration(new_intersections.maxCoeff());
+      trajectory.end_state.time_from_start = trajectory.T;
+      trajectory.segment_times(0) = trajectory.T.toSec();
       trajectory.coeff = implementation::computeTrajectoryCoeff(
-          s0, s1, order_of_continuity, trajectory.T);
+          s0, s1, order_of_continuity, trajectory.T.toSec());
 
       computeQuadRelevantMaxima(trajectory, &maxima.x(), &maxima.y(),
                                 &maxima.z());
@@ -161,10 +165,11 @@ PolynomialTrajectory computeTimeOptimalTrajectory(
     {
       for (int j = i; j < max_iterations; j++)
       {
-        trajectory.T = 1.1 * trajectory.T;
-        trajectory.segment_times(0) = trajectory.T;
+        trajectory.T = ros::Duration(1.1 * trajectory.T.toSec());
+        trajectory.end_state.time_from_start = trajectory.T;
+        trajectory.segment_times(0) = trajectory.T.toSec();
         trajectory.coeff = implementation::computeTrajectoryCoeff(
-            s0, s1, order_of_continuity, trajectory.T);
+            s0, s1, order_of_continuity, trajectory.T.toSec());
 
         computeQuadRelevantMaxima(trajectory, &maxima.x(), &maxima.y(),
                                   &maxima.z());
@@ -206,15 +211,17 @@ PolynomialTrajectory computeFixedTimeTrajectory(
   trajectory.trajectory_type =
       polynomial_trajectories::TrajectoryType::FULLY_CONSTRAINED;
   trajectory.start_state = s0;
+  trajectory.start_state.time_from_start = ros::Duration(0.0);
   trajectory.end_state = s1;
   trajectory.number_of_segments = 1;
-  trajectory.T = execution_time;
+  trajectory.T = ros::Duration(execution_time);
+  trajectory.end_state.time_from_start = trajectory.T;
   trajectory.coeff = implementation::computeTrajectoryCoeff(s0, s1,
                                                             order_of_continuity,
                                                             execution_time);
 
   trajectory.segment_times.resize(1);
-  trajectory.segment_times(0) = trajectory.T;
+  trajectory.segment_times(0) = trajectory.T.toSec();
 
   return trajectory;
 }
@@ -293,11 +300,11 @@ Eigen::Vector3d implementation::computeMaximaGradient(
     const double order_of_continuity)
 {
   PolynomialTrajectory gradient_trajectory = trajectory;
-  gradient_trajectory.T = 1.01 * trajectory.T;
-  gradient_trajectory.segment_times(0) = gradient_trajectory.T;
+  gradient_trajectory.T = ros::Duration(1.01 * trajectory.T.toSec());
+  gradient_trajectory.segment_times(0) = gradient_trajectory.T.toSec();
   gradient_trajectory.coeff = implementation::computeTrajectoryCoeff(
       trajectory.start_state, trajectory.end_state, order_of_continuity,
-      gradient_trajectory.T);
+      gradient_trajectory.T.toSec());
   Eigen::Vector3d gradient_trajectory_maxima;
   computeQuadRelevantMaxima(gradient_trajectory,
                             &gradient_trajectory_maxima.x(),
@@ -305,7 +312,7 @@ Eigen::Vector3d implementation::computeMaximaGradient(
                             &gradient_trajectory_maxima.z());
 
   Eigen::Vector3d gradient = (gradient_trajectory_maxima - maxima)
-      / (gradient_trajectory.T - trajectory.T);
+      / (gradient_trajectory.T - trajectory.T).toSec();
 
   return gradient;
 }
