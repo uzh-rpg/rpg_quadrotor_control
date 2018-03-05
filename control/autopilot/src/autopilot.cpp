@@ -25,6 +25,8 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     state_before_emergency_landing_(States::OFF), requested_go_to_pose_(),
     received_go_to_pose_command_(false), stop_go_to_pose_thread_(false),
     trajectory_queue_(), time_start_trajectory_execution_(),
+    time_last_control_command_input_received_(),
+    last_control_command_input_thrust_high_(false),
     stop_watchdog_thread_(false), time_last_state_estimate_received_(),
     time_started_emergency_landing_(), destructor_invoked_(false),
     time_last_autopilot_feedback_published_()
@@ -178,6 +180,26 @@ void AutoPilot::watchdogThread()
       }
     }
 
+    if (autopilot_state_ == States::COMMAND_FEEDTHROUGH
+        && (time_now - time_last_control_command_input_received_)
+            > ros::Duration(control_command_input_timeout_))
+    {
+      if (last_control_command_input_thrust_high_)
+      {
+        ROS_WARN("[%s] Did not receive control command inputs anymore but last "
+                 "thrust command was high, will switch to hover",
+                 pnh_.getNamespace().c_str());
+        setAutoPilotState(States::HOVER);
+      }
+      else
+      {
+        ROS_WARN("[%s] Did not receive control command inputs anymore but last "
+                 "thrust command was low, will switch to off",
+                 pnh_.getNamespace().c_str());
+        setAutoPilotState(States::OFF);
+      }
+    }
+
     // Mutex is unlocked because it goes out of scope here
   }
 }
@@ -243,6 +265,8 @@ void AutoPilot::goToPoseThread()
         trajectory_generation_helper::heading::addConstantHeadingRate(
             start_state.heading, end_state.heading, &go_to_pose_traj);
 
+        if (go_to_pose_traj.trajectory_type
+            != quadrotor_common::Trajectory::TrajectoryType::UNDEFINED)
         {
           // Push computed trajectory into the queue and set the autopilot
           // to the TRAJECTORY_CONTROL state
@@ -263,6 +287,12 @@ void AutoPilot::goToPoseThread()
           }
 
           // Main mutex is unlocked because it goes out of scope here
+        }
+        else
+        {
+          ROS_WARN("[%s] Failed to compute valid trajectory, will not execute "
+                   "go to pose action",
+                   pnh_.getNamespace().c_str());
         }
       }
 
@@ -542,7 +572,7 @@ void AutoPilot::referenceStateCallback(
   }
   else if ((reference_state_.position
       - quadrotor_common::geometryToEigen(msg->pose.position)).norm()
-      < kPositionJumpTolerance_)
+      > kPositionJumpTolerance_)
   {
     ROS_WARN_THROTTLE(
         0.5, "[%s] Received reference state that is more than %fm away "
@@ -639,7 +669,7 @@ void AutoPilot::controlCommandInputCallback(
     return;
   }
 
-  if (!msg->armed)
+  if (!enable_command_feedthrough_ || !msg->armed)
   {
     return;
   }
@@ -660,6 +690,16 @@ void AutoPilot::controlCommandInputCallback(
   }
 
   control_command_pub_.publish(*msg);
+
+  time_last_control_command_input_received_ = ros::Time::now();
+  if (msg->collective_thrust > kThrustHighThreshold_)
+  {
+    last_control_command_input_thrust_high_ = true;
+  }
+  else
+  {
+    last_control_command_input_thrust_high_ = false;
+  }
 
   // Mutex is unlocked because it goes out of scope here
 }
@@ -1051,6 +1091,8 @@ quadrotor_common::ControlCommand AutoPilot::followReference(
     setAutoPilotState(States::HOVER);
   }
 
+  reference_state_ = quadrotor_common::TrajectoryPoint(reference_state_input_);
+
   const quadrotor_common::ControlCommand command = base_controller_.run(
       state_estimate, reference_state_, base_controller_params_);
 
@@ -1349,6 +1391,8 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(reference_state_input_timeout);
   GET_PARAM(emergency_land_duration);
   GET_PARAM(emergency_land_thrust);
+  GET_PARAM(control_command_input_timeout);
+  GET_PARAM(enable_command_feedthrough);
 
   if (!base_controller_params_.loadParameters(pnh_))
   {

@@ -146,7 +146,7 @@ private:
 
   quadrotor_common::TrajectoryPoint reference_state_;
 
-  // Values received form callbacks
+  // Values received from callbacks
   quadrotor_common::QuadStateEstimate received_state_est_;
   geometry_msgs::TwistStamped desired_velocity_command_;
   quadrotor_msgs::TrajectoryPoint reference_state_input_;
@@ -179,6 +179,10 @@ private:
   std::list<quadrotor_common::Trajectory> trajectory_queue_;
   ros::Time time_start_trajectory_execution_;
 
+  // Control command input variables
+  ros::Time time_last_control_command_input_received_;
+  bool last_control_command_input_thrust_high_;
+
   // Watchdog
   std::thread watchdog_thread_;
   std::atomic_bool stop_watchdog_thread_;
@@ -210,6 +214,8 @@ private:
   double reference_state_input_timeout_;
   double emergency_land_duration_;
   double emergency_land_thrust_;
+  double control_command_input_timeout_;
+  bool enable_command_feedthrough_;
 
   // Constants
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
@@ -221,6 +227,7 @@ private:
   static constexpr double kGoToPoseTrajectorySamplingFrequency_ = 50.0;
   static constexpr int kGoToPosePolynomialOrderOfContinuity_ = 5;
   static constexpr double kGoToPoseNeglectThreshold_ = 0.05;
+  static constexpr double kThrustHighThreshold_ = 0.5;
 };
 
 } // namespace autopilot
