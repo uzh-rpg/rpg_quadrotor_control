@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>rpg_quadrotor_integration_test</name>
+  <version>0.0.0</version>
+  <description>The rpg_quadrotor_integration_test package</description>
+
+  <maintainer email="faessler@ifi.uzh.ch">Matthias Faessler</maintainer>
+  <license>TODO</license>
+
+  <author>Matthias Faessler</author>
+  <author>Titus Cieslewski</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+  <buildtool_depend>rostest</buildtool_depend>
+
+  <depend>eigen_catkin</depend>
+  <depend>geometry_msgs</depend>
+  <depend>polynomial_trajectories_new</depend>
+  <depend>quadrotor_common</depend>
+  <depend>quadrotor_msgs</depend>
+  <depend>roscpp</depend>
+  <depend>rotors_description</depend>
+  <depend>rotors_gazebo</depend>
+  <depend>rpg_rotors_interface</depend>
+  <depend>std_msgs</depend>
+  <depend>trajectory_generation_helper</depend>
+
+  <export>
+
+  </export>
+</package>
