@@ -1,7 +1,5 @@
 #include "rpg_quadrotor_integration_test/rpg_quadrotor_integration_test.h"
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 #include <vector>
 
@@ -110,7 +108,7 @@ void QuadrotorIntegrationTest::run()
     }
     command_rate.sleep();
   }
-//  ASSERT_TRUE(autopilot_feedback_received_)<< "Did not receive autopilot feedback within 10 seconds.";
+  ASSERT_TRUE(autopilot_feedback_received_)<< "Did not receive autopilot feedback within 10 seconds.";
 
   ros::Duration(3.0).sleep();
 
@@ -127,19 +125,17 @@ void QuadrotorIntegrationTest::run()
   start_pub_.publish(std_msgs::Empty());
 
   // Wait for autopilot to go to start
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::START, 0.5);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::START, 0.5))
-//      << "Autopilot did not switch to start after sending start command.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::START, 0.5))
+      << "Autopilot did not switch to start after sending start command.";
 
   // Abort start and send off
   off_pub_.publish(std_msgs::Empty());
 
   // Wait for autopilot to go to off
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::OFF, 0.1);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::OFF, 0.1))
-//      << "Autopilot could not be forced to off during take off.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::OFF, 0.1))
+      << "Autopilot could not be forced to off during take off.";
 
   ///////////////
   // Check take off
@@ -149,10 +145,9 @@ void QuadrotorIntegrationTest::run()
   start_pub_.publish(std_msgs::Empty());
 
   // Wait for autopilot to go to hover
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 10.0);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 10.0))
-//      << "Autopilot did not switch to hover after take off.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 10.0))
+      << "Autopilot did not switch to hover after take off.";
 
   executing_trajectory_ = true; // Start measuring errors
 
@@ -173,10 +168,10 @@ void QuadrotorIntegrationTest::run()
     velocity_command_pub_.publish(vel_cmd);
     if ((ros::Time::now() - start_sending_vel_cmds) > ros::Duration(2.0))
     {
-//      EXPECT_TRUE(
-//          (autopilot_feedback_.autopilot_state
-//              == autopilot_feedback_.VELOCITY_CONTROL))
-//          << "Autopilot did not switch to velocity control correctly.";
+      EXPECT_TRUE(
+          (autopilot_feedback_.autopilot_state
+              == autopilot_feedback_.VELOCITY_CONTROL))
+          << "Autopilot did not switch to velocity control correctly.";
       break;
     }
     ros::spinOnce();
@@ -184,10 +179,9 @@ void QuadrotorIntegrationTest::run()
   }
 
   // Wait for autopilot to go back to hover
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 10.0);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 10.0))
-//      << "Autopilot did not switch back to hover correctly.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 10.0))
+      << "Autopilot did not switch back to hover correctly.";
 
   ///////////////
   // Check go to pose
@@ -203,27 +197,25 @@ void QuadrotorIntegrationTest::run()
   pose_command_pub_.publish(pose_cmd);
 
   // Wait for autopilot to go to got to pose state
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::GO_TO_POSE, 2.0);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::GO_TO_POSE, 2.0))
-//      << "Autopilot did not switch back to hover correctly.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::TRAJECTORY_CONTROL, 2.0))
+      << "Autopilot did not switch to trajectory control because of go to pose action correctly.";
 
   // Wait for autopilot to go back to hover
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 10.0);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 10.0))
-//      << "Autopilot did not switch back to hover correctly.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 10.0))
+      << "Autopilot did not switch back to hover correctly.";
 
   // Check if we are at the requested pose
-//  EXPECT_TRUE(
-//      (quadrotor_common::geometryToEigen(autopilot_feedback_.reference_state.pose.position) -
-//          quadrotor_common::geometryToEigen(pose_cmd.pose.position)).norm() < 0.01)
-//      << "Go to pose action did not end up at the right position.";
+  EXPECT_TRUE(
+      (quadrotor_common::geometryToEigen(autopilot_feedback_.reference_state.pose.position) -
+          quadrotor_common::geometryToEigen(pose_cmd.pose.position)).norm() < 0.01)
+      << "Go to pose action did not end up at the right position.";
 
-//  EXPECT_TRUE(quadrotor_common::geometryToEigen(
-//          autopilot_feedback_.reference_state.pose.orientation).angularDistance(
-//          quadrotor_common::geometryToEigen(pose_cmd.pose.orientation)) < 0.01)
-//      << "Go to pose action did not end up at the right orientation.";
+  EXPECT_TRUE(quadrotor_common::geometryToEigen(
+          autopilot_feedback_.reference_state.pose.orientation).angularDistance(
+          quadrotor_common::geometryToEigen(pose_cmd.pose.orientation)) < 0.01)
+      << "Go to pose action did not end up at the right orientation.";
 
   ///////////////
   // Check sending reference states
@@ -265,15 +257,14 @@ void QuadrotorIntegrationTest::run()
     command_rate.sleep();
   }
 
-//  EXPECT_TRUE(
-//      autopilot_was_in_reference_control_mode)
-//      << "Autopilot did not switch to reference control correctly.";
+  EXPECT_TRUE(
+      autopilot_was_in_reference_control_mode)
+      << "Autopilot did not switch to reference control correctly.";
 
   // Wait for autopilot to go back to hover
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 2.0);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 2.0))
-//      << "Autopilot did not switch back to hover correctly.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 2.0))
+      << "Autopilot did not switch back to hover correctly.";
 
   ///////////////
   // Check trajectory control
@@ -324,11 +315,9 @@ void QuadrotorIntegrationTest::run()
   trajectory_pub_.publish(ring_traj.toRosMessage());
 
   // Check if autopilot goes to trajectory control state
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::TRAJECTORY_CONTROL,
-                        2.0);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::TRAJECTORY_CONTROL, 2.0))
-//      << "Autopilot did not switch back to hover correctly.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::TRAJECTORY_CONTROL, 2.0))
+      << "Autopilot did not switch back to hover correctly.";
 
   ///////////////
   // Check enforcing hover
@@ -346,10 +335,9 @@ void QuadrotorIntegrationTest::run()
   force_hover_pub_.publish(std_msgs::Empty());
 
   // Wait for autopilot to go back to hover
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 1.0);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 1.0))
-//      << "Autopilot did not switch to hover after being forced to hover.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::HOVER, 1.0))
+      << "Autopilot did not switch to hover after being forced to hover.";
 
   ///////////////
   // Check landing
@@ -359,17 +347,15 @@ void QuadrotorIntegrationTest::run()
   land_pub_.publish(std_msgs::Empty());
 
   // Wait for autopilot to go to land
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::LAND, 1.0);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::LAND, 1.0))
-//      << "Autopilot did not switch to land after sending land command within "
-//          "timeout.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::LAND, 1.0))
+      << "Autopilot did not switch to land after sending land command within "
+          "timeout.";
 
   // Wait for autopilot to go to off
-  waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::OFF, 10.0);
-//  EXPECT_TRUE(
-//      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::OFF, 10.0))
-//      << "Autopilot did not switch to off after landing within timeout.";
+  EXPECT_TRUE(
+      waitForAutopilotState(quadrotor_msgs::AutopilotFeedback::OFF, 10.0))
+      << "Autopilot did not switch to off after landing within timeout.";
 
   ///////////////
   // Check sending control commands
@@ -389,10 +375,10 @@ void QuadrotorIntegrationTest::run()
     control_command_pub_.publish(control_command);
     if ((ros::Time::now() - start_sending_cont_cmds) > ros::Duration(0.5))
     {
-//      EXPECT_TRUE(
-//          (autopilot_feedback_.autopilot_state
-//              == autopilot_feedback_.COMMAND_FEEDTHROUGH))
-//          << "Autopilot did not switch to command feedthrough correctly.";
+      EXPECT_TRUE(
+          (autopilot_feedback_.autopilot_state
+              == autopilot_feedback_.COMMAND_FEEDTHROUGH))
+          << "Autopilot did not switch to command feedthrough correctly.";
       break;
     }
     ros::spinOnce();
@@ -402,24 +388,17 @@ void QuadrotorIntegrationTest::run()
   off_pub_.publish(std_msgs::Empty());
 
   // Check tracking performance
-
-  ROS_WARN("sum_position_error_squared: %f", sum_position_error_squared_);
-  ROS_WARN("max_position_error: %f", max_position_error_);
-  ROS_WARN("sum_thrust_direction_error_squared: %f",
-           sum_thrust_direction_error_squared_);
-  ROS_WARN("max_thrust_direction_error: %f", max_thrust_direction_error_);
-
-//  EXPECT_LT(sum_position_error_squared_, 1.0)
-//      << "Sum of position errors (||des - est||^2) squared over all received "
-//          "feedback messages from the flight controller too large";
-//  EXPECT_LT(max_position_error_, 0.15)
-//      << "Max position error (||des - est||) from flight controller too large";
-//  EXPECT_LT(sum_thrust_direction_error_squared_, 10.0)
-//      << "Sum of thrust direction (acos(des.dot(est))^2) squared over all "
-//          "received feedback messages from the flight controller too large";
-//  EXPECT_LT(max_thrust_direction_error_, 0.3)
-//      << "Max thrust direction error (acos(des.dot(est))) from flight "
-//          "controller too large";
+  EXPECT_LT(sum_position_error_squared_, 1.0)
+      << "Sum of position errors (||des - est||^2) squared over all received "
+          "feedback messages from the flight controller too large";
+  EXPECT_LT(max_position_error_, 0.15)
+      << "Max position error (||des - est||) from flight controller too large";
+  EXPECT_LT(sum_thrust_direction_error_squared_, 10.0)
+      << "Sum of thrust direction (acos(des.dot(est))^2) squared over all "
+          "received feedback messages from the flight controller too large";
+  EXPECT_LT(max_thrust_direction_error_, 0.3)
+      << "Max thrust direction error (acos(des.dot(est))) from flight "
+          "controller too large";
 
 }
 
@@ -441,16 +420,18 @@ bool QuadrotorIntegrationTest::waitForAutopilotState(const uint state,
   return false;
 }
 
+TEST(QuadrotorIntegrationTest, AutopilotFunctionality)
+{
+  QuadrotorIntegrationTest rpg_quadrotor_integration_test;
+  rpg_quadrotor_integration_test.run();
 }
-// namespace rpg_quadrotor_integration_test
+
+} // namespace rpg_quadrotor_integration_test
 
 int main(int argc, char **argv)
 {
+  ::testing::InitGoogleTest(&argc, argv);
   ros::init(argc, argv, "rpg_quadrotor_integration_test");
-  rpg_quadrotor_integration_test::QuadrotorIntegrationTest rpg_quadrotor_integration_test;
 
-  rpg_quadrotor_integration_test.run();
-  ros::spin();
-
-  return 0;
+  return RUN_ALL_TESTS();
 }

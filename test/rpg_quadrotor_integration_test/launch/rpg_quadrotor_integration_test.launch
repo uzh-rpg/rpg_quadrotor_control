@@ -7,17 +7,9 @@
 
   <group ns="$(arg quad_name)" >
 
-	<!--
     <test pkg="rpg_quadrotor_integration_test" 
         test-name="rpg_quadrotor_integration_test" 
         type="rpg_quadrotor_integration_test" time-limit="120.0" />
-	-->
-	
-	<node pkg="rpg_quadrotor_integration_test" 
-	    type="rpg_quadrotor_integration_test" 
-	    name="rpg_quadrotor_integration_test" output="screen">
-      
-    </node>
     
   </group>
 

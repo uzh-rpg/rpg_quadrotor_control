@@ -9,14 +9,11 @@ find_package(catkin_simple REQUIRED)
 find_package(rostest REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 
-#add_rostest_gtest(
-#  rpg_quadrotor_integration_test 
-#  launch/rpg_quadrotor_integration_test.launch 
-#  src/rpg_quadrotor_integration_test.cpp)
-#target_link_libraries(rpg_quadrotor_integration_test ${catkin_LIBRARIES})
-
-cs_add_executable(rpg_quadrotor_integration_test 
-	src/rpg_quadrotor_integration_test.cpp)
+add_rostest_gtest(
+  rpg_quadrotor_integration_test 
+  launch/rpg_quadrotor_integration_test.launch 
+  src/rpg_quadrotor_integration_test.cpp)
+target_link_libraries(rpg_quadrotor_integration_test ${catkin_LIBRARIES})
 
 cs_install()
 cs_export()
