@@ -15,7 +15,7 @@ Together with the provided simple trajectory generation library, this can be use
 We also provide some utility to command a quadrotor with a gamepad through our framework as well as some calibration routines to compensate for varying battery voltage.
 Finally, we provide an interface to communicate with flight controllers used for First-Person-View racing.
 
-The theory behind the included algorithms is summarized in the [theory document](https://github.com/uzh-rpg/rpg_quadrotor_control/blob/master/documents/theory_and_math/theory_and_math.pdf) contained in this reposirtory as well as in our [RA-L18 Paper](http://rpg.ifi.uzh.ch/docs/RAL18_Faessler.pdf) with a technical report attached for further details as well as in our [RA-L17 Paper](http://rpg.ifi.uzh.ch/docs/RAL17_Faessler.pdf).
+The theory behind the included algorithms is summarized in the [theory document](https://github.com/uzh-rpg/rpg_quadrotor_control/blob/master/documents/theory_and_math/theory_and_math.pdf) contained in this repository as well as in our [RA-L18 Paper](http://rpg.ifi.uzh.ch/docs/RAL18_Faessler.pdf) with a technical report attached for further details as well as in our [RA-L17 Paper](http://rpg.ifi.uzh.ch/docs/RAL17_Faessler.pdf).
 
 #### Publication
 
