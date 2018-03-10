@@ -7,6 +7,10 @@ This is research code, expect that it changes often and any fitness for a partic
 
 The source code is released under a **TODO** licence.
 
+## Instructions
+
+Instructions for the installation and usage of this software is provided along with further details in our [Wiki](https://github.com/uzh-rpg/rpg_quadrotor_control/wiki).
+
 ## Summary
 
 This repository contains a complete framework for flying quadrotors based on control algorithms developed by the [Robotics and Perception Group](http://www.ifi.uzh.ch/en/rpg.html).
@@ -59,7 +63,3 @@ IEEE Robot. Autom. Lett. (RA-L), vol. 2, no. 2, pp. 476–482, Apr. 2017. [[PDF]
 
 Watch the [video](https://youtu.be/VIQILwcM5PA) demonstrating what can be done by the control algorithms in this repository:   
 [![Differential Flatness of Quadrotor Dynamics Subject to Rotor Drag](http://img.youtube.com/vi/VIQILwcM5PA/hqdefault.jpg)](https://youtu.be/VIQILwcM5PA)
-
-## Instructions
-
-Instructions for the installation and usage of this software is provided along with further details in our [wiki](https://github.com/uzh-rpg/rpg_quadrotor_control/wiki).
