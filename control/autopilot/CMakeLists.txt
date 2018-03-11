@@ -13,5 +13,5 @@ cs_add_executable(autopilot
     src/autopilot_node.cpp
 )
 
-cs_export()
 cs_install()
+cs_export()

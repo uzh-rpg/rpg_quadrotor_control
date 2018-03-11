@@ -10,5 +10,5 @@ catkin_simple(ALL_DEPS_REQUIRED)
 
 cs_add_executable(rpg_rotors_interface src/rpg_rotors_interface.cpp)
 
-cs_export()
 cs_install()
+cs_export()

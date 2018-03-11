@@ -13,5 +13,5 @@ cs_add_library(${PROJECT_NAME} src/polynomial_trajectory.cpp
     src/minimum_snap_trajectories.cpp 
     src/constrained_polynomial_trajectories.cpp)
 
-cs_export()
 cs_install()
+cs_export()
