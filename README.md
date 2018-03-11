@@ -21,6 +21,8 @@ Finally, we provide an interface to communicate with flight controllers used for
 
 The theory behind the included algorithms is summarized in the [theory document](https://github.com/uzh-rpg/rpg_quadrotor_control/blob/master/documents/theory_and_math/theory_and_math.pdf) contained in this repository as well as in our [RA-L18 Paper](http://rpg.ifi.uzh.ch/docs/RAL18_Faessler.pdf) with a technical report attached for further details as well as in our [RA-L17 Paper](http://rpg.ifi.uzh.ch/docs/RAL17_Faessler.pdf).
 
+This repository makes use of some basic functionalities from the [rpg_quadrotor_common](https://github.com/uzh-rpg/rpg_quadrotor_common) repository and when working with real hardware, the GPIO and ADC functionalities in the [rpg_single_board_io](https://github.com/uzh-rpg/rpg_single_board_io) repository might come in handy.
+
 #### Publication
 
 If you use this work in an academic context, please cite the following two RA-L publications:
