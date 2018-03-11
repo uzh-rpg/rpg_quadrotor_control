@@ -22,15 +22,10 @@
 #include <state_predictor/state_predictor.h>
 #include <std_msgs/Empty.h>
 
+#include "autopilot/autopilot_states.h"
+
 namespace autopilot
 {
-
-enum class States
-{
-  OFF, START, HOVER, LAND, EMERGENCY_LAND, BREAKING, GO_TO_POSE,
-  VELOCITY_CONTROL, REFERENCE_CONTROL, TRAJECTORY_CONTROL, COMMAND_FEEDTHROUGH,
-  RC_MANUAL
-};
 
 class AutoPilot
 {
@@ -84,7 +79,7 @@ private:
   quadrotor_common::ControlCommand executeTrajectory(
       const quadrotor_common::QuadStateEstimate& state_estimate,
       ros::Duration* trajectory_execution_left_duration,
-      int* trajectories_left_in_queues);
+      int* trajectories_left_in_queue);
 
   void setAutoPilotState(const States& new_state);
   void setAutoPilotStateForced(const States& new_state);
@@ -97,7 +92,7 @@ private:
       const States& autopilot_state, const ros::Duration& control_command_delay,
       const ros::Duration& control_computation_time,
       const ros::Duration& trajectory_execution_left_duration,
-      const int trajectories_left_in_queues,
+      const int trajectories_left_in_queue,
       const quadrotor_msgs::LowLevelFeedback& low_level_feedback,
       const quadrotor_common::TrajectoryPoint& reference_state,
       const quadrotor_common::QuadStateEstimate& state_estimate);

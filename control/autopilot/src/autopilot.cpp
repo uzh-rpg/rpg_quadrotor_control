@@ -347,7 +347,7 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
       getPredictedStateEstimate(command_execution_time);
 
   ros::Duration trajectory_execution_left_duration(0.0);
-  int trajectories_left_in_queues = 0;
+  int trajectories_left_in_queue = 0;
   const ros::Time start_control_command_computation = ros::Time::now();
   // Compute control command depending on autopilot state
   switch (autopilot_state_)
@@ -400,7 +400,7 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
     case States::TRAJECTORY_CONTROL:
       control_cmd = executeTrajectory(predicted_state,
                                       &trajectory_execution_left_duration,
-                                      &trajectories_left_in_queues);
+                                      &trajectories_left_in_queue);
       break;
     case States::COMMAND_FEEDTHROUGH:
       // Do nothing here, command is being published in the command input
@@ -433,7 +433,7 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
                              ros::Duration(control_command_delay_),
                              control_computation_time,
                              trajectory_execution_left_duration,
-                             trajectories_left_in_queues,
+                             trajectories_left_in_queue,
                              received_low_level_feedback_, reference_state_,
                              predicted_state);
   }
@@ -1102,7 +1102,7 @@ quadrotor_common::ControlCommand AutoPilot::followReference(
 quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
     const quadrotor_common::QuadStateEstimate& state_estimate,
     ros::Duration* trajectory_execution_left_duration,
-    int* trajectories_left_in_queues)
+    int* trajectories_left_in_queue)
 {
   const ros::Time time_now = ros::Time::now();
   if (first_time_in_new_state_)
@@ -1117,7 +1117,7 @@ quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
         "[%s] Trajectory queue was unexpectedly emptied, going back to HOVER",
         pnh_.getNamespace().c_str());
     *trajectory_execution_left_duration = ros::Duration(0.0);
-    *trajectories_left_in_queues = 0;
+    *trajectories_left_in_queue = 0;
     setAutoPilotState(States::HOVER);
     return base_controller_.run(state_estimate, reference_state_,
                                 base_controller_params_);
@@ -1131,7 +1131,7 @@ quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
       // This was the last trajectory in the queue -> go back to hover
       reference_state_ = trajectory_queue_.back().points.back();
       *trajectory_execution_left_duration = ros::Duration(0.0);
-      *trajectories_left_in_queues = 0;
+      *trajectories_left_in_queue = 0;
       setAutoPilotState(States::HOVER);
       return base_controller_.run(state_estimate, reference_state_,
                                   base_controller_params_);
@@ -1158,7 +1158,7 @@ quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
       *trajectory_execution_left_duration += it->points.back().time_from_start;
     }
   }
-  *trajectories_left_in_queues = trajectory_queue_.size();
+  *trajectories_left_in_queue = trajectory_queue_.size();
 
   const quadrotor_common::ControlCommand command = base_controller_.run(
       state_estimate, reference_state_, base_controller_params_);
@@ -1305,7 +1305,7 @@ void AutoPilot::publishAutopilotFeedback(
     const States& autopilot_state, const ros::Duration& control_command_delay,
     const ros::Duration& control_computation_time,
     const ros::Duration& trajectory_execution_left_duration,
-    const int trajectories_left_in_queues,
+    const int trajectories_left_in_queue,
     const quadrotor_msgs::LowLevelFeedback& low_level_feedback,
     const quadrotor_common::TrajectoryPoint& reference_state,
     const quadrotor_common::QuadStateEstimate& state_estimate)
