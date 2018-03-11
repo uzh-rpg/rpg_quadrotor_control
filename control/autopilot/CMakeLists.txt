@@ -13,5 +13,9 @@ cs_add_executable(autopilot
     src/autopilot_node.cpp
 )
 
+cs_add_library(autopilot_helper
+    src/autopilot_helper.cpp
+)
+
 cs_install()
 cs_export()
