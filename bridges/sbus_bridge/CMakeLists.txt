@@ -11,5 +11,5 @@ catkin_simple(ALL_DEPS_REQUIRED)
 cs_add_executable(sbus_bridge src/sbus_bridge_node.cpp src/sbus_bridge.cpp 
     src/sbus_serial_port.cpp src/sbus_msg.cpp src/thrust_mapping.cpp)
 
-cs_export()
 cs_install()
+cs_export()
