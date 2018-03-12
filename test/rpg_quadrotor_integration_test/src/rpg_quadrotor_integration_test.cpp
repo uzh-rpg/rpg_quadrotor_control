@@ -24,25 +24,22 @@ QuadrotorIntegrationTest::QuadrotorIntegrationTest() :
 
   arm_pub_ = nh.advertise<std_msgs::Bool>("bridge/arm", 1);
 
-  autopilot_feedback_sub_ = nh.subscribe(
-      "autopilot/feedback", 1,
-      &QuadrotorIntegrationTest::autopilotFeedbackCallback, this);
+  measure_tracking_timer_ = nh_.createTimer(
+      ros::Duration(1.0 / kExecLoopRate_),
+      &QuadrotorIntegrationTest::measureTracking, this);
 }
 
 QuadrotorIntegrationTest::~QuadrotorIntegrationTest()
 {
 }
 
-void QuadrotorIntegrationTest::autopilotFeedbackCallback(
-    const quadrotor_msgs::AutopilotFeedback::ConstPtr& msg)
+void QuadrotorIntegrationTest::measureTracking(const ros::TimerEvent& time)
 {
   if (executing_trajectory_)
   {
     // Position error
-    const double position_error = (quadrotor_common::geometryToEigen(
-        msg->reference_state.pose.position)
-        - quadrotor_common::geometryToEigen(
-            msg->state_estimate.pose.pose.position)).norm();
+    const double position_error =
+        autopilot_helper_.getCurrentPositionError().norm();
     sum_position_error_squared_ += pow(position_error, 2.0);
     if (position_error > max_position_error_)
     {
@@ -50,14 +47,15 @@ void QuadrotorIntegrationTest::autopilotFeedbackCallback(
     }
 
     // Thrust direction error
-    const Eigen::Vector3d des_thrust_direction =
-        quadrotor_common::geometryToEigen(msg->reference_state.pose.orientation)
+    const Eigen::Vector3d ref_thrust_direction =
+        autopilot_helper_.getCurrentReferenceOrientation()
             * Eigen::Vector3d::UnitZ();
-    const Eigen::Vector3d thrust_direction = quadrotor_common::geometryToEigen(
-        msg->state_estimate.pose.pose.orientation) * Eigen::Vector3d::UnitZ();
+    const Eigen::Vector3d thrust_direction =
+        autopilot_helper_.getCurrentOrientationEstimate()
+            * Eigen::Vector3d::UnitZ();
 
     const double thrust_direction_error = acos(
-        des_thrust_direction.dot(thrust_direction));
+        ref_thrust_direction.dot(thrust_direction));
     sum_thrust_direction_error_squared_ += pow(thrust_direction_error, 2.0);
     if (thrust_direction_error > max_thrust_direction_error_)
     {
@@ -355,18 +353,17 @@ void QuadrotorIntegrationTest::run()
   autopilot_helper_.sendOff();
 
   // Check tracking performance
-  EXPECT_LT(sum_position_error_squared_, 1.0)
-      << "Sum of position errors (||des - est||^2) squared over all received "
-          "feedback messages from the flight controller too large";
   EXPECT_LT(max_position_error_, 0.15)
-      << "Max position error (||des - est||) from flight controller too large";
-  EXPECT_LT(sum_thrust_direction_error_squared_, 10.0)
+      << "Max position error (||est - ref||) from autopilot too large";
+  EXPECT_LT(sum_position_error_squared_, 2.0)
+      << "Sum of position errors (||est - ref||^2) squared over all received "
+          "feedback messages from the autopilot too large";
+  EXPECT_LT(max_thrust_direction_error_, 0.25)
+      << "Max thrust direction error (acos(des.dot(est))) from autopilot "
+          "too large";
+  EXPECT_LT(sum_thrust_direction_error_squared_, 15.0)
       << "Sum of thrust direction (acos(des.dot(est))^2) squared over all "
-          "received feedback messages from the flight controller too large";
-  EXPECT_LT(max_thrust_direction_error_, 0.3)
-      << "Max thrust direction error (acos(des.dot(est))) from flight "
-          "controller too large";
-
+          "received feedback messages from the autopilot too large";
 }
 
 TEST(QuadrotorIntegrationTest, AutopilotFunctionality)
