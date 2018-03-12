@@ -8,6 +8,18 @@ namespace trajectory_generation_helper
 namespace heading
 {
 
+void addConstantHeading(const double heading,
+                        quadrotor_common::Trajectory* trajectory)
+{
+  std::list<quadrotor_common::TrajectoryPoint>::iterator it;
+  for (it = trajectory->points.begin(); it != trajectory->points.end(); it++)
+  {
+    it->heading = heading;
+    it->heading_rate = 0.0;
+    it->heading_acceleration = 0.0;
+  }
+}
+
 void addConstantHeadingRate(const double initial_heading,
                             const double final_heading,
                             quadrotor_common::Trajectory* trajectory)
