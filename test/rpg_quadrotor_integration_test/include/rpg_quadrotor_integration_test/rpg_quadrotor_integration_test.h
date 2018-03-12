@@ -17,12 +17,15 @@ public:
 
 private:
 
-  void autopilotFeedbackCallback(
-      const quadrotor_msgs::AutopilotFeedback::ConstPtr& msg);
+  void measureTracking(const ros::TimerEvent& time);
+
+  ros::NodeHandle nh_;
 
   ros::Publisher arm_pub_;
 
   ros::Subscriber autopilot_feedback_sub_;
+
+  ros::Timer measure_tracking_timer_;
 
   autopilot_helper::AutoPilotHelper autopilot_helper_;
   bool executing_trajectory_;
