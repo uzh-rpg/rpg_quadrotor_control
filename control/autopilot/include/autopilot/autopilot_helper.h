@@ -2,6 +2,7 @@
 
 #include <Eigen/Dense>
 #include <quadrotor_common/control_command.h>
+#include <quadrotor_common/quad_state_estimate.h>
 #include <quadrotor_common/trajectory.h>
 #include <quadrotor_common/trajectory_point.h>
 #include <quadrotor_msgs/AutopilotFeedback.h>
@@ -42,8 +43,25 @@ public:
   ros::Duration getCurrentControlComputationTime() const;
   ros::Duration getCurrentTrajectoryExecutionLeftDuration() const;
   int getCurrentTrajectoriesLeftInQueue() const;
+
   quadrotor_common::TrajectoryPoint getCurrentReferenceState() const;
+  Eigen::Vector3d getCurrentReferencePosition() const;
+  Eigen::Vector3d getCurrentReferenceVelocity() const;
+  Eigen::Quaterniond getCurrentReferenceOrientation() const;
   double getCurrentReferenceHeading() const;
+
+  quadrotor_common::QuadStateEstimate getCurrentStateEstimate() const;
+  Eigen::Vector3d getCurrentPositionEstimate() const;
+  Eigen::Vector3d getCurrentVelocityEstimate() const;
+  Eigen::Quaterniond getCurrentOrientationEstimate() const;
+  double getCurrentHeadingEstimate() const;
+
+  // Functions to get specific errors from autopilot
+  // error = estimate - reference
+  Eigen::Vector3d getCurrentPositionError() const;
+  Eigen::Vector3d getCurrentVelocityError() const;
+  Eigen::Quaterniond getCurrentOrientationError() const;
+  double getCurrentHeadingError() const;
 
   // Functions to send commands to the autopilot
   void sendPoseCommand(const Eigen::Vector3d& position,

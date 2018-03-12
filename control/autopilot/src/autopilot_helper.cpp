@@ -164,11 +164,81 @@ quadrotor_common::TrajectoryPoint AutoPilotHelper::getCurrentReferenceState() co
   return quadrotor_common::TrajectoryPoint(autopilot_feedback_.reference_state);
 }
 
+Eigen::Vector3d AutoPilotHelper::getCurrentReferencePosition() const
+{
+  return quadrotor_common::geometryToEigen(
+      autopilot_feedback_.reference_state.pose.position);
+}
+
+Eigen::Vector3d AutoPilotHelper::getCurrentReferenceVelocity() const
+{
+  return quadrotor_common::geometryToEigen(
+      autopilot_feedback_.reference_state.velocity.linear);
+}
+
+Eigen::Quaterniond AutoPilotHelper::getCurrentReferenceOrientation() const
+{
+  return quadrotor_common::geometryToEigen(
+      autopilot_feedback_.reference_state.pose.orientation);
+}
+
 double AutoPilotHelper::getCurrentReferenceHeading() const
 {
   return quadrotor_common::quaternionToEulerAnglesZYX(
       quadrotor_common::geometryToEigen(
           autopilot_feedback_.reference_state.pose.orientation)).z();
+}
+
+quadrotor_common::QuadStateEstimate AutoPilotHelper::getCurrentStateEstimate() const
+{
+  return quadrotor_common::QuadStateEstimate(autopilot_feedback_.state_estimate);
+}
+
+Eigen::Vector3d AutoPilotHelper::getCurrentPositionEstimate() const
+{
+  return quadrotor_common::geometryToEigen(
+      autopilot_feedback_.state_estimate.pose.pose.position);
+}
+
+Eigen::Vector3d AutoPilotHelper::getCurrentVelocityEstimate() const
+{
+  return quadrotor_common::geometryToEigen(
+      autopilot_feedback_.state_estimate.twist.twist.linear);
+}
+
+Eigen::Quaterniond AutoPilotHelper::getCurrentOrientationEstimate() const
+{
+  return quadrotor_common::geometryToEigen(
+      autopilot_feedback_.state_estimate.pose.pose.orientation);
+}
+
+double AutoPilotHelper::getCurrentHeadingEstimate() const
+{
+  return quadrotor_common::quaternionToEulerAnglesZYX(
+      quadrotor_common::geometryToEigen(
+          autopilot_feedback_.state_estimate.pose.pose.orientation)).z();
+}
+
+Eigen::Vector3d AutoPilotHelper::getCurrentPositionError() const
+{
+  return getCurrentPositionEstimate() - getCurrentReferencePosition();
+}
+
+Eigen::Vector3d AutoPilotHelper::getCurrentVelocityError() const
+{
+  return getCurrentVelocityEstimate() - getCurrentReferenceVelocity();
+}
+
+Eigen::Quaterniond AutoPilotHelper::getCurrentOrientationError() const
+{
+  return getCurrentReferenceOrientation().inverse()
+      * getCurrentOrientationEstimate();
+}
+
+double AutoPilotHelper::getCurrentHeadingError() const
+{
+  return quadrotor_common::wrapMinusPiToPi(
+      getCurrentHeadingEstimate() - getCurrentReferenceHeading());
 }
 
 void AutoPilotHelper::sendPoseCommand(const Eigen::Vector3d& position,
