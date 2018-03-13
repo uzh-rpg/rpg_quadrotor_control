@@ -16,7 +16,7 @@
 
   <depend>autopilot</depend>
   <depend>eigen_catkin</depend>
-  <depend>polynomial_trajectories_new</depend>
+  <depend>polynomial_trajectories</depend>
   <depend>quadrotor_common</depend>
   <depend>quadrotor_msgs</depend>
   <depend>roscpp</depend>

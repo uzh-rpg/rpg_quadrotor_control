@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>polynomial_trajectories_new</name>
+  <name>polynomial_trajectories</name>
   <version>0.0.0</version>
   <description>The polynomial_trajectories package</description>
 
