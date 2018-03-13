@@ -16,6 +16,7 @@ namespace autopilot_helper
 class AutoPilotHelper
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   AutoPilotHelper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
