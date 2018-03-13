@@ -18,8 +18,9 @@ struct TorquesAndThrust
 
 class RPGRotorsInterface
 {
-
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
   RPGRotorsInterface(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
   RPGRotorsInterface() :

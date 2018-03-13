@@ -30,6 +30,7 @@ namespace autopilot
 class AutoPilot
 {
 public:
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
