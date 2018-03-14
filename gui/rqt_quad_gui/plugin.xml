@@ -1,0 +1,26 @@
+<library path="src">
+
+  <class name="rqt_quad_gui_basic" type="rqt_quad_gui.basic_flight.BasicFlight" base_class_type="rqt_gui_py::Plugin">
+    <!-- 
+    path: The package-relative path which gets added to sys.path. 
+    name: The name of the plugin, which must be unique within a package. 
+    type: The concatenated name of the package, module and class, which is used for the import statement. (Form: package.module.class) 
+    base_class_type: For Python plugins which use the rospy client library the value is rqt_gui_py::Plugin. 
+    --> 
+    
+    <description>
+      Plugin to fly a quadrotor with the rpg_quadrotor_control framework
+    </description>
+    <qtgui>
+      <group>
+        <label>rpg</label>        
+        <icon type="theme">folder</icon>
+      </group>
+      
+      <label>RPG Basic Quad Flight Gui</label>
+      <icon type="theme">applications-other</icon>
+    </qtgui>
+
+  </class>
+
+</library>

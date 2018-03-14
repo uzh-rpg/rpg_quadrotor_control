@@ -105,9 +105,9 @@
       <rosparam file="$(find rpg_rotors_interface)/parameters/manual_flight_assistant.yaml"/>
     </node>
 
-    <node name="rqt_gui_quad" pkg="rqt_gui" type="rqt_gui" 
-        args="-s rqt_quad.vision_flight.VisionFlight --args 
-        --quad_name $(arg quad_name)" />
+    <node name="rqt_quad_gui" pkg="rqt_gui" type="rqt_gui" 
+        args="-s rqt_quad_gui.basic_flight.BasicFlight --args 
+        --quad_name $(arg quad_name)" output="screen"/>
 
   </group> 
 
