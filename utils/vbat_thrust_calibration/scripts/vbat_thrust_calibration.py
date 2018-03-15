@@ -157,7 +157,7 @@ class VbatThrustCalibration:
                     rospy.get_name()))
             self.received_first_autopilot_feedback = True
 
-        if msg.state != 3:  # TODO: Adapt to whatever will come here
+        if msg.autopilot_state != msg.HOVER:
             rospy.logerr(
                 "[{0}] Autopilot is not in hover, stopping vbat thrust "
                 "calibration.".format(rospy.get_name()))
