@@ -5,7 +5,7 @@
   <description>The manual_flight_assistant package</description>
   
   <maintainer email="faessler@ifi.uzh.ch">Matthias Faessler</maintainer>
-  <license>TODO</license>
+  <license>MIT</license>
 
   <author>Matthias Faessler</author>
 
