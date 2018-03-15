@@ -1132,6 +1132,7 @@ quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
       reference_state_ = trajectory_queue_.back().points.back();
       *trajectory_execution_left_duration = ros::Duration(0.0);
       *trajectories_left_in_queue = 0;
+      trajectory_queue_.pop_front();
       setAutoPilotState(States::HOVER);
       return base_controller_.run(state_estimate, reference_state_,
                                   base_controller_params_);
@@ -1356,6 +1357,7 @@ void AutoPilot::publishAutopilotFeedback(
   fb_msg.control_computation_time = control_computation_time;
   fb_msg.trajectory_execution_left_duration =
       trajectory_execution_left_duration;
+  fb_msg.trajectories_left_in_queue = trajectories_left_in_queue;
   fb_msg.low_level_feedback = low_level_feedback;
   fb_msg.reference_state = reference_state.toRosMessage();
   fb_msg.state_estimate = state_estimate.toRosMessage();
