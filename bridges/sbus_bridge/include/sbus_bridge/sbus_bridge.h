@@ -48,7 +48,7 @@ private:
 
   void setBridgeState(const BridgeState& desired_bridge_state);
 
-  void armBridgeCallback(const std_msgs::BoolConstPtr& msg);
+  void armBridgeCallback(const std_msgs::Bool::ConstPtr& msg);
   void batteryVoltageCallback(const std_msgs::Float32::ConstPtr& msg);
   void publishLowLevelFeedback(const ros::TimerEvent& time) const;
 

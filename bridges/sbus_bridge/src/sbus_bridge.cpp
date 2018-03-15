@@ -518,7 +518,7 @@ void SBusBridge::setBridgeState(const BridgeState& desired_bridge_state)
   }
 }
 
-void SBusBridge::armBridgeCallback(const std_msgs::BoolConstPtr& msg)
+void SBusBridge::armBridgeCallback(const std_msgs::Bool::ConstPtr& msg)
 {
   std::lock_guard<std::mutex> main_lock(main_mutex_);
 
