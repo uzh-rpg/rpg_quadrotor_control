@@ -6,6 +6,7 @@
 #include <quadrotor_msgs/ControlCommand.h>
 #include <quadrotor_common/control_command.h>
 #include <ros/ros.h>
+#include <std_msgs/Bool.h>
 
 namespace rpg_rotors_interface
 {
@@ -45,8 +46,9 @@ private:
       const quadrotor_common::ControlCommand& rate_cmd,
       const Eigen::Vector3d& body_rate_estimate);
 
-  mav_msgs::Actuators mixer(
-      const TorquesAndThrust& torques_and_thrust);
+  mav_msgs::Actuators mixer(const TorquesAndThrust& torques_and_thrust);
+
+  void armInterfaceCallback(const std_msgs::Bool::ConstPtr& msg);
 
   void loadParameters();
 
@@ -62,7 +64,9 @@ private:
   ros::Subscriber rotors_odometry_sub_;
   ros::Subscriber rpg_control_command_sub_;
   ros::Subscriber motor_speed_sub_;
+  ros::Subscriber arm_interface_sub_;
 
+  bool interface_armed_;
   TorquesAndThrust torques_and_thrust_estimate_;
   quadrotor_msgs::ControlCommand control_command_;
   mav_msgs::Actuators last_motor_speed_;

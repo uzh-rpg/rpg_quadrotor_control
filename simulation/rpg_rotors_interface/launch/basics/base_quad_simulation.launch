@@ -54,6 +54,7 @@
         <rosparam file="$(find rpg_rotors_interface)/parameters/rpg_rotors_interface.yaml" />
         
         <remap from="odometry" to="ground_truth/odometry" />
+        <remap from="rpg_rotors_interface/arm" to="bridge/arm" />
       </node>
 
       <!-- Autopilot -->
@@ -78,6 +79,7 @@
         <rosparam file="$(find rpg_rotors_interface)/parameters/rpg_rotors_interface.yaml" />
 
         <remap from="odometry" to="odometry_sensor1/odometry" />
+        <remap from="rpg_rotors_interface/arm" to="bridge/arm" />
       </node>
 
       <!-- Autopilot -->

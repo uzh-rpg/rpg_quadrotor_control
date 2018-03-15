@@ -13,7 +13,7 @@ namespace rpg_rotors_interface
 
 RPGRotorsInterface::RPGRotorsInterface(const ros::NodeHandle& nh,
                                        const ros::NodeHandle& pnh) :
-    nh_(nh), pnh_(pnh), torques_and_thrust_estimate_(), control_command_()
+    nh_(nh), pnh_(pnh), interface_armed_(false), torques_and_thrust_estimate_(), control_command_()
 {
   loadParameters();
 
@@ -24,11 +24,13 @@ RPGRotorsInterface::RPGRotorsInterface(const ros::NodeHandle& nh,
       "control_command", 1, &RPGRotorsInterface::rpgControlCommandCallback,
       this);
   rotors_odometry_sub_ = nh_.subscribe(
-      "odometry", 1, &RPGRotorsInterface::rotorsOdometryCallback,
-      this);
+      "odometry", 1, &RPGRotorsInterface::rotorsOdometryCallback, this);
   motor_speed_sub_ = nh_.subscribe("motor_speed", 1,
                                    &RPGRotorsInterface::motorSpeedCallback,
                                    this);
+  arm_interface_sub_ = nh_.subscribe("rpg_rotors_interface/arm", 1,
+                                     &RPGRotorsInterface::armInterfaceCallback,
+                                     this);
 
   low_level_control_loop_timer_ = nh_.createTimer(
       ros::Duration(1.0 / low_level_control_frequency_),
@@ -42,7 +44,7 @@ RPGRotorsInterface::~RPGRotorsInterface()
 void RPGRotorsInterface::lowLevelControlLoop(const ros::TimerEvent& time)
 {
   mav_msgs::Actuators desired_motor_speed;
-  if (!control_command_.armed)
+  if (!interface_armed_ || !control_command_.armed)
   {
     for (int i = 0; i < 4; i++)
     {
@@ -261,6 +263,21 @@ void RPGRotorsInterface::motorSpeedCallback(
   torques_and_thrust_estimate_.body_torques.z() = rotor_drag_coeff_
       * (f0 - f1 + f2 - f3);
   torques_and_thrust_estimate_.collective_thrust = f0 + f1 + f2 + f3;
+}
+
+void RPGRotorsInterface::armInterfaceCallback(
+    const std_msgs::Bool::ConstPtr& msg)
+{
+  if (msg->data)
+  {
+    interface_armed_ = true;
+    ROS_INFO("[%s] Interface armed", pnh_.getNamespace().c_str());
+  }
+  else
+  {
+    interface_armed_ = false;
+    ROS_INFO("[%s] Interface disarmed", pnh_.getNamespace().c_str());
+  }
 }
 
 void RPGRotorsInterface::loadParameters()
