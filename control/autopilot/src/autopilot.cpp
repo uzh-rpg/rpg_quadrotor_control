@@ -975,6 +975,7 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
     if (!force_breaking_
         && state_estimate.velocity.norm() < breaking_velocity_threshold_)
     {
+      ROS_WARN("skipping breaking"); // TODO: just for testing
       // Breaking is not necessary so we do not update the reference position
       // but set all derivatives to zero
       force_breaking_ = false;
@@ -1066,6 +1067,7 @@ quadrotor_common::ControlCommand AutoPilot::velocityControl(
     if (fabs(desired_velocity_command_.twist.angular.z)
         < kVelocityCommandZeroThreshold_)
     {
+      reference_state_.heading_rate = 0.0;
       setAutoPilotState(States::HOVER);
     }
   }
