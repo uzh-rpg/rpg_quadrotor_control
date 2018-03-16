@@ -164,6 +164,7 @@ private:
   ros::Time time_last_reference_state_input_received_;
   States desired_state_after_breaking_;
   States state_before_emergency_landing_;
+  bool force_breaking_;
 
   // Go to pose variables
   std::thread go_to_pose_thread_;

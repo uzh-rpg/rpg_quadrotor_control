@@ -22,9 +22,10 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     time_last_velocity_command_handled_(),
     time_last_reference_state_input_received_(),
     desired_state_after_breaking_(States::HOVER),
-    state_before_emergency_landing_(States::OFF), requested_go_to_pose_(),
-    received_go_to_pose_command_(false), stop_go_to_pose_thread_(false),
-    trajectory_queue_(), time_start_trajectory_execution_(),
+    state_before_emergency_landing_(States::OFF), force_breaking_(false),
+    requested_go_to_pose_(), received_go_to_pose_command_(false),
+    stop_go_to_pose_thread_(false), trajectory_queue_(),
+    time_start_trajectory_execution_(),
     time_last_control_command_input_received_(),
     last_control_command_input_thrust_high_(false),
     stop_watchdog_thread_(false), time_last_state_estimate_received_(),
@@ -744,6 +745,7 @@ void AutoPilot::startCallback(const std_msgs::Empty::ConstPtr& msg)
       {
         ROS_INFO("[%s] Relative state estimate available, switch to hover",
                  pnh_.getNamespace().c_str());
+        force_breaking_ = true; // Ensure reference state is reset
         setAutoPilotState(States::HOVER);
       }
     }
@@ -970,11 +972,13 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
-    if (state_estimate.velocity.norm() < breaking_velocity_threshold_
+    if (force_breaking_
+        || state_estimate.velocity.norm() < breaking_velocity_threshold_
         || timeInCurrentState() > breaking_timeout_)
     {
       // Breaking is not necessary so we do not update the reference position
       // but set all derivatives to zero
+      force_breaking_ = false;
       const Eigen::Vector3d current_position = reference_state_.position;
       const double current_heading = reference_state_.heading;
       reference_state_ = quadrotor_common::TrajectoryPoint();
