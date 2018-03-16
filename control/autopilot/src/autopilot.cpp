@@ -972,13 +972,20 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
-    if (!force_breaking_
-        && state_estimate.velocity.norm() < breaking_velocity_threshold_)
+    if (force_breaking_
+        || state_estimate.velocity.norm() > breaking_velocity_threshold_)
     {
-      ROS_WARN("skipping breaking"); // TODO: just for testing
+      force_breaking_ = false;
+      reference_state_ = quadrotor_common::TrajectoryPoint();
+      reference_state_.position = state_estimate.position;
+      reference_state_.velocity = state_estimate.velocity;
+      reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
+          state_estimate.orientation).z();
+    }
+    else
+    {
       // Breaking is not necessary so we do not update the reference position
       // but set all derivatives to zero
-      force_breaking_ = false;
       const Eigen::Vector3d current_position = reference_state_.position;
       const double current_heading = reference_state_.heading;
       reference_state_ = quadrotor_common::TrajectoryPoint();
@@ -988,11 +995,6 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
       return base_controller_.run(state_estimate, reference_state_,
                                   base_controller_params_);
     }
-    reference_state_ = quadrotor_common::TrajectoryPoint();
-    reference_state_.position = state_estimate.position;
-    reference_state_.velocity = state_estimate.velocity;
-    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
-        state_estimate.orientation).z();
   }
 
   if (state_estimate.velocity.norm() < breaking_velocity_threshold_
