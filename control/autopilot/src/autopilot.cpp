@@ -956,7 +956,7 @@ quadrotor_common::ControlCommand AutoPilot::land(
             * (ros::Time::now() - time_started_ramping_down_).toSec();
   }
 
-  if (command.collective_thrust <= 0.0)
+  if (command.collective_thrust <= 0.2)
   {
     setAutoPilotState(States::OFF);
     command.zero();
