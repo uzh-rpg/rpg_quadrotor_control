@@ -165,10 +165,8 @@ class AutopilotWidget(QWidget):
                 (self._autopilot_feedback.state_estimate.twist.twist.linear.x,
                  self._autopilot_feedback.state_estimate.twist.twist.linear.y,
                  self._autopilot_feedback.state_estimate.twist.twist.linear.z))
-            self.state_est_orientation.setText('r:%+.1f  p:%+.1f  y:%+.1f' %
-                (euler_angles[0] / math.pi * 180.0,
-                 euler_angles[1] / math.pi * 180.0,
-                 euler_angles[2] / math.pi * 180.0))
+            self.state_est_orientation.setText('r:%+.1f  p:%+.1f  h:%+.1f' %
+                (euler_angles[0], euler_angles[1], euler_angles[2]))
             self.state_est_body_rates.setText('x:%+.2f  y:%+.2f  z:%+.2f' %
                 (self._autopilot_feedback.state_estimate.twist.twist.angular.x / math.pi * 180.0,
                  self._autopilot_feedback.state_estimate.twist.twist.angular.y / math.pi * 180.0,
@@ -187,7 +185,7 @@ class AutopilotWidget(QWidget):
                 {'x': self._autopilot_feedback.reference_state.acceleration.linear.x,
                  'y': self._autopilot_feedback.reference_state.acceleration.linear.y,
                  'z': self._autopilot_feedback.reference_state.acceleration.linear.z})
-            self.ref_heading.setText('%+.1f' % self._autopilot_feedback.reference_state.heading)
+            self.ref_heading.setText('%+.1f' % (self._autopilot_feedback.reference_state.heading / math.pi * 180.0))
         else:
             # Autopilot status
             self.autopilot_state.setText('Not Available')

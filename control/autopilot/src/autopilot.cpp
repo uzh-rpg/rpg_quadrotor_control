@@ -22,9 +22,10 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     time_last_velocity_command_handled_(),
     time_last_reference_state_input_received_(),
     desired_state_after_breaking_(States::HOVER),
-    state_before_emergency_landing_(States::OFF), requested_go_to_pose_(),
-    received_go_to_pose_command_(false), stop_go_to_pose_thread_(false),
-    trajectory_queue_(), time_start_trajectory_execution_(),
+    state_before_emergency_landing_(States::OFF), force_breaking_(false),
+    requested_go_to_pose_(), received_go_to_pose_command_(false),
+    stop_go_to_pose_thread_(false), trajectory_queue_(),
+    time_start_trajectory_execution_(),
     time_last_control_command_input_received_(),
     last_control_command_input_thrust_high_(false),
     stop_watchdog_thread_(false), time_last_state_estimate_received_(),
@@ -167,17 +168,6 @@ void AutoPilot::watchdogThread()
       control_cmd.expected_execution_time = control_cmd.timestamp
           + ros::Duration(control_command_delay_);
       publishControlCommand(control_cmd);
-
-      // Publish autopilot feedback throttled down to a maximum frequency
-      if ((ros::Time::now() - time_last_autopilot_feedback_published_)
-          >= ros::Duration(1.0 / kMaxAutopilotFeedbackPublishFrequency_))
-      {
-        publishAutopilotFeedback(autopilot_state_,
-                                 ros::Duration(control_command_delay_),
-                                 ros::Duration(0.0), ros::Duration(0.0), 0,
-                                 received_low_level_feedback_, reference_state_,
-                                 quadrotor_common::QuadStateEstimate());
-      }
     }
 
     if (autopilot_state_ == States::COMMAND_FEEDTHROUGH
@@ -197,6 +187,21 @@ void AutoPilot::watchdogThread()
                  "thrust command was low, will switch to off",
                  pnh_.getNamespace().c_str());
         setAutoPilotState(States::OFF);
+      }
+    }
+
+    if (!state_estimate_available_)
+    {
+      // Publish autopilot feedback throttled down to a maximum frequency
+      // If there is no state estimate no feedback would be published otherwise
+      if ((ros::Time::now() - time_last_autopilot_feedback_published_)
+          >= ros::Duration(1.0 / kMaxAutopilotFeedbackPublishFrequency_))
+      {
+        publishAutopilotFeedback(autopilot_state_,
+                                 ros::Duration(control_command_delay_),
+                                 ros::Duration(0.0), ros::Duration(0.0), 0,
+                                 received_low_level_feedback_, reference_state_,
+                                 quadrotor_common::QuadStateEstimate());
       }
     }
 
@@ -343,8 +348,12 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
   ros::Time command_execution_time = wall_time_now
       + ros::Duration(control_command_delay_);
 
-  quadrotor_common::QuadStateEstimate predicted_state =
-      getPredictedStateEstimate(command_execution_time);
+  quadrotor_common::QuadStateEstimate predicted_state = received_state_est_;
+  if (autopilot_state_ != States::OFF)
+  {
+    // If the autopilot is OFF we don't need to predict
+    predicted_state = getPredictedStateEstimate(command_execution_time);
+  }
 
   ros::Duration trajectory_execution_left_duration(0.0);
   int trajectories_left_in_queue = 0;
@@ -736,6 +745,7 @@ void AutoPilot::startCallback(const std_msgs::Empty::ConstPtr& msg)
       {
         ROS_INFO("[%s] Relative state estimate available, switch to hover",
                  pnh_.getNamespace().c_str());
+        force_breaking_ = true; // Ensure reference state is reset
         setAutoPilotState(States::HOVER);
       }
     }
@@ -912,9 +922,8 @@ quadrotor_common::ControlCommand AutoPilot::land(
     time_to_ramp_down_ = false;
   }
 
-  reference_state_.position.z() = fmax(
-      0.0,
-      initial_land_position_.z() - start_land_velocity_ * timeInCurrentState());
+  reference_state_.position.z() = initial_land_position_.z()
+      - start_land_velocity_ * timeInCurrentState();
   reference_state_.velocity.z() = -start_land_velocity_;
 
   command = base_controller_.run(state_estimate, reference_state_,
@@ -925,7 +934,7 @@ quadrotor_common::ControlCommand AutoPilot::land(
       || received_state_est_.coordinate_frame
           == quadrotor_common::QuadStateEstimate::CoordinateFrame::OPTITRACK)
   {
-    // We only allow ramping down the propellers if we have an absolute stat
+    // We only allow ramping down the propellers if we have an absolute state
     // estimate available, otherwise we just keep going down "forever"
     if (!time_to_ramp_down_
         && (state_estimate.position.z() < optitrack_land_drop_height_
@@ -962,8 +971,17 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
-    if (state_estimate.velocity.norm() < breaking_velocity_threshold_
-        || timeInCurrentState() > breaking_timeout_)
+    if (force_breaking_
+        || state_estimate.velocity.norm() > breaking_velocity_threshold_)
+    {
+      force_breaking_ = false;
+      reference_state_ = quadrotor_common::TrajectoryPoint();
+      reference_state_.position = state_estimate.position;
+      reference_state_.velocity = state_estimate.velocity;
+      reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
+          state_estimate.orientation).z();
+    }
+    else
     {
       // Breaking is not necessary so we do not update the reference position
       // but set all derivatives to zero
@@ -976,11 +994,6 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
       return base_controller_.run(state_estimate, reference_state_,
                                   base_controller_params_);
     }
-    reference_state_ = quadrotor_common::TrajectoryPoint();
-    reference_state_.position = state_estimate.position;
-    reference_state_.velocity = state_estimate.velocity;
-    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
-        state_estimate.orientation).z();
   }
 
   if (state_estimate.velocity.norm() < breaking_velocity_threshold_
@@ -1027,10 +1040,6 @@ quadrotor_common::ControlCommand AutoPilot::velocityControl(
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
-    reference_state_ = quadrotor_common::TrajectoryPoint();
-    reference_state_.position = state_estimate.position;
-    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
-        state_estimate.orientation).z();
     time_last_velocity_command_handled_ = ros::Time::now();
   }
 
@@ -1059,6 +1068,7 @@ quadrotor_common::ControlCommand AutoPilot::velocityControl(
     if (fabs(desired_velocity_command_.twist.angular.z)
         < kVelocityCommandZeroThreshold_)
     {
+      reference_state_.heading_rate = 0.0;
       setAutoPilotState(States::HOVER);
     }
   }
