@@ -41,7 +41,7 @@
     <rect>
      <x>10</x>
      <y>330</y>
-     <width>111</width>
+     <width>131</width>
      <height>17</height>
     </rect>
    </property>
@@ -199,7 +199,7 @@ QPushButton {
     <rect>
      <x>10</x>
      <y>150</y>
-     <width>121</width>
+     <width>141</width>
      <height>17</height>
     </rect>
    </property>
@@ -262,7 +262,7 @@ QPushButton {
     <rect>
      <x>10</x>
      <y>240</y>
-     <width>121</width>
+     <width>141</width>
      <height>17</height>
     </rect>
    </property>
@@ -284,7 +284,7 @@ QPushButton {
     <rect>
      <x>20</x>
      <y>170</y>
-     <width>121</width>
+     <width>131</width>
      <height>17</height>
     </rect>
    </property>
@@ -753,7 +753,7 @@ QPushButton {
     <rect>
      <x>20</x>
      <y>190</y>
-     <width>121</width>
+     <width>131</width>
      <height>17</height>
     </rect>
    </property>
@@ -766,7 +766,7 @@ QPushButton {
     <rect>
      <x>20</x>
      <y>210</y>
-     <width>121</width>
+     <width>131</width>
      <height>17</height>
     </rect>
    </property>
