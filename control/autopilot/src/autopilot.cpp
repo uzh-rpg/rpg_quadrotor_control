@@ -972,9 +972,8 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
-    if (force_breaking_
-        || state_estimate.velocity.norm() < breaking_velocity_threshold_
-        || timeInCurrentState() > breaking_timeout_)
+    if (!force_breaking_
+        && state_estimate.velocity.norm() < breaking_velocity_threshold_)
     {
       // Breaking is not necessary so we do not update the reference position
       // but set all derivatives to zero
