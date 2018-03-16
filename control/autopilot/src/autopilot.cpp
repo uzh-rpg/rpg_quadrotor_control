@@ -922,9 +922,8 @@ quadrotor_common::ControlCommand AutoPilot::land(
     time_to_ramp_down_ = false;
   }
 
-  reference_state_.position.z() = fmax(
-      0.0,
-      initial_land_position_.z() - start_land_velocity_ * timeInCurrentState());
+  reference_state_.position.z() = initial_land_position_.z()
+      - start_land_velocity_ * timeInCurrentState();
   reference_state_.velocity.z() = -start_land_velocity_;
 
   command = base_controller_.run(state_estimate, reference_state_,
@@ -935,7 +934,7 @@ quadrotor_common::ControlCommand AutoPilot::land(
       || received_state_est_.coordinate_frame
           == quadrotor_common::QuadStateEstimate::CoordinateFrame::OPTITRACK)
   {
-    // We only allow ramping down the propellers if we have an absolute stat
+    // We only allow ramping down the propellers if we have an absolute state
     // estimate available, otherwise we just keep going down "forever"
     if (!time_to_ramp_down_
         && (state_estimate.position.z() < optitrack_land_drop_height_
