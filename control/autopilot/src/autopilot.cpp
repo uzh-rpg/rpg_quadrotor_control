@@ -1038,10 +1038,6 @@ quadrotor_common::ControlCommand AutoPilot::velocityControl(
   if (first_time_in_new_state_)
   {
     first_time_in_new_state_ = false;
-    reference_state_ = quadrotor_common::TrajectoryPoint();
-    reference_state_.position = state_estimate.position;
-    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
-        state_estimate.orientation).z();
     time_last_velocity_command_handled_ = ros::Time::now();
   }
 
