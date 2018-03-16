@@ -167,17 +167,6 @@ void AutoPilot::watchdogThread()
       control_cmd.expected_execution_time = control_cmd.timestamp
           + ros::Duration(control_command_delay_);
       publishControlCommand(control_cmd);
-
-      // Publish autopilot feedback throttled down to a maximum frequency
-      if ((ros::Time::now() - time_last_autopilot_feedback_published_)
-          >= ros::Duration(1.0 / kMaxAutopilotFeedbackPublishFrequency_))
-      {
-        publishAutopilotFeedback(autopilot_state_,
-                                 ros::Duration(control_command_delay_),
-                                 ros::Duration(0.0), ros::Duration(0.0), 0,
-                                 received_low_level_feedback_, reference_state_,
-                                 quadrotor_common::QuadStateEstimate());
-      }
     }
 
     if (autopilot_state_ == States::COMMAND_FEEDTHROUGH
@@ -197,6 +186,21 @@ void AutoPilot::watchdogThread()
                  "thrust command was low, will switch to off",
                  pnh_.getNamespace().c_str());
         setAutoPilotState(States::OFF);
+      }
+    }
+
+    if (!state_estimate_available_)
+    {
+      // Publish autopilot feedback throttled down to a maximum frequency
+      // If there is no state estimate no feedback would be published otherwise
+      if ((ros::Time::now() - time_last_autopilot_feedback_published_)
+          >= ros::Duration(1.0 / kMaxAutopilotFeedbackPublishFrequency_))
+      {
+        publishAutopilotFeedback(autopilot_state_,
+                                 ros::Duration(control_command_delay_),
+                                 ros::Duration(0.0), ros::Duration(0.0), 0,
+                                 received_low_level_feedback_, reference_state_,
+                                 quadrotor_common::QuadStateEstimate());
       }
     }
 
@@ -343,8 +347,12 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
   ros::Time command_execution_time = wall_time_now
       + ros::Duration(control_command_delay_);
 
-  quadrotor_common::QuadStateEstimate predicted_state =
-      getPredictedStateEstimate(command_execution_time);
+  quadrotor_common::QuadStateEstimate predicted_state = received_state_est_;
+  if (autopilot_state_ != States::OFF)
+  {
+    // If the autopilot is OFF we don't need to predict
+    predicted_state = getPredictedStateEstimate(command_execution_time);
+  }
 
   ros::Duration trajectory_execution_left_duration(0.0);
   int trajectories_left_in_queue = 0;
