@@ -476,6 +476,7 @@ void AutoPilot::lowLevelFeedbackCallback(
     }
     else
     {
+      force_breaking_ = true; // Ensure reference state is reset
       setAutoPilotState(States::HOVER);
     }
   }
