@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="quad_name"/>
+
+  <group ns="$(arg quad_name)" >
+
+    <node pkg="joy" type="joy_node" name="joy_node">
+      <param name="autorepeat_rate" value="10"/>
+    </node>
+
+    <node name="rqt_quad_gui" pkg="rqt_gui" type="rqt_gui" 
+        args="-s rqt_quad_gui.basic_flight.BasicFlight --args 
+        --quad_name $(arg quad_name)" output="screen"/>
+
+  </group>
+
+</launch>

@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="quad_name"/>
+
+  <group ns="$(arg quad_name)" >
+
+    <!-- State Estimate -->
+    <!-- Provide a state estimate as nav_msgs/Odometry messages to the topic
+        "state_estimate" (in this group/namespace) throttled to the 
+        frequency you want the controller to run. (Control loop runs upon
+        receiving a state estimate)
+    -->
+
+    <!-- Bridge -->
+    <node pkg="sbus_bridge" name="sbus_bridge" type="sbus_bridge" 
+        output="screen" >
+      <rosparam file="$(find sbus_bridge)/parameters/default.yaml"/>
+            
+      <param name="port_name" value="/dev/ttyS1" />
+
+      <!-- make it compatible with quad gui -->
+      <remap from="sbus_bridge/arm" to="bridge/arm" />
+    </node>
+
+    <!-- Autopilot -->
+    <node pkg="autopilot" type="autopilot" name="autopilot" output="screen">
+      <rosparam file="$(find state_predictor)/parameters/default.yaml" />
+      <rosparam file="$(find position_controller)/parameters/default.yaml" />
+      <rosparam file="$(find autopilot)/parameters/default.yaml" />
+
+      <param name="position_controller/use_rate_mode" value="True" />
+
+      <param name="velocity_estimate_in_world_frame" value="True" />
+      <param name="state_estimate_timeout" value="0.1" />
+      <param name="control_command_delay" value="0.0" />
+
+      <remap from="autopilot/state_estimate" to="state_estimate" />
+    </node>
+
+    <!-- Voltage Reader on ADC -->
+    <node pkg="rpg_single_board_io" type="voltage_reader" name="voltage_reader" 
+        output="screen">
+      <param name="board_name" value="up" />
+      <param name="adc_id" value="0" />
+      <param name="read_voltage_frequency" value="10" />
+      <param name="voltage_divider_upper_res" value="11.92" />
+      <param name="voltage_divider_lower_res" value="2.704" />
+
+      <remap from="voltage_reader/voltage" to="battery_voltage" />
+    </node>
+
+    <!-- Gamepad Driver -->
+    <node pkg="joy" type="joy_node" name="joy_node">
+      <param name="autorepeat_rate" value="10"/>
+      <param name="dev" value="/dev/input/js0"/>
+    </node>
+
+    <!-- Gamepad and RC Utility -->
+    <node pkg="manual_flight_assistant" type="manual_flight_assistant" 
+        name="manual_flight_assistant" output="screen">
+      <rosparam file="$(find manual_flight_assistant)/parameters/default.yaml"/>
+    </node>
+
+  </group>
+
+</launch>

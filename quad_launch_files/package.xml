@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package>
+  <name>quad_launch_files</name>
+  <version>0.0.0</version>
+  <description>The quad_launch_files package</description>
+
+  <maintainer email="faessler@ifi.uzh.ch">Matthias Faessler</maintainer>
+  <license>MIT</license>
+
+  <author>Matthias Faessler</author>
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  <buildtool_depend>catkin_simple</buildtool_depend>
+
+  <export>
+
+  </export>
+</package>
