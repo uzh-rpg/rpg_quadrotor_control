@@ -29,6 +29,7 @@ public:
 
   bool feedbackAvailable() const;
   double feedbackMessageAge() const;
+  bool stateEstimateAvailable() const;
 
   // Blocking function. Blocks until either autopilot feedback is
   // available or the timeout has been reached.
