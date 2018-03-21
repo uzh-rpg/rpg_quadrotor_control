@@ -67,6 +67,17 @@ double AutoPilotHelper::feedbackMessageAge() const
   return (ros::Time::now() - time_last_feedback_received_).toSec();
 }
 
+bool AutoPilotHelper::stateEstimateAvailable() const
+{
+  if (getCurrentStateEstimate().coordinate_frame
+      == quadrotor_common::QuadStateEstimate::CoordinateFrame::INVALID)
+  {
+    return false;
+  }
+
+  return true;
+}
+
 bool AutoPilotHelper::waitForAutopilotFeedback(const double timeout_s,
                                                const double loop_rate_hz) const
 {

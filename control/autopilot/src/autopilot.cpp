@@ -785,6 +785,7 @@ void AutoPilot::forceHoverCallback(const std_msgs::Empty::ConstPtr& msg)
     return;
   }
 
+  force_breaking_ = true;
   setAutoPilotState(States::HOVER);
 
   // Mutex is unlocked because it goes out of scope here
