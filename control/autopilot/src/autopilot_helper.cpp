@@ -259,7 +259,10 @@ void AutoPilotHelper::sendPoseCommand(const Eigen::Vector3d& position,
   pose_cmd.pose.position.x = position.x();
   pose_cmd.pose.position.y = position.y();
   pose_cmd.pose.position.z = position.z();
-  pose_cmd.pose.orientation.w = quadrotor_common::wrapMinusPiToPi(heading);
+  pose_cmd.pose.orientation = quadrotor_common::eigenToGeometry(
+      Eigen::Quaterniond(
+          Eigen::AngleAxisd(quadrotor_common::wrapMinusPiToPi(heading),
+                            Eigen::Vector3d::UnitZ())));
 
   pose_pub_.publish(pose_cmd);
 }
