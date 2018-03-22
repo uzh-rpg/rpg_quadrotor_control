@@ -244,7 +244,7 @@ void QuadrotorIntegrationTest::run()
 
   Eigen::VectorXd initial_ring_segment_times = Eigen::VectorXd::Ones(
       int(way_points.size()));
-  polynomial_trajectories::PloynomialTrajectorySettings ring_trajectory_settings;
+  polynomial_trajectories::PolynomialTrajectorySettings ring_trajectory_settings;
   ring_trajectory_settings.continuity_order = 4;
   Eigen::VectorXd minimization_weights(5);
   minimization_weights << 0.0, 1.0, 1.0, 1.0, 1.0;
@@ -257,7 +257,7 @@ void QuadrotorIntegrationTest::run()
           initial_ring_segment_times, ring_trajectory_settings, max_vel,
           max_thrust, max_roll_pitch_rate, kExecLoopRate_);
 
-  polynomial_trajectories::PloynomialTrajectorySettings enter_trajectory_settings =
+  polynomial_trajectories::PolynomialTrajectorySettings enter_trajectory_settings =
       ring_trajectory_settings;
   enter_trajectory_settings.way_points.clear();
 

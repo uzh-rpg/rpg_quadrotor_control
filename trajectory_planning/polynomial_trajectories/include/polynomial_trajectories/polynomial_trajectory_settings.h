@@ -7,11 +7,11 @@
 namespace polynomial_trajectories
 {
 
-struct PloynomialTrajectorySettings
+struct PolynomialTrajectorySettings
 {
-  PloynomialTrajectorySettings() = default;
+  PolynomialTrajectorySettings() = default;
 
-  PloynomialTrajectorySettings(const std::vector<Eigen::Vector3d>& way_points,
+  PolynomialTrajectorySettings(const std::vector<Eigen::Vector3d>& way_points,
                                const Eigen::VectorXd& minimization_weights,
                                const int polynomial_order,
                                const int continuity_order) :
@@ -20,7 +20,7 @@ struct PloynomialTrajectorySettings
   {
   }
 
-  virtual ~PloynomialTrajectorySettings() {};
+  virtual ~PolynomialTrajectorySettings() {};
 
   std::vector<Eigen::Vector3d> way_points;
   Eigen::VectorXd minimization_weights;

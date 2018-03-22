@@ -42,7 +42,7 @@ quadrotor_common::Trajectory generateMinimumSnapTrajectory(
     const Eigen::VectorXd& segment_times,
     const quadrotor_common::TrajectoryPoint& start_state,
     const quadrotor_common::TrajectoryPoint& end_state,
-    const polynomial_trajectories::PloynomialTrajectorySettings& trajectory_settings,
+    const polynomial_trajectories::PolynomialTrajectorySettings& trajectory_settings,
     const double sampling_frequency)
 {
   polynomial_trajectories::PolynomialTrajectory polynomial =
@@ -56,7 +56,7 @@ quadrotor_common::Trajectory generateMinimumSnapTrajectory(
     const Eigen::VectorXd& initial_segment_times,
     const quadrotor_common::TrajectoryPoint& start_state,
     const quadrotor_common::TrajectoryPoint& end_state,
-    const polynomial_trajectories::PloynomialTrajectorySettings& trajectory_settings,
+    const polynomial_trajectories::PolynomialTrajectorySettings& trajectory_settings,
     const double max_velocity, const double max_normalized_thrust,
     const double max_roll_pitch_rate, const double sampling_frequency)
 {
@@ -72,7 +72,7 @@ quadrotor_common::Trajectory generateMinimumSnapTrajectoryWithSegmentRefinement(
     const Eigen::VectorXd& initial_segment_times,
     const quadrotor_common::TrajectoryPoint& start_state,
     const quadrotor_common::TrajectoryPoint& end_state,
-    const polynomial_trajectories::PloynomialTrajectorySettings& trajectory_settings,
+    const polynomial_trajectories::PolynomialTrajectorySettings& trajectory_settings,
     const double sampling_frequency)
 {
   polynomial_trajectories::PolynomialTrajectory polynomial =
@@ -86,7 +86,7 @@ quadrotor_common::Trajectory generateMinimumSnapTrajectoryWithSegmentRefinement(
     const Eigen::VectorXd& initial_segment_times,
     const quadrotor_common::TrajectoryPoint& start_state,
     const quadrotor_common::TrajectoryPoint& end_state,
-    const polynomial_trajectories::PloynomialTrajectorySettings& trajectory_settings,
+    const polynomial_trajectories::PolynomialTrajectorySettings& trajectory_settings,
     const double max_velocity, const double max_normalized_thrust,
     const double max_roll_pitch_rate, const double sampling_frequency)
 {
@@ -100,7 +100,7 @@ quadrotor_common::Trajectory generateMinimumSnapTrajectoryWithSegmentRefinement(
 
 quadrotor_common::Trajectory generateMinimumSnapRingTrajectory(
     const Eigen::VectorXd& segment_times,
-    const polynomial_trajectories::PloynomialTrajectorySettings& trajectory_settings,
+    const polynomial_trajectories::PolynomialTrajectorySettings& trajectory_settings,
     const double sampling_frequency)
 {
   polynomial_trajectories::PolynomialTrajectory polynomial =
@@ -112,7 +112,7 @@ quadrotor_common::Trajectory generateMinimumSnapRingTrajectory(
 
 quadrotor_common::Trajectory generateMinimumSnapRingTrajectory(
     const Eigen::VectorXd& initial_segment_times,
-    const polynomial_trajectories::PloynomialTrajectorySettings& trajectory_settings,
+    const polynomial_trajectories::PolynomialTrajectorySettings& trajectory_settings,
     const double max_velocity, const double max_normalized_thrust,
     const double max_roll_pitch_rate, const double sampling_frequency)
 {
@@ -126,7 +126,7 @@ quadrotor_common::Trajectory generateMinimumSnapRingTrajectory(
 
 quadrotor_common::Trajectory generateMinimumSnapRingTrajectoryWithSegmentRefinement(
     const Eigen::VectorXd& initial_segment_times,
-    const polynomial_trajectories::PloynomialTrajectorySettings& trajectory_settings,
+    const polynomial_trajectories::PolynomialTrajectorySettings& trajectory_settings,
     const double sampling_frequency)
 {
   polynomial_trajectories::PolynomialTrajectory polynomial =
@@ -138,7 +138,7 @@ quadrotor_common::Trajectory generateMinimumSnapRingTrajectoryWithSegmentRefinem
 
 quadrotor_common::Trajectory generateMinimumSnapRingTrajectoryWithSegmentRefinement(
     const Eigen::VectorXd& initial_segment_times,
-    const polynomial_trajectories::PloynomialTrajectorySettings& trajectory_settings,
+    const polynomial_trajectories::PolynomialTrajectorySettings& trajectory_settings,
     const double max_velocity, const double max_normalized_thrust,
     const double max_roll_pitch_rate, const double sampling_frequency)
 {
