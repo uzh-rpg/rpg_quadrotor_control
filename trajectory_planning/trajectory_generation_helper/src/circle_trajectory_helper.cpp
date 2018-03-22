@@ -23,15 +23,17 @@ quadrotor_common::Trajectory computeHorizontalCircleTrajectory(
    */
 
   quadrotor_common::Trajectory trajectory;
+  trajectory.trajectory_type =
+      quadrotor_common::Trajectory::TrajectoryType::GENERAL;
 
   const double phi_total = phi_end - phi_start;
   const double direction = phi_total / fabs(phi_total);
   const double omega = direction * fabs(speed / radius);
-  const double angle_step = omega / sampling_frequency;
+  const double angle_step = fabs(omega / sampling_frequency);
 
-  for (double d_phi = 0.0; d_phi < phi_total; d_phi += angle_step)
+  for (double d_phi = 0.0; d_phi < fabs(phi_total); d_phi += angle_step)
   {
-    const double phi = phi_start + d_phi;
+    const double phi = phi_start + direction * d_phi;
     const double cos_phi = cos(phi);
     const double sin_phi = sin(phi);
     quadrotor_common::TrajectoryPoint point;
@@ -85,8 +87,57 @@ quadrotor_common::Trajectory computeVerticalCircleTrajectory(
    */
 
   quadrotor_common::Trajectory trajectory;
+  trajectory.trajectory_type =
+        quadrotor_common::Trajectory::TrajectoryType::GENERAL;
 
-  // TODO: Implement this
+  const double phi_total = phi_end - phi_start;
+  const double direction = phi_total / fabs(phi_total);
+  const double omega = direction * fabs(speed / radius);
+  const double angle_step = fabs(omega / sampling_frequency);
+
+  const Eigen::Quaterniond q_ori = Eigen::Quaterniond(
+      Eigen::AngleAxisd(quadrotor_common::wrapMinusPiToPi(orientation),
+                        Eigen::Vector3d::UnitZ()));
+
+  for (double d_phi = 0.0; d_phi < fabs(phi_total); d_phi += angle_step)
+  {
+    const double phi = phi_start + direction * d_phi;
+    const double cos_phi = cos(phi);
+    const double sin_phi = sin(phi);
+    quadrotor_common::TrajectoryPoint point;
+    point.time_from_start = ros::Duration(fabs(d_phi / omega));
+    point.position = q_ori * (radius * Eigen::Vector3d(cos_phi, 0.0, -sin_phi))
+        + center;
+    point.velocity = q_ori
+        * (radius * omega * Eigen::Vector3d(-sin_phi, 0.0, -cos_phi));
+    point.acceleration = q_ori
+        * (radius * pow(omega, 2.0) * Eigen::Vector3d(-cos_phi, 0.0, sin_phi));
+    point.jerk = q_ori
+        * (radius * pow(omega, 3.0) * Eigen::Vector3d(sin_phi, 0.0, cos_phi));
+    point.snap = q_ori
+        * (radius * pow(omega, 4.0) * Eigen::Vector3d(cos_phi, 0.0, -sin_phi));
+
+    trajectory.points.push_back(point);
+  }
+
+  // Add last point at phi_end
+  const double phi = phi_start + phi_total;
+  const double cos_phi = cos(phi);
+  const double sin_phi = sin(phi);
+  quadrotor_common::TrajectoryPoint point;
+  point.time_from_start = ros::Duration(fabs(phi_total / omega));
+  point.position = q_ori * (radius * Eigen::Vector3d(cos_phi, 0.0, -sin_phi))
+      + center;
+  point.velocity = q_ori
+      * (radius * omega * Eigen::Vector3d(-sin_phi, 0.0, -cos_phi));
+  point.acceleration = q_ori
+      * (radius * pow(omega, 2.0) * Eigen::Vector3d(-cos_phi, 0.0, sin_phi));
+  point.jerk = q_ori
+      * (radius * pow(omega, 3.0) * Eigen::Vector3d(sin_phi, 0.0, cos_phi));
+  point.snap = q_ori
+      * (radius * pow(omega, 4.0) * Eigen::Vector3d(cos_phi, 0.0, -sin_phi));
+
+  trajectory.points.push_back(point);
 
   return trajectory;
 }
