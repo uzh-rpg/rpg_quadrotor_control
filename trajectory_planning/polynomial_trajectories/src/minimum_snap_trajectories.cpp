@@ -14,7 +14,7 @@ PolynomialTrajectory generateMinimumSnapTrajectory(
     const Eigen::VectorXd& segment_times,
     const quadrotor_common::TrajectoryPoint& start_state,
     const quadrotor_common::TrajectoryPoint& end_state,
-    const PloynomialTrajectorySettings& trajectory_settings)
+    const PolynomialTrajectorySettings& trajectory_settings)
 {
   const int num_segments = segment_times.size();
 
@@ -45,7 +45,7 @@ PolynomialTrajectory generateMinimumSnapTrajectory(
       + ceil(
           trajectory_settings.continuity_order * (num_segments + 1)
               / float(num_segments)) - 1;
-  PloynomialTrajectorySettings new_trajectory_settings =
+  PolynomialTrajectorySettings new_trajectory_settings =
       implementation::ensureFeasibleTrajectorySettings(trajectory_settings,
                                                        min_poly_order);
 
@@ -126,7 +126,7 @@ PolynomialTrajectory generateMinimumSnapTrajectory(
     const Eigen::VectorXd& initial_segment_times,
     const quadrotor_common::TrajectoryPoint& start_state,
     const quadrotor_common::TrajectoryPoint& end_state,
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const double max_velocity, const double max_normalized_thrust,
     const double max_roll_pitch_rate)
 
@@ -218,7 +218,7 @@ PolynomialTrajectory generateMinimumSnapTrajectoryWithSegmentRefinement(
     const Eigen::VectorXd& initial_segment_times,
     const quadrotor_common::TrajectoryPoint& start_state,
     const quadrotor_common::TrajectoryPoint& end_state,
-    const PloynomialTrajectorySettings& trajectory_settings)
+    const PolynomialTrajectorySettings& trajectory_settings)
 {
   // Compute trajectory with initial values
   PolynomialTrajectory initial_trajectory = generateMinimumSnapTrajectory(
@@ -272,7 +272,7 @@ PolynomialTrajectory generateMinimumSnapTrajectoryWithSegmentRefinement(
     const Eigen::VectorXd& initial_segment_times,
     const quadrotor_common::TrajectoryPoint& start_state,
     const quadrotor_common::TrajectoryPoint& end_state,
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const double max_velocity, const double max_normalized_thrust,
     const double max_roll_pitch_rate)
 
@@ -363,7 +363,7 @@ PolynomialTrajectory generateMinimumSnapTrajectoryWithSegmentRefinement(
 
 PolynomialTrajectory generateMinimumSnapRingTrajectory(
     const Eigen::VectorXd& segment_times,
-    const PloynomialTrajectorySettings& trajectory_settings)
+    const PolynomialTrajectorySettings& trajectory_settings)
 {
   if (trajectory_settings.way_points.size() <= 2)
   {
@@ -404,7 +404,7 @@ PolynomialTrajectory generateMinimumSnapRingTrajectory(
   minimum_snap_trajectory.T = ros::Duration(segment_times.sum());
 
   // Ensure trajectory settings that result in feasible optimization problem
-  PloynomialTrajectorySettings new_trajectory_settings = trajectory_settings;
+  PolynomialTrajectorySettings new_trajectory_settings = trajectory_settings;
   const int min_poly_order = trajectory_settings.continuity_order + 1;
   new_trajectory_settings = implementation::ensureFeasibleTrajectorySettings(
       trajectory_settings, min_poly_order);
@@ -480,7 +480,7 @@ PolynomialTrajectory generateMinimumSnapRingTrajectory(
 
 PolynomialTrajectory generateMinimumSnapRingTrajectory(
     const Eigen::VectorXd& initial_segment_times,
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const double max_velocity, const double max_normalized_thrust,
     const double max_roll_pitch_rate)
 {
@@ -519,7 +519,7 @@ PolynomialTrajectory generateMinimumSnapRingTrajectory(
 
 PolynomialTrajectory generateMinimumSnapRingTrajectoryWithSegmentRefinement(
     const Eigen::VectorXd& initial_segment_times,
-    const PloynomialTrajectorySettings& trajectory_settings)
+    const PolynomialTrajectorySettings& trajectory_settings)
 {
   // Compute trajectory with initial values
   PolynomialTrajectory initial_trajectory = generateMinimumSnapRingTrajectory(
@@ -572,7 +572,7 @@ PolynomialTrajectory generateMinimumSnapRingTrajectoryWithSegmentRefinement(
 
 PolynomialTrajectory generateMinimumSnapRingTrajectoryWithSegmentRefinement(
     const Eigen::VectorXd& initial_segment_times,
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const double max_velocity, const double max_normalized_thrust,
     const double max_roll_pitch_rate)
 {
@@ -634,7 +634,7 @@ Eigen::MatrixXd generate1DTrajectory(const int num_polynoms,
 }
 
 Eigen::MatrixXd generateHMatrix(
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const int num_polynoms, const Eigen::VectorXd& tau_dot)
 {
   // up to which order derivatives should be minimized
@@ -710,7 +710,7 @@ Eigen::MatrixXd generateHMatrix(
 }
 
 Eigen::VectorXd generateFVector(
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const Eigen::VectorXd& way_points_1D, const int num_polynoms)
 {
   const int poly_order = trajectory_settings.polynomial_order;
@@ -741,7 +741,7 @@ Eigen::VectorXd generateFVector(
 }
 
 Eigen::MatrixXd generateEqualityConstraintsAMatrix(
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const int num_polynoms, const Eigen::VectorXd& tau_dot)
 {
   const int poly_order = trajectory_settings.polynomial_order;
@@ -803,7 +803,7 @@ Eigen::MatrixXd generateEqualityConstraintsAMatrix(
 }
 
 Eigen::VectorXd generateEqualityConstraintsBVector(
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const int num_polynoms, const Eigen::VectorXd& way_points_1D,
     const Eigen::Vector3d& start_conditions,
     const Eigen::Vector3d& end_conditions)
@@ -837,7 +837,7 @@ Eigen::VectorXd generateEqualityConstraintsBVector(
 }
 
 Eigen::MatrixXd generateRingEqualityConstraintsAMatrix(
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const int num_polynoms, const Eigen::VectorXd& tau_dot)
 {
   const int poly_order = trajectory_settings.polynomial_order;
@@ -887,7 +887,7 @@ Eigen::MatrixXd generateRingEqualityConstraintsAMatrix(
 }
 
 Eigen::VectorXd generateRingEqualityConstraintsBVector(
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const int num_polynoms, const Eigen::VectorXd& way_points_1D)
 {
   const int continuity_order = trajectory_settings.continuity_order;
@@ -910,7 +910,7 @@ Eigen::VectorXd generateRingEqualityConstraintsBVector(
 
 Eigen::VectorXd computeCostGradient(
     const PolynomialTrajectory& initial_trajectory,
-    const PloynomialTrajectorySettings& trajectory_settings)
+    const PolynomialTrajectorySettings& trajectory_settings)
 {
   int num_segments = int(initial_trajectory.segment_times.size());
   Eigen::VectorXd gradient = Eigen::VectorXd::Zero(num_segments);
@@ -991,7 +991,7 @@ Eigen::VectorXd computeSearchDirection(
 Eigen::VectorXd updateSegmentTimes(
     const PolynomialTrajectory& initial_trajectory,
     const Eigen::VectorXd& gradient,
-    const PloynomialTrajectorySettings& trajectory_settings)
+    const PolynomialTrajectorySettings& trajectory_settings)
 {
   Eigen::VectorXd updated_segment_times;
 
@@ -1039,7 +1039,7 @@ Eigen::VectorXd updateSegmentTimes(
 
 PolynomialTrajectory enforceMaximumVelocityAndThrust(
     const PolynomialTrajectory& initial_trajectory,
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     const double max_velocity, const double max_normalized_thrust,
     const double max_roll_pitch_rate)
 {
@@ -1267,7 +1267,7 @@ PolynomialTrajectory enforceMaximumVelocityAndThrust(
 
 bool computeMaximaGradient(
     const PolynomialTrajectory& trajectory, const Eigen::Vector3d& maxima,
-    const PloynomialTrajectorySettings& trajectory_settings,
+    const PolynomialTrajectorySettings& trajectory_settings,
     Eigen::Vector3d* gradient)
 {
   PolynomialTrajectory gradient_trajectory = trajectory;
@@ -1348,11 +1348,11 @@ std::vector<Eigen::Vector3d> addStartAndEndToWayPointList(
   return way_points;
 }
 
-PloynomialTrajectorySettings ensureFeasibleTrajectorySettings(
-    const PloynomialTrajectorySettings& original_trajectory_settings,
+PolynomialTrajectorySettings ensureFeasibleTrajectorySettings(
+    const PolynomialTrajectorySettings& original_trajectory_settings,
     const int min_poly_order)
 {
-  PloynomialTrajectorySettings new_trajectory_settings =
+  PolynomialTrajectorySettings new_trajectory_settings =
       original_trajectory_settings;
 
   // enforce minimum necessary polynomial order
