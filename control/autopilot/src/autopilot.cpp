@@ -145,7 +145,9 @@ void AutoPilot::watchdogThread()
     }
 
     if (!state_estimate_available_ && autopilot_state_ != States::OFF
-        && autopilot_state_ != States::EMERGENCY_LAND)
+        && autopilot_state_ != States::EMERGENCY_LAND
+        && autopilot_state_ != States::COMMAND_FEEDTHROUGH
+        && autopilot_state_ != States::RC_MANUAL)
     {
       setAutoPilotStateForced(States::EMERGENCY_LAND);
     }
