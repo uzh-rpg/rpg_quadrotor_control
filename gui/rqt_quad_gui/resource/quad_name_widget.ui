@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
+    <width>480</width>
     <height>80</height>
    </rect>
   </property>
@@ -42,13 +42,13 @@
     </font>
    </property>
    <property name="text">
-    <string>RPG Quadrotor Gui</string>
+    <string>RPG Quadrotor GUI</string>
    </property>
   </widget>
   <widget class="QPushButton" name="button_connect">
    <property name="geometry">
     <rect>
-     <x>310</x>
+     <x>370</x>
      <y>50</y>
      <width>80</width>
      <height>27</height>
@@ -63,7 +63,7 @@
     <rect>
      <x>10</x>
      <y>50</y>
-     <width>141</width>
+     <width>171</width>
      <height>27</height>
     </rect>
    </property>
@@ -79,17 +79,23 @@
     </font>
    </property>
    <property name="text">
-    <string>Quad Namespace:</string>
+    <string>Quadrotor namespace:</string>
    </property>
   </widget>
   <widget class="QLineEdit" name="namespace_text">
    <property name="geometry">
     <rect>
-     <x>150</x>
+     <x>190</x>
      <y>50</y>
      <width>159</width>
      <height>27</height>
     </rect>
+   </property>
+   <property name="font">
+    <font>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
    </property>
    <property name="toolTip">
     <string>Topic to send Twist message to</string>
