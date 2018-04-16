@@ -9,7 +9,7 @@ The source code is released under a MIT license.
 
 ## Instructions
 
-Instructions for the installation and usage of this software is provided along with further details in our [Wiki](https://github.com/uzh-rpg/rpg_quadrotor_control/wiki).
+Instructions for the installation and usage of this software is provided along with further details in our [Wiki](https://github.com/uzh-rpg/rpg_quadrotor_control/wiki). If you have questions or problems with this framework, please use the [issue tracker](https://github.com/uzh-rpg/rpg_quadrotor_control/issues). Please don't send us emails since they might not be answered. If you would like to contribute, please read the [How to Contribute page](https://github.com/uzh-rpg/rpg_quadrotor_control/wiki/How-to-Contribute) first.
 
 ## Summary
 
