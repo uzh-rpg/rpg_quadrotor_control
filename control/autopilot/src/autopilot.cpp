@@ -10,7 +10,8 @@
 namespace autopilot
 {
 
-AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
+template <typename Tcontroller, typename Tparams>
+AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
     nh_(nh), pnh_(pnh), state_predictor_(nh_, pnh_), reference_state_(),
     received_state_est_(), desired_velocity_command_(),
     reference_state_input_(), received_low_level_feedback_(),
@@ -48,37 +49,36 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
 
   // Subscribers
   state_estimate_sub_ = nh_.subscribe("autopilot/state_estimate", 1,
-                                      &AutoPilot::stateEstimateCallback, this);
+    &AutoPilot<Tcontroller, Tparams>::stateEstimateCallback, this);
   low_level_feedback_sub_ = nh_.subscribe("low_level_feedback", 1,
-                                          &AutoPilot::lowLevelFeedbackCallback,
-                                          this);
+    &AutoPilot<Tcontroller, Tparams>::lowLevelFeedbackCallback, this);
 
   pose_command_sub_ = nh_.subscribe("autopilot/pose_command", 1,
-                                    &AutoPilot::poseCommandCallback, this);
+    &AutoPilot<Tcontroller, Tparams>::poseCommandCallback, this);
   velocity_command_sub_ = nh_.subscribe("autopilot/velocity_command", 1,
-                                        &AutoPilot::velocityCommandCallback,
-                                        this);
+    &AutoPilot<Tcontroller, Tparams>::velocityCommandCallback, this);
   reference_state_sub_ = nh_.subscribe("autopilot/reference_state", 1,
-                                       &AutoPilot::referenceStateCallback,
-                                       this);
+    &AutoPilot<Tcontroller, Tparams>::referenceStateCallback, this);
   trajectory_sub_ = nh_.subscribe("autopilot/trajectory", 1,
-                                  &AutoPilot::trajectoryCallback, this);
+    &AutoPilot<Tcontroller, Tparams>::trajectoryCallback, this);
   control_command_input_sub_ = nh_.subscribe(
       "autopilot/control_command_input", 1,
-      &AutoPilot::controlCommandInputCallback, this);
+      &AutoPilot<Tcontroller, Tparams>::controlCommandInputCallback, this);
 
-  start_sub_ = nh_.subscribe("autopilot/start", 1, &AutoPilot::startCallback,
-                             this);
+  start_sub_ = nh_.subscribe("autopilot/start", 1,
+    &AutoPilot<Tcontroller, Tparams>::startCallback, this);
   force_hover_sub_ = nh_.subscribe("autopilot/force_hover", 1,
-                                   &AutoPilot::forceHoverCallback, this);
-  land_sub_ = nh_.subscribe("autopilot/land", 1, &AutoPilot::landCallback,
-                            this);
-  off_sub_ = nh_.subscribe("autopilot/off", 1, &AutoPilot::offCallback, this);
+    &AutoPilot<Tcontroller, Tparams>::forceHoverCallback, this);
+  land_sub_ = nh_.subscribe("autopilot/land", 1,
+    &AutoPilot<Tcontroller, Tparams>::landCallback, this);
+  off_sub_ = nh_.subscribe("autopilot/off", 1,
+    &AutoPilot<Tcontroller, Tparams>::offCallback, this);
 
   // Start watchdog thread
   try
   {
-    watchdog_thread_ = std::thread(&AutoPilot::watchdogThread, this);
+    watchdog_thread_ = std::thread(
+      &AutoPilot<Tcontroller, Tparams>::watchdogThread, this);
   }
   catch (...)
   {
@@ -91,7 +91,8 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
   // Start go to pose thread
   try
   {
-    go_to_pose_thread_ = std::thread(&AutoPilot::goToPoseThread, this);
+    go_to_pose_thread_ = std::thread(
+      &AutoPilot<Tcontroller, Tparams>::goToPoseThread, this);
   }
   catch (...)
   {
@@ -102,7 +103,8 @@ AutoPilot::AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh) :
   }
 }
 
-AutoPilot::~AutoPilot()
+template <typename Tcontroller, typename Tparams>
+AutoPilot<Tcontroller, Tparams>::~AutoPilot()
 {
   destructor_invoked_ = true;
 
@@ -125,7 +127,8 @@ AutoPilot::~AutoPilot()
 // Watchdog thread to check when the last state estimate was received
 // -> trigger emergency landing if necessary
 // -> set state_estimate_available_ false
-void AutoPilot::watchdogThread()
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::watchdogThread()
 {
   ros::Rate watchdog_rate(kWatchdogFrequency_);
   while (ros::ok() && !stop_watchdog_thread_)
@@ -212,7 +215,8 @@ void AutoPilot::watchdogThread()
 }
 
 // Planning thread for planning GO_TO_POSE actions
-void AutoPilot::goToPoseThread()
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::goToPoseThread()
 {
   ros::Rate idle_rate(kGoToPoseIdleFrequency_);
   while (ros::ok() && !stop_go_to_pose_thread_)
@@ -263,7 +267,7 @@ void AutoPilot::goToPoseThread()
       else
       {
         quadrotor_common::Trajectory go_to_pose_traj =
-            trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
+          trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
                 start_state, end_state, kGoToPosePolynomialOrderOfContinuity_,
                 go_to_pose_max_velocity_, go_to_pose_max_normalized_thrust_,
                 go_to_pose_max_roll_pitch_rate_,
@@ -310,7 +314,9 @@ void AutoPilot::goToPoseThread()
   }
 }
 
-void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
+  const nav_msgs::Odometry::ConstPtr& msg)
 {
   if (destructor_invoked_)
   {
@@ -452,7 +458,8 @@ void AutoPilot::stateEstimateCallback(const nav_msgs::Odometry::ConstPtr& msg)
   // Mutex is unlocked because it goes out of scope here
 }
 
-void AutoPilot::lowLevelFeedbackCallback(
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::lowLevelFeedbackCallback(
     const quadrotor_msgs::LowLevelFeedback::ConstPtr& msg)
 {
   if (destructor_invoked_)
@@ -486,7 +493,8 @@ void AutoPilot::lowLevelFeedbackCallback(
   // Mutex is unlocked because it goes out of scope here
 }
 
-void AutoPilot::poseCommandCallback(
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::poseCommandCallback(
     const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
   if (destructor_invoked_)
@@ -519,7 +527,8 @@ void AutoPilot::poseCommandCallback(
   // Mutexes are unlocked because they go out of scope here
 }
 
-void AutoPilot::velocityCommandCallback(
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::velocityCommandCallback(
     const geometry_msgs::TwistStamped::ConstPtr& msg)
 {
   if (destructor_invoked_)
@@ -552,7 +561,8 @@ void AutoPilot::velocityCommandCallback(
   // Mutex is unlocked because it goes out of scope here
 }
 
-void AutoPilot::referenceStateCallback(
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::referenceStateCallback(
     const quadrotor_msgs::TrajectoryPoint::ConstPtr& msg)
 {
   if (destructor_invoked_)
@@ -599,7 +609,8 @@ void AutoPilot::referenceStateCallback(
   // Mutex is unlocked because it goes out of scope here
 }
 
-void AutoPilot::trajectoryCallback(
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::trajectoryCallback(
     const quadrotor_msgs::Trajectory::ConstPtr& msg)
 {
   if (destructor_invoked_)
@@ -673,7 +684,8 @@ void AutoPilot::trajectoryCallback(
   // Mutex is unlocked because it goes out of scope here
 }
 
-void AutoPilot::controlCommandInputCallback(
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::controlCommandInputCallback(
     const quadrotor_msgs::ControlCommand::ConstPtr& msg)
 {
   if (destructor_invoked_)
@@ -716,7 +728,9 @@ void AutoPilot::controlCommandInputCallback(
   // Mutex is unlocked because it goes out of scope here
 }
 
-void AutoPilot::startCallback(const std_msgs::Empty::ConstPtr& msg)
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::startCallback(
+  const std_msgs::Empty::ConstPtr& msg)
 {
   if (destructor_invoked_)
   {
@@ -734,7 +748,7 @@ void AutoPilot::startCallback(const std_msgs::Empty::ConstPtr& msg)
       if (received_state_est_.coordinate_frame
           == quadrotor_common::QuadStateEstimate::CoordinateFrame::WORLD
           || received_state_est_.coordinate_frame
-              == quadrotor_common::QuadStateEstimate::CoordinateFrame::OPTITRACK)
+            == quadrotor_common::QuadStateEstimate::CoordinateFrame::OPTITRACK)
       {
         ROS_INFO(
             "[%s] Absolute state estimate available, taking off based on it",
@@ -768,7 +782,9 @@ void AutoPilot::startCallback(const std_msgs::Empty::ConstPtr& msg)
   // Mutex is unlocked because it goes out of scope here
 }
 
-void AutoPilot::forceHoverCallback(const std_msgs::Empty::ConstPtr& msg)
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::forceHoverCallback(
+  const std_msgs::Empty::ConstPtr& msg)
 {
   if (destructor_invoked_)
   {
@@ -793,7 +809,9 @@ void AutoPilot::forceHoverCallback(const std_msgs::Empty::ConstPtr& msg)
   // Mutex is unlocked because it goes out of scope here
 }
 
-void AutoPilot::landCallback(const std_msgs::Empty::ConstPtr& msg)
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::landCallback(
+  const std_msgs::Empty::ConstPtr& msg)
 {
   if (destructor_invoked_)
   {
@@ -816,7 +834,9 @@ void AutoPilot::landCallback(const std_msgs::Empty::ConstPtr& msg)
   // Mutex is unlocked because it goes out of scope here
 }
 
-void AutoPilot::offCallback(const std_msgs::Empty::ConstPtr& msg)
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::offCallback(
+  const std_msgs::Empty::ConstPtr& msg)
 {
   if (destructor_invoked_)
   {
@@ -837,7 +857,8 @@ void AutoPilot::offCallback(const std_msgs::Empty::ConstPtr& msg)
   // Mutex is unlocked because it goes out of scope here
 }
 
-quadrotor_common::ControlCommand AutoPilot::start(
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::start(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
   quadrotor_common::ControlCommand command;
@@ -880,13 +901,17 @@ quadrotor_common::ControlCommand AutoPilot::start(
     }
   }
 
-  command = base_controller_.run(state_estimate, reference_state_,
+  reference_trajectory_ = Trajectory();
+  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+  reference_trajectory_.points.push_back(reference_state_);
+  command = base_controller_.run(state_estimate, reference_trajectory_,
                                  base_controller_params_);
 
   return command;
 }
 
-quadrotor_common::ControlCommand AutoPilot::hover(
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::hover(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
   if (first_time_in_new_state_)
@@ -903,13 +928,17 @@ quadrotor_common::ControlCommand AutoPilot::hover(
     reference_state_.heading = current_heading;
   }
 
+  reference_trajectory_ = Trajectory();
+  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+  reference_trajectory_.points.push_back(reference_state_);
   const quadrotor_common::ControlCommand command = base_controller_.run(
-      state_estimate, reference_state_, base_controller_params_);
+      state_estimate, reference_trajectory_, base_controller_params_);
 
   return command;
 }
 
-quadrotor_common::ControlCommand AutoPilot::land(
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::land(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
   quadrotor_common::ControlCommand command;
@@ -930,7 +959,11 @@ quadrotor_common::ControlCommand AutoPilot::land(
       - start_land_velocity_ * timeInCurrentState();
   reference_state_.velocity.z() = -start_land_velocity_;
 
-  command = base_controller_.run(state_estimate, reference_state_,
+
+  reference_trajectory_ = Trajectory();
+  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+  reference_trajectory_.points.push_back(reference_state_);
+  command = base_controller_.run(state_estimate, reference_trajectory_,
                                  base_controller_params_);
 
   if (received_state_est_.coordinate_frame
@@ -969,7 +1002,8 @@ quadrotor_common::ControlCommand AutoPilot::land(
   return command;
 }
 
-quadrotor_common::ControlCommand AutoPilot::breakVelocity(
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::breakVelocity(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
   if (first_time_in_new_state_)
@@ -995,7 +1029,11 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
       reference_state_.position = current_position;
       reference_state_.heading = current_heading;
       setAutoPilotStateForced(desired_state_after_breaking_);
-      return base_controller_.run(state_estimate, reference_state_,
+
+      reference_trajectory_ = Trajectory();
+      reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+      reference_trajectory_.points.push_back(reference_state_);
+      return base_controller_.run(state_estimate, reference_trajectory_,
                                   base_controller_params_);
     }
   }
@@ -1010,13 +1048,19 @@ quadrotor_common::ControlCommand AutoPilot::breakVelocity(
     setAutoPilotStateForced(desired_state_after_breaking_);
   }
 
+
+  reference_trajectory_ = Trajectory();
+  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+  reference_trajectory_.points.push_back(reference_state_);
   const quadrotor_common::ControlCommand command = base_controller_.run(
-      state_estimate, reference_state_, base_controller_params_);
+      state_estimate, reference_trajectory_, base_controller_params_);
 
   return command;
 }
 
-quadrotor_common::ControlCommand AutoPilot::waitForGoToPoseAction(
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::ControlCommand
+AutoPilot<Tcontroller, Tparams>::waitForGoToPoseAction(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
   if (first_time_in_new_state_)
@@ -1032,13 +1076,19 @@ quadrotor_common::ControlCommand AutoPilot::waitForGoToPoseAction(
   // Going into this state instead of remaining in hover prevents the autopilot
   // to go to TRAJECTORY_CONTROL mode in the time where a go to pose trajectory
   // is planned
+
+  reference_trajectory_ = Trajectory();
+  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+  reference_trajectory_.points.push_back(reference_state_);
   const quadrotor_common::ControlCommand command = base_controller_.run(
-      state_estimate, reference_state_, base_controller_params_);
+      state_estimate, reference_trajectory_, base_controller_params_);
 
   return command;
 }
 
-quadrotor_common::ControlCommand AutoPilot::velocityControl(
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::ControlCommand
+AutoPilot<Tcontroller, Tparams>::velocityControl(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
   if (first_time_in_new_state_)
@@ -1085,13 +1135,19 @@ quadrotor_common::ControlCommand AutoPilot::velocityControl(
 
   time_last_velocity_command_handled_ = ros::Time::now();
 
+
+  reference_trajectory_ = Trajectory();
+  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+  reference_trajectory_.points.push_back(reference_state_);
   const quadrotor_common::ControlCommand command = base_controller_.run(
-      state_estimate, reference_state_, base_controller_params_);
+      state_estimate, reference_trajectory_, base_controller_params_);
 
   return command;
 }
 
-quadrotor_common::ControlCommand AutoPilot::followReference(
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::ControlCommand
+AutoPilot<Tcontroller, Tparams>::followReference(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
   if (first_time_in_new_state_)
@@ -1107,13 +1163,19 @@ quadrotor_common::ControlCommand AutoPilot::followReference(
 
   reference_state_ = quadrotor_common::TrajectoryPoint(reference_state_input_);
 
+
+  reference_trajectory_ = Trajectory();
+  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+  reference_trajectory_.points.push_back(reference_state_);
   const quadrotor_common::ControlCommand command = base_controller_.run(
       state_estimate, reference_state_, base_controller_params_);
 
   return command;
 }
 
-quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::ControlCommand
+AutoPilot<Tcontroller, Tparams>::executeTrajectory(
     const quadrotor_common::QuadStateEstimate& state_estimate,
     ros::Duration* trajectory_execution_left_duration,
     int* trajectories_left_in_queue)
@@ -1133,6 +1195,10 @@ quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
     *trajectory_execution_left_duration = ros::Duration(0.0);
     *trajectories_left_in_queue = 0;
     setAutoPilotState(States::HOVER);
+
+  reference_trajectory_ = Trajectory();
+  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+  reference_trajectory_.points.push_back(reference_state_);
     return base_controller_.run(state_estimate, reference_state_,
                                 base_controller_params_);
   }
@@ -1148,6 +1214,10 @@ quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
       *trajectories_left_in_queue = 0;
       trajectory_queue_.pop_front();
       setAutoPilotState(States::HOVER);
+
+      reference_trajectory_ = Trajectory();
+      reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+      reference_trajectory_.points.push_back(reference_state_);
       return base_controller_.run(state_estimate, reference_state_,
                                   base_controller_params_);
     }
@@ -1175,13 +1245,18 @@ quadrotor_common::ControlCommand AutoPilot::executeTrajectory(
   }
   *trajectories_left_in_queue = trajectory_queue_.size();
 
+
+  reference_trajectory_ = Trajectory();
+  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+  reference_trajectory_.points.push_back(reference_state_);
   const quadrotor_common::ControlCommand command = base_controller_.run(
       state_estimate, reference_state_, base_controller_params_);
 
   return command;
 }
 
-void AutoPilot::setAutoPilotState(const States& new_state)
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::setAutoPilotState(const States& new_state)
 {
   if (!state_estimate_available_ && new_state != States::OFF
       && new_state != States::EMERGENCY_LAND
@@ -1217,7 +1292,9 @@ void AutoPilot::setAutoPilotState(const States& new_state)
   setAutoPilotStateForced(new_state);
 }
 
-void AutoPilot::setAutoPilotStateForced(const States& new_state)
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::setAutoPilotStateForced(
+  const States& new_state)
 {
   const ros::Time time_now = ros::Time::now();
   if (new_state == States::EMERGENCY_LAND)
@@ -1284,18 +1361,22 @@ void AutoPilot::setAutoPilotStateForced(const States& new_state)
            state_name.c_str());
 }
 
-double AutoPilot::timeInCurrentState() const
+template <typename Tcontroller, typename Tparams>
+double AutoPilot<Tcontroller, Tparams>::timeInCurrentState() const
 {
   return (ros::Time::now() - time_of_switch_to_current_state_).toSec();
 }
 
-quadrotor_common::QuadStateEstimate AutoPilot::getPredictedStateEstimate(
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::QuadStateEstimate
+AutoPilot<Tcontroller, Tparams>::getPredictedStateEstimate(
     const ros::Time& time) const
 {
   return state_predictor_.predictState(time);
 }
 
-void AutoPilot::publishControlCommand(
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::publishControlCommand(
     const quadrotor_common::ControlCommand& control_cmd)
 {
   if (control_cmd.control_mode == quadrotor_common::ControlMode::NONE)
@@ -1316,7 +1397,8 @@ void AutoPilot::publishControlCommand(
   }
 }
 
-void AutoPilot::publishAutopilotFeedback(
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::publishAutopilotFeedback(
     const States& autopilot_state, const ros::Duration& control_command_delay,
     const ros::Duration& control_computation_time,
     const ros::Duration& trajectory_execution_left_duration,
@@ -1381,7 +1463,8 @@ void AutoPilot::publishAutopilotFeedback(
   time_last_autopilot_feedback_published_ = ros::Time::now();
 }
 
-bool AutoPilot::loadParameters()
+template <typename Tcontroller, typename Tparams>
+bool AutoPilot<Tcontroller, Tparams>::loadParameters()
 {
 #define GET_PARAM(name) \
 if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
@@ -1419,5 +1502,8 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
 
 #undef GET_PARAM
 }
+
+template class AutoPilot<position_controller::PositionController,
+                         position_controller::PositionControllerParams>;
 
 } // namespace autopilot

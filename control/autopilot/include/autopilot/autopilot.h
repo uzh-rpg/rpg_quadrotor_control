@@ -27,6 +27,7 @@
 namespace autopilot
 {
 
+template <typename Tcontroller, typename Tparams>
 class AutoPilot
 {
 public:
@@ -137,10 +138,11 @@ private:
 
   state_predictor::StatePredictor state_predictor_;
 
-  position_controller::PositionController base_controller_;
-  position_controller::PositionControllerParams base_controller_params_;
+  Tcontroller base_controller_;
+  Tparams base_controller_params_;
 
   quadrotor_common::TrajectoryPoint reference_state_;
+  quadrotor_common::Trajectory reference_trajectory_;
 
   // Values received from callbacks
   quadrotor_common::QuadStateEstimate received_state_est_;

@@ -22,7 +22,7 @@ public:
   quadrotor_common::ControlCommand off();
   quadrotor_common::ControlCommand run(
       const quadrotor_common::QuadStateEstimate& state_estimate,
-      const quadrotor_common::TrajectoryPoint& reference_state,
+      const quadrotor_common::Trajectory& reference_trajectory,
       const PositionControllerParams& config);
 
 private:
