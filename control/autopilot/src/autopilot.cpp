@@ -1196,10 +1196,10 @@ AutoPilot<Tcontroller, Tparams>::executeTrajectory(
     *trajectories_left_in_queue = 0;
     setAutoPilotState(States::HOVER);
 
-  reference_trajectory_ = Trajectory();
-  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
-  reference_trajectory_.points.push_back(reference_state_);
-    return base_controller_.run(state_estimate, reference_state_,
+    reference_trajectory_ = Trajectory();
+    reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+    reference_trajectory_.points.push_back(reference_state_);
+    return base_controller_.run(state_estimate, reference_trajectory_,
                                 base_controller_params_);
   }
 
@@ -1218,19 +1218,50 @@ AutoPilot<Tcontroller, Tparams>::executeTrajectory(
       reference_trajectory_ = Trajectory();
       reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
       reference_trajectory_.points.push_back(reference_state_);
-      return base_controller_.run(state_estimate, reference_state_,
+      return base_controller_.run(state_estimate, reference_trajectory_,
                                   base_controller_params_);
     }
     else
     {
       time_start_trajectory_execution_ +=
-          trajectory_queue_.front().points.back().time_from_start;
+        trajectory_queue_.front().points.back().time_from_start;
       trajectory_queue_.pop_front();
     }
   }
 
   const ros::Duration dt = time_now - time_start_trajectory_execution_;
   reference_state_ = trajectory_queue_.front().getStateAtTime(dt);
+  reference_trajectory_ = Trajectory();
+  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
+
+  std::list<quadrotor_common:TrajectoryPoint>::const_iterator it_points(
+    trajectory_queue_.front().points.begin());
+  std::list<quadrotor_common:Trajectory>::const_iterator it_trajectories;
+  bool lookahead_reached(false);
+  double time_wrapover(0.0);
+  for(it_trajectories = trajectory_queue_.begin();
+      it_trajectories != it_trajectories.end();
+      it_trajectories++)
+  {
+    for(it_points = it_trajectories->points.begin();
+        it_points != it_trajectories->points.end();
+        it_points++)
+    {
+      if(it_points->time_from_start.toSec()>(dt+predictive_control_lookahead_))
+      {
+        lookahead_reached = true;
+        break;
+      }
+      if(it_points->time_from_start.toSec()>(dt-time_wrapover))
+      {
+        reference_trajectory_.points.push_back(it_points);
+        break;
+      }
+    }
+    if(lookahead_reached) break;
+    time_wrapover += it_trajectories.points.back().time_from_start;
+  }
+
   *trajectory_execution_left_duration =
       trajectory_queue_.front().points.back().time_from_start
           - reference_state_.time_from_start;
@@ -1245,12 +1276,8 @@ AutoPilot<Tcontroller, Tparams>::executeTrajectory(
   }
   *trajectories_left_in_queue = trajectory_queue_.size();
 
-
-  reference_trajectory_ = Trajectory();
-  reference_trajectory_.trajectory_type = Trajectory::TrajectoryType::GENERAL;
-  reference_trajectory_.points.push_back(reference_state_);
   const quadrotor_common::ControlCommand command = base_controller_.run(
-      state_estimate, reference_state_, base_controller_params_);
+      state_estimate, reference_trajectory_, base_controller_params_);
 
   return command;
 }
@@ -1492,6 +1519,7 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(emergency_land_thrust);
   GET_PARAM(control_command_input_timeout);
   GET_PARAM(enable_command_feedthrough);
+  GET_PARAM(predictive_control_lookahead);
 
   if (!base_controller_params_.loadParameters(pnh_))
   {
