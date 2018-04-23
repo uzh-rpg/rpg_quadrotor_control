@@ -65,8 +65,8 @@ IEEE Robot. Autom. Lett. (RA-L), vol. 2, no. 2, pp. 476–482, Apr. 2017. [[PDF]
 
 Watch the [video](https://youtu.be/VIQILwcM5PA) demonstrating what can be done by the control algorithms in this repository:
 
-[![Differential Flatness of Quadrotor Dynamics Subject to Rotor Drag](http://img.youtube.com/vi/VIQILwcM5PA/hqdefault.jpg)](https://youtu.be/VIQILwcM5PA)
+[![Differential Flatness of Quadrotor Dynamics Subject to Rotor Drag](http://rpg.ifi.uzh.ch/img/quad_control/thumb_1.jpeg)](https://youtu.be/VIQILwcM5PA)
 
 And the [video teaser](https://youtu.be/LmMgx_vKh5s) for our presentation at [ICRA 2018](https://icra2018.org/):
 
-[![ICRA 2018 Video Teaser: Differential Flatness of Quadrotor Dynamics Subject to Rotor Drag](http://img.youtube.com/vi/LmMgx_vKh5s/hqdefault.jpg)](https://youtu.be/LmMgx_vKh5s)
+[![ICRA 2018 Video Teaser: Differential Flatness of Quadrotor Dynamics Subject to Rotor Drag](http://rpg.ifi.uzh.ch/img/quad_control/thumb_2.jpeg)](https://youtu.be/LmMgx_vKh5s)
