@@ -1222,7 +1222,7 @@ AutoPilot<Tcontroller, Tparams>::executeTrajectory(
       *trajectory_execution_left_duration = ros::Duration(0.0);
       *trajectories_left_in_queue = 0;
       trajectory_queue_.pop_front();
-      setAutoPilotState(States::HOVER);
+      setAutoPilotStateForced(States::HOVER);
 
       reference_trajectory_ = quadrotor_common::Trajectory();
       reference_trajectory_.trajectory_type = 
