@@ -4,6 +4,7 @@
 #include <quadrotor_common/control_command.h>
 #include <quadrotor_common/quad_state_estimate.h>
 #include <quadrotor_common/trajectory_point.h>
+#include <quadrotor_common/trajectory.h>
 #include <ros/ros.h>
 
 #include "position_controller/position_controller_params.h"

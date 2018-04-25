@@ -231,3 +231,5 @@ private:
 };
 
 } // namespace autopilot
+
+#include "./autopilot_inl.h"
