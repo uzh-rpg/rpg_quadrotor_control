@@ -903,6 +903,8 @@ quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::start(
          start_land_velocity_/start_land_acceleration_)
       {
         reference_state_.acceleration.z() = start_land_acceleration_;
+        reference_state_.velocity.z() = start_land_acceleration_ * 
+          (timeInCurrentState() - start_idle_duration_);
       }
       else
       {
