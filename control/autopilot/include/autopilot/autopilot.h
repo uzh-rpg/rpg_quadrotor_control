@@ -197,6 +197,7 @@ private:
   bool velocity_estimate_in_world_frame_;
   double control_command_delay_;
   double start_land_velocity_;
+  double start_land_acceleration_;
   double start_idle_duration_;
   double idle_thrust_;
   double optitrack_start_height_;

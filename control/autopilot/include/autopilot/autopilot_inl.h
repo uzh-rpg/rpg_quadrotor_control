@@ -899,6 +899,15 @@ quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::start(
           + start_land_velocity_
               * (timeInCurrentState() - start_idle_duration_);
       reference_state_.velocity.z() = start_land_velocity_;
+      if(timeInCurrentState() < start_idle_duration_ +
+         start_land_velocity_/start_land_acceleration_)
+      {
+        reference_state_.acceleration.z() = start_land_acceleration_;
+      }
+      else
+      {
+        reference_state_.acceleration.setZero();
+      }
     }
   }
 
@@ -1494,6 +1503,7 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(velocity_estimate_in_world_frame);
   GET_PARAM(control_command_delay);
   GET_PARAM(start_land_velocity);
+  GET_PARAM(start_land_acceleration);
   GET_PARAM(start_idle_duration);
   GET_PARAM(idle_thrust);
   GET_PARAM(optitrack_start_height);
