@@ -186,6 +186,14 @@ class AutopilotWidget(QWidget):
                  'y': self._autopilot_feedback.reference_state.acceleration.linear.y,
                  'z': self._autopilot_feedback.reference_state.acceleration.linear.z})
             self.ref_heading.setText('%+.1f' % (self._autopilot_feedback.reference_state.heading / math.pi * 180.0))
+            
+            # Update go_to fields 
+            if (self._autopilot_feedback.autopilot_state != self._autopilot_feedback.HOVER): 
+                    self.go_to_pose_x.setText('%+.2f % (self._autopilot_feedback.state_estimate.pose.pose.position.x))
+                    self.go_to_pose_y.setText('%+.2f % (self._autopilot_feedback.state_estimate.pose.pose.position.x))
+                    self.go_to_pose_z.setText('%+.2f % (self._autopilot_feedback.state_estimate.pose.pose.position.x))
+                    self.go_to_pose_heading.setText('%+.0f % (euler_angles[2]))   
+            
         else:
             # Autopilot status
             self.autopilot_state.setText('Not Available')
