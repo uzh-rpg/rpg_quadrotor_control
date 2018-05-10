@@ -9,7 +9,6 @@ find_package(catkin_simple REQUIRED)
 catkin_simple(ALL_DEPS_REQUIRED)
 
 cs_add_executable(autopilot
-    src/autopilot.cpp
     src/autopilot_node.cpp
 )
 

@@ -2,6 +2,7 @@
 <launch>
 
   <arg name="quad_name"/>
+  <arg name="use_mpc" default="false"/>
 
   <group ns="$(arg quad_name)" >
 
@@ -24,19 +25,34 @@
     </node>
 
     <!-- Autopilot -->
-    <node pkg="autopilot" type="autopilot" name="autopilot" output="screen">
-      <rosparam file="$(find state_predictor)/parameters/default.yaml" />
-      <rosparam file="$(find position_controller)/parameters/default.yaml" />
-      <rosparam file="$(find autopilot)/parameters/default.yaml" />
+    <group unless="$(arg use_mpc)">
+      <node pkg="autopilot" type="autopilot" name="autopilot" output="screen">
+        <rosparam file="$(find state_predictor)/parameters/default.yaml" />
+        <rosparam file="$(find position_controller)/parameters/default.yaml" />
+        <rosparam file="$(find autopilot)/parameters/default.yaml" />
 
-      <param name="position_controller/use_rate_mode" value="True" />
+        <param name="position_controller/use_rate_mode" value="True" />
 
-      <param name="velocity_estimate_in_world_frame" value="True" />
-      <param name="state_estimate_timeout" value="0.1" />
-      <param name="control_command_delay" value="0.0" />
+        <param name="velocity_estimate_in_world_frame" value="True" />
+        <param name="state_estimate_timeout" value="0.1" />
+        <param name="control_command_delay" value="0.0" />
 
-      <remap from="autopilot/state_estimate" to="state_estimate" />
-    </node>
+        <remap from="autopilot/state_estimate" to="state_estimate" />
+      </node>
+    </group>
+    <group if="$(arg use_mpc)">
+      <node pkg="rpg_mpc" type="autopilot_mpc_instance" name="autopilot_mpc" output="screen">
+        <rosparam file="$(find state_predictor)/parameters/default.yaml" />
+        <rosparam file="$(find rpg_mpc)/parameters/default.yaml" />
+        <rosparam file="$(find autopilot)/parameters/default.yaml" />
+
+        <param name="velocity_estimate_in_world_frame" value="True" />
+        <param name="state_estimate_timeout" value="0.1" />
+        <param name="control_command_delay" value="0.0" />
+
+        <remap from="autopilot/state_estimate" to="state_estimate" />
+      </node>
+    </group>
 
     <!-- Voltage Reader on ADC -->
     <node pkg="rpg_single_board_io" type="voltage_reader" name="voltage_reader" 

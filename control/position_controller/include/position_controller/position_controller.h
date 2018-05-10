@@ -4,6 +4,7 @@
 #include <quadrotor_common/control_command.h>
 #include <quadrotor_common/quad_state_estimate.h>
 #include <quadrotor_common/trajectory_point.h>
+#include <quadrotor_common/trajectory.h>
 #include <ros/ros.h>
 
 #include "position_controller/position_controller_params.h"
@@ -22,7 +23,7 @@ public:
   quadrotor_common::ControlCommand off();
   quadrotor_common::ControlCommand run(
       const quadrotor_common::QuadStateEstimate& state_estimate,
-      const quadrotor_common::TrajectoryPoint& reference_state,
+      const quadrotor_common::Trajectory& reference_trajectory,
       const PositionControllerParams& config);
 
 private:
