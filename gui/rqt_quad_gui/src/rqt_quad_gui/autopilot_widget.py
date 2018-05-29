@@ -82,7 +82,7 @@ class AutopilotWidget(QWidget):
         self.button_land.setEnabled(True)
         self.button_off.setEnabled(True)
         self.button_force_hover.setEnabled(True)
-        self.button_go_to_pose.setEnabled(True)
+        self.button_go_to_pose.setEnabled(False)
 
         self._connected = True
 
@@ -186,14 +186,28 @@ class AutopilotWidget(QWidget):
                  'y': self._autopilot_feedback.reference_state.acceleration.linear.y,
                  'z': self._autopilot_feedback.reference_state.acceleration.linear.z})
             self.ref_heading.setText('%+.1f' % (self._autopilot_feedback.reference_state.heading / math.pi * 180.0))
-            
-            # Update go_to fields 
-            if (self._autopilot_feedback.autopilot_state != self._autopilot_feedback.HOVER): 
-                    self.go_to_pose_x.setText('%+.2f % (self._autopilot_feedback.state_estimate.pose.pose.position.x))
-                    self.go_to_pose_y.setText('%+.2f % (self._autopilot_feedback.state_estimate.pose.pose.position.x))
-                    self.go_to_pose_z.setText('%+.2f % (self._autopilot_feedback.state_estimate.pose.pose.position.x))
-                    self.go_to_pose_heading.setText('%+.0f % (euler_angles[2]))   
-            
+
+            # Update go_to fields and enable go to pose button on if in HOVER
+            if (self._autopilot_feedback.autopilot_state != self._autopilot_feedback.HOVER):
+
+                    self.button_go_to_pose.setDisabled(True)
+                    self.go_to_pose_x.setDisabled(True)
+                    self.go_to_pose_y.setDisabled(True)
+                    self.go_to_pose_z.setDisabled(True)
+                    self.go_to_pose_heading.setDisabled(True)
+
+                    self.go_to_pose_x.setText('%+.2f' % (self._autopilot_feedback.reference_state.pose.position.x))
+                    self.go_to_pose_y.setText('%+.2f' % (self._autopilot_feedback.reference_state.pose.position.y))
+                    self.go_to_pose_z.setText('%+.2f' % (self._autopilot_feedback.reference_state.pose.position.z))
+                    self.go_to_pose_heading.setText('%+.0f' % (self._autopilot_feedback.reference_state.heading / math.pi * 180.0))
+            else:
+                self.button_go_to_pose.setEnabled(True)
+                self.go_to_pose_x.setEnabled(True)
+                self.go_to_pose_y.setEnabled(True)
+                self.go_to_pose_z.setEnabled(True)
+                self.go_to_pose_heading.setEnabled(True)
+
+
         else:
             # Autopilot status
             self.autopilot_state.setText('Not Available')
