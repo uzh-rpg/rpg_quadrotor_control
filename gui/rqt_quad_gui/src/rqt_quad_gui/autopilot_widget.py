@@ -42,6 +42,8 @@ class AutopilotWidget(QWidget):
         self._autopilot_feedback = quadrotor_msgs.AutopilotFeedback()
         self._autopilot_feedback_stamp = rospy.Time.now()
 
+        self._previous_autopilot_state = self._autopilot_feedback.OFF
+
         # load UI
         ui_file = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
@@ -83,6 +85,8 @@ class AutopilotWidget(QWidget):
         self.button_off.setEnabled(True)
         self.button_force_hover.setEnabled(True)
         self.button_go_to_pose.setEnabled(False)
+
+
 
         self._connected = True
 
@@ -188,7 +192,8 @@ class AutopilotWidget(QWidget):
             self.ref_heading.setText('%+.1f' % (self._autopilot_feedback.reference_state.heading / math.pi * 180.0))
 
             # Update go_to fields and enable go to pose button on if in HOVER
-            if (self._autopilot_feedback.autopilot_state != self._autopilot_feedback.HOVER):
+            if (self._autopilot_feedback.autopilot_state == self._autopilot_feedback.HOVER and
+                         self._previous_autopilot_state != self._autopilot_feedback.HOVER):
 
                     self.button_go_to_pose.setDisabled(True)
                     self.go_to_pose_x.setDisabled(True)
@@ -201,11 +206,14 @@ class AutopilotWidget(QWidget):
                     self.go_to_pose_z.setText('%+.2f' % (self._autopilot_feedback.reference_state.pose.position.z))
                     self.go_to_pose_heading.setText('%+.0f' % (self._autopilot_feedback.reference_state.heading / math.pi * 180.0))
             else:
+
                 self.button_go_to_pose.setEnabled(True)
                 self.go_to_pose_x.setEnabled(True)
                 self.go_to_pose_y.setEnabled(True)
                 self.go_to_pose_z.setEnabled(True)
                 self.go_to_pose_heading.setEnabled(True)
+
+            self._previous_autopilot_state = self._autopilot_feedback.autopilot_state
 
 
         else:
@@ -236,6 +244,7 @@ class AutopilotWidget(QWidget):
             self.ref_velocity.setText('Not Available')
             self.ref_acc.setText('Not Available')
             self.ref_heading.setText('Not Available')
+
 
     @Slot(bool)
     def on_button_connect_clicked(self):
