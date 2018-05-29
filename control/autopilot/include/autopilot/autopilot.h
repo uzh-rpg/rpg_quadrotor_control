@@ -27,6 +27,7 @@
 namespace autopilot
 {
 
+template <typename Tcontroller, typename Tparams>
 class AutoPilot
 {
 public:
@@ -137,10 +138,11 @@ private:
 
   state_predictor::StatePredictor state_predictor_;
 
-  position_controller::PositionController base_controller_;
-  position_controller::PositionControllerParams base_controller_params_;
+  Tcontroller base_controller_;
+  Tparams base_controller_params_;
 
   quadrotor_common::TrajectoryPoint reference_state_;
+  quadrotor_common::Trajectory reference_trajectory_;
 
   // Values received from callbacks
   quadrotor_common::QuadStateEstimate received_state_est_;
@@ -195,6 +197,7 @@ private:
   bool velocity_estimate_in_world_frame_;
   double control_command_delay_;
   double start_land_velocity_;
+  double start_land_acceleration_;
   double start_idle_duration_;
   double idle_thrust_;
   double optitrack_start_height_;
@@ -213,6 +216,7 @@ private:
   double emergency_land_thrust_;
   double control_command_input_timeout_;
   bool enable_command_feedthrough_;
+  double predictive_control_lookahead_;
 
   // Constants
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
@@ -228,3 +232,5 @@ private:
 };
 
 } // namespace autopilot
+
+#include "./autopilot_inl.h"
