@@ -193,19 +193,7 @@ class AutopilotWidget(QWidget):
 
             # Update go_to fields and enable go to pose button on if in HOVER
             if (self._autopilot_feedback.autopilot_state == self._autopilot_feedback.HOVER and
-                         self._previous_autopilot_state != self._autopilot_feedback.HOVER):
-
-                    self.button_go_to_pose.setDisabled(True)
-                    self.go_to_pose_x.setDisabled(True)
-                    self.go_to_pose_y.setDisabled(True)
-                    self.go_to_pose_z.setDisabled(True)
-                    self.go_to_pose_heading.setDisabled(True)
-
-                    self.go_to_pose_x.setText('%+.2f' % (self._autopilot_feedback.reference_state.pose.position.x))
-                    self.go_to_pose_y.setText('%+.2f' % (self._autopilot_feedback.reference_state.pose.position.y))
-                    self.go_to_pose_z.setText('%+.2f' % (self._autopilot_feedback.reference_state.pose.position.z))
-                    self.go_to_pose_heading.setText('%+.0f' % (self._autopilot_feedback.reference_state.heading / math.pi * 180.0))
-            else:
+                    self._previous_autopilot_state == self._autopilot_feedback.HOVER):
 
                 self.button_go_to_pose.setEnabled(True)
                 self.go_to_pose_x.setEnabled(True)
@@ -213,8 +201,20 @@ class AutopilotWidget(QWidget):
                 self.go_to_pose_z.setEnabled(True)
                 self.go_to_pose_heading.setEnabled(True)
 
-            self._previous_autopilot_state = self._autopilot_feedback.autopilot_state
+            else:
 
+                self.button_go_to_pose.setDisabled(True)
+                self.go_to_pose_x.setDisabled(True)
+                self.go_to_pose_y.setDisabled(True)
+                self.go_to_pose_z.setDisabled(True)
+                self.go_to_pose_heading.setDisabled(True)
+
+                self.go_to_pose_x.setText('%.2f' % (self._autopilot_feedback.reference_state.pose.position.x))
+                self.go_to_pose_y.setText('%.2f' % (self._autopilot_feedback.reference_state.pose.position.y))
+                self.go_to_pose_z.setText('%.2f' % (self._autopilot_feedback.reference_state.pose.position.z))
+                self.go_to_pose_heading.setText('%.0f' % (self._autopilot_feedback.reference_state.heading / math.pi * 180.0))
+
+            self._previous_autopilot_state = self._autopilot_feedback.autopilot_state
 
         else:
             # Autopilot status
