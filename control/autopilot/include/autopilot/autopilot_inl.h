@@ -361,7 +361,10 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
   if (autopilot_state_ != States::OFF)
   {
     // If the autopilot is OFF we don't need to predict
-    predicted_state = getPredictedStateEstimate(command_execution_time);
+    if(use_predictor_)
+    {
+      predicted_state = getPredictedStateEstimate(command_execution_time); 
+    }
   }
 
   ros::Duration trajectory_execution_left_duration(0.0);
@@ -1525,6 +1528,7 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(control_command_input_timeout);
   GET_PARAM(enable_command_feedthrough);
   GET_PARAM(predictive_control_lookahead);
+  GET_PARAM(use_predictor);
 
   if (!base_controller_params_.loadParameters(pnh_))
   {

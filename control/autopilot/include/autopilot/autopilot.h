@@ -217,6 +217,7 @@ private:
   double control_command_input_timeout_;
   bool enable_command_feedthrough_;
   double predictive_control_lookahead_;
+  bool use_predictor_;
 
   // Constants
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
