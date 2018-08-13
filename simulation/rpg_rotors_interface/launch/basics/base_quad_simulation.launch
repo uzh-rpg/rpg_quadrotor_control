@@ -7,6 +7,7 @@
   <arg name="gui"/>
   <arg name="use_ground_truth"/>
   <arg name="use_mpc" default="false"/>
+  <arg name="custom_models" default=""/>
 
   <arg name="mav_name"/>
   <arg name="model"/>
@@ -22,7 +23,7 @@
 
   <!-- Gazebo stuff to spawn the world !-->
   <env name="GAZEBO_MODEL_PATH" 
-      value="${GAZEBO_MODEL_PATH}:$(find rotors_gazebo)/models"/>
+      value="${GAZEBO_MODEL_PATH}:$(find rotors_gazebo)/models:$(arg custom_models)"/>
   <env name="GAZEBO_RESOURCE_PATH" 
       value="${GAZEBO_RESOURCE_PATH}:$(find rotors_gazebo)/models"/>
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
