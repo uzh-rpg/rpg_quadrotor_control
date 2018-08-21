@@ -7,6 +7,7 @@
   <arg name="gui"/>
   <arg name="use_ground_truth"/>
   <arg name="use_mpc" default="false"/>
+  <arg name="enable_command_feedthrough" default="false"/>
   <arg name="custom_models" default=""/>
 
   <arg name="mav_name"/>
@@ -71,6 +72,7 @@
           <param name="velocity_estimate_in_world_frame" value="false" />
           <param name="state_estimate_timeout" value="0.1" />
           <param name="control_command_delay" value="0.05" />
+          <param name="enable_command_feedthrough" value="$(arg enable_command_feedthrough)" />
           
           <remap from="autopilot/state_estimate" to="ground_truth/odometry" />
         </node>
@@ -84,6 +86,7 @@
           <param name="velocity_estimate_in_world_frame" value="false" />
           <param name="state_estimate_timeout" value="0.1" />
           <param name="control_command_delay" value="0.05" />
+          <param name="enable_command_feedthrough" value="$(arg enable_command_feedthrough)" />
 
           <remap from="autopilot/state_estimate" to="ground_truth/odometry" />
         </node>
