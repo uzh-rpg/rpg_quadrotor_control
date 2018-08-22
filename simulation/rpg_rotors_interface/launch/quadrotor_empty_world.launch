@@ -12,6 +12,7 @@
   <arg name="use_mpc" default="false"/>
   <arg name="enable_logging" default="false" />
   <arg name="enable_ground_truth" default="true" />
+  <arg name="enable_command_feedthrough" default="false"/>
   <arg name="log_file" default="$(arg mav_name)" />
   <arg name="paused" value="true"/>
   <arg name="gui" value="true"/>
@@ -27,6 +28,7 @@
     <arg name="gui" value="$(arg gui)"/>
     <arg name="use_ground_truth" value="$(arg use_ground_truth)"/>
     <arg name="use_mpc" value="$(arg use_mpc)"/>
+    <arg name="enable_command_feedthrough" value="$(arg enable_command_feedthrough)" />
 
     <arg name="mav_name" value="$(arg mav_name)"/>
     <arg name="model" value="$(arg model)"/>
