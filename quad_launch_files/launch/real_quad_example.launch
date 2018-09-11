@@ -3,6 +3,7 @@
 
   <arg name="quad_name"/>
   <arg name="use_mpc" default="false"/>
+  <arg name="enable_command_feedthrough" default="false" />
 
   <group ns="$(arg quad_name)" >
 
@@ -36,6 +37,7 @@
         <param name="velocity_estimate_in_world_frame" value="True" />
         <param name="state_estimate_timeout" value="0.1" />
         <param name="control_command_delay" value="0.0" />
+	<param name="enable_command_feedthrough" value="$(arg enable_command_feedthrough)" />
 
         <remap from="autopilot/state_estimate" to="state_estimate" />
       </node>
@@ -49,6 +51,7 @@
         <param name="velocity_estimate_in_world_frame" value="True" />
         <param name="state_estimate_timeout" value="0.1" />
         <param name="control_command_delay" value="0.0" />
+	<param name="enable_command_feedthrough" value="$(arg enable_command_feedthrough)" />
 
         <remap from="autopilot/state_estimate" to="state_estimate" />
       </node>
