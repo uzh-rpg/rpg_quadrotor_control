@@ -153,7 +153,6 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
       if (joypad_command_.buttons[joypad::buttons::kGreen]
           && !previous_joypad_command_.buttons[joypad::buttons::kGreen])
       {
-        ROS_INFO("starting!!!!!!");
         start_pub_.publish(std_msgs::Empty());
       }
       if (joypad_command_.buttons[joypad::buttons::kBlue]
@@ -162,12 +161,11 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
         land_pub_.publish(std_msgs::Empty());
       }
       
-      // Arm button is a combination of Rb and Red 
+      // Arm button is a combination of RAb and Red
       if (joypad_command_.axes[joypad::axes::kRAb] < -0.99f
           &&joypad_command_.buttons[joypad::buttons::kRed]
           && !previous_joypad_command_.buttons[joypad::buttons::kRed])
       {
-        ROS_INFO("arming!!!!!!");
         std_msgs::Bool arm_msg;
         arm_msg.data = true;
         arm_pub_.publish(arm_msg);
