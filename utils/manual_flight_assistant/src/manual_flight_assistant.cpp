@@ -153,6 +153,7 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
       if (joypad_command_.buttons[joypad::buttons::kGreen]
           && !previous_joypad_command_.buttons[joypad::buttons::kGreen])
       {
+        ROS_INFO("starting!!!!!!");
         start_pub_.publish(std_msgs::Empty());
       }
       if (joypad_command_.buttons[joypad::buttons::kBlue]
@@ -166,7 +167,10 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
           &&joypad_command_.buttons[joypad::buttons::kRed]
           && !previous_joypad_command_.buttons[joypad::buttons::kRed])
       {
-        arm_pub_.publish(std_msgs::Bool(True));
+        ROS_INFO("arming!!!!!!");
+        std_msgs::Bool arm_msg;
+        arm_msg.data = true;
+        arm_pub_.publish(arm_msg);
       }
     }
   }
