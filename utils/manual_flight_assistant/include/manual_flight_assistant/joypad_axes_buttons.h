@@ -8,7 +8,7 @@ namespace joypad
 
 namespace axes
 {
-  static constexpr uint32_t kLAb = 5;  
+  static constexpr uint32_t kRAb = 5;  
   static constexpr uint32_t kX = 4;
   static constexpr uint32_t kY = 3;
   static constexpr uint32_t kZ = 1;
