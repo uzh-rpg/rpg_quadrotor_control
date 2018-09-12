@@ -162,7 +162,7 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
       }
       
       // Arm button is a combination of Rb and Red 
-      if (joypad_command_.buttons[joypad::buttons::kRb] 
+      if (joypad_command_.axes[joypad::axes::kRAb] < -0.99f
           &&joypad_command_.buttons[joypad::buttons::kRed]
           && !previous_joypad_command_.buttons[joypad::buttons::kRed])
       {
