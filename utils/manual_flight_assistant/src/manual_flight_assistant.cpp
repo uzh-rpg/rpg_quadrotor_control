@@ -30,6 +30,7 @@ ManualFlightAssistant::ManualFlightAssistant(const ros::NodeHandle& nh,
       "autopilot/velocity_command", 1);
   start_pub_ = nh_.advertise<std_msgs::Empty>("autopilot/start", 1);
   land_pub_ = nh_.advertise<std_msgs::Empty>("autopilot/land", 1);
+  arm_pub_ = nh_.advertise<std_msgs::Bool>("bridge/arm", 1);    
 
   joypad_sub_ = nh_.subscribe("joy", 1, &ManualFlightAssistant::joyCallback,
                               this);
@@ -146,7 +147,7 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
 
     publishVelocityCommand(velocity_command);
 
-    // Start and Land Buttons
+    // Start, Land, Arm Buttons
     if (!previous_joypad_command_.buttons.empty())
     {
       if (joypad_command_.buttons[joypad::buttons::kGreen]
@@ -158,6 +159,14 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
           && !previous_joypad_command_.buttons[joypad::buttons::kBlue])
       {
         land_pub_.publish(std_msgs::Empty());
+      }
+      
+      // Arm button is a combination of Rb and Red 
+      if (joypad_command_.buttons[joypad::buttons::kRb] 
+          &&joypad_command_.buttons[joypad::buttons::kRed]
+          && !previous_joypad_command_.buttons[joypad::buttons::kRed])
+      {
+        arm_pub_.publish(std_msgs::Bool(True));
       }
     }
   }
