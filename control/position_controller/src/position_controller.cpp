@@ -120,9 +120,7 @@ PositionController::computeNominalReferenceInputs(
   const Eigen::Vector3d y_B = q_W_B * Eigen::Vector3d::UnitY();
   const Eigen::Vector3d z_B = q_W_B * Eigen::Vector3d::UnitZ();
 
-  const Eigen::Matrix3d R_W_B_ref(
-      (Eigen::Matrix3d() << x_B, y_B, z_B).finished());
-  reference_command.orientation = Eigen::Quaterniond(R_W_B_ref);
+  reference_command.orientation = q_W_B;
 
   // Reference thrust
   reference_command.collective_thrust = des_acc.norm();
