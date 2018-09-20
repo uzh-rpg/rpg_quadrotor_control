@@ -3,14 +3,15 @@
 
   <include file="$(find rpg_rotors_interface)/launch/quadrotor_empty_world.launch">
     <arg name="quad_name" value="$(arg quad_name)"/>
+    <arg name="enable_command_feedthrough" value="True"/>
   </include>
 
   <group ns="$(arg quad_name)" >
 
-    <test pkg="rpg_quadrotor_integration_test" 
-        test-name="rpg_quadrotor_integration_test" 
+    <test pkg="rpg_quadrotor_integration_test"
+        test-name="rpg_quadrotor_integration_test"
         type="rpg_quadrotor_integration_test" time-limit="120.0" />
-    
+
   </group>
 
 </launch>
