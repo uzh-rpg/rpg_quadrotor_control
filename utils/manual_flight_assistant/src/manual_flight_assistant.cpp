@@ -30,7 +30,8 @@ ManualFlightAssistant::ManualFlightAssistant(const ros::NodeHandle& nh,
       "autopilot/velocity_command", 1);
   start_pub_ = nh_.advertise<std_msgs::Empty>("autopilot/start", 1);
   land_pub_ = nh_.advertise<std_msgs::Empty>("autopilot/land", 1);
-  arm_pub_ = nh_.advertise<std_msgs::Bool>("bridge/arm", 1);    
+  arm_pub_ = nh_.advertise<std_msgs::Bool>("bridge/arm", 1); 
+  off_pub_ = nh_.advertise<std_msgs::Empty>("autopilot/off", 1);    
 
   joypad_sub_ = nh_.subscribe("joy", 1, &ManualFlightAssistant::joyCallback,
                               this);
@@ -169,6 +170,13 @@ void ManualFlightAssistant::mainLoop(const ros::TimerEvent& time)
         std_msgs::Bool arm_msg;
         arm_msg.data = true;
         arm_pub_.publish(arm_msg);
+      }
+
+      // Off button is a combination of kLb and kRb
+      if (joypad_command_.buttons[joypad::buttons::kLb] 
+          &&joypad_command_.buttons[joypad::buttons::kRb])
+      {
+        off_pub_.publish(std_msgs::Empty());
       }
     }
   }

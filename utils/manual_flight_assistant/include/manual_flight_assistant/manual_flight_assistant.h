@@ -39,6 +39,7 @@ private:
   ros::Publisher start_pub_;
   ros::Publisher land_pub_;
   ros::Publisher arm_pub_;
+  ros::Publisher off_pub_;
 
   ros::Subscriber joypad_sub_;
   ros::Subscriber rc_sbus_sub_;
