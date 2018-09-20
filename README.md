@@ -1,6 +1,6 @@
 # RPG Quadrotor Control
 
-## License
+## License 
 
 The RPG Quadrotor Control repository provides packages that are intended to be used with [ROS](http://www.ros.org/).
 This is research code, expect that it changes often and any fitness for a particular purpose is disclaimed.
