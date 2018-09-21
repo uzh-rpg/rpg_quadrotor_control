@@ -64,7 +64,7 @@
       <param name="board_name" value="up" />
       <param name="adc_id" value="0" />
       <param name="read_voltage_frequency" value="10" />
-      <param name="voltage_divider_upper_res" value="179.1" />
+      <param name="voltage_divider_upper_res" value="183.51" />
       <param name="voltage_divider_lower_res" value="11.93" />
 
       <remap from="voltage_reader/voltage" to="battery_voltage" />
