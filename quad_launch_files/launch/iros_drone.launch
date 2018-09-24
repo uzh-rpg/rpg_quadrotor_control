@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <launch>
 
-  <arg name="quad_name"/>
+  <arg name="quad_name" default="buzzard"/>
   <arg name="use_mpc" default="false"/>
-  <arg name="enable_command_feedthrough" default="false" />
+  <arg name="enable_command_feedthrough" default="true" />
 
   <group ns="$(arg quad_name)" >
 
@@ -33,7 +33,7 @@
         <rosparam file="$(find position_controller)/parameters/default.yaml" />
         <rosparam file="$(find autopilot)/parameters/default.yaml" />
 
-        <param name="position_controller/use_rate_mode" value="True" />
+        <param name="position_controller/use_rate_mode" value="False" />
 
         <param name="velocity_estimate_in_world_frame" value="True" />
         <param name="state_estimate_timeout" value="0.1" />
