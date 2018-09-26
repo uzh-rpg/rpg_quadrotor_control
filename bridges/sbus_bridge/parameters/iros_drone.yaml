@@ -3,7 +3,7 @@ enable_receiving_sbus_messages: true
 control_command_timeout: 0.5 # [s] (Must be larger than 'state_estimate_timeout'
 # set in the 'flight_controller'!)
 rc_timeout: 0.1 # [s]
-mass: 0.960 # [kg]
+mass: 0.904 # [kg]
 disable_thrust_mapping: false
 # Note: When updating the thrust mapping also the voltage dependency mapping 
 # has to be updated!
