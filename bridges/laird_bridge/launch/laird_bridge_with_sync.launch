@@ -1,0 +1,16 @@
+<launch>
+    <arg name="quad_name"/>
+    <group ns="$(arg quad_name)" >
+        <node pkg="laird_bridge" name="pixhawk_bridge" type="pixhawk_bridge" output="screen" >
+            <rosparam file="$(find pixhawk_bridge)/parameters/default.yaml"/>
+            <param name="port_name" value="$(env PIXHAWK_BRIDGE_PORT)" />
+            <param name="baud_rate" value="230400" />
+        </node>
+        <node pkg="laird_bridge" name="LAIRD_Timesync" type="LAIRD_timesync" output="screen" >
+            <rosparam file="$(find laird_bridge)/parameters/timesync.yaml"/>
+            <param name="n_msgs_for_sync_stable" value="3" />
+            <param name="sync_msg_timeout" value="1.0" />
+            <param name="lambda" value="0.1" />
+        </node>
+    </group>
+</launch>

@@ -1,0 +1,6 @@
+PX4TIMESYNC:
+  gpio: 25
+  data_reg_base: 0x13400000
+  data_reg_offset: 0x311
+  data_reg_bit: 1
+  pud_reg_offset: 0x312

@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/julien/Workspaces/laird_ws/src/rpg_quadrotor_control/bridges/laird_bridge/cmake-build-debug/devel/setup.sh

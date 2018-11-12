@@ -1,0 +1,24 @@
+/opt/clion-2018.2.3/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -G "CodeBlocks - Unix Makefiles" /home/julien/Workspaces/laird_ws/src/rpg_quadrotor_control/bridges/laird_bridge
+-- Using CATKIN_DEVEL_PREFIX: /home/julien/Workspaces/laird_ws/src/rpg_quadrotor_control/bridges/laird_bridge/cmake-build-debug/devel
+-- Using CMAKE_PREFIX_PATH: /home/julien/Workspaces/laird_ws/devel;/opt/ros/melodic
+-- This workspace overlays: /home/julien/Workspaces/laird_ws/devel;/opt/ros/melodic
+-- Found PythonInterp: /usr/bin/python2 (found suitable version "2.7.15", minimum required is "2") 
+-- Using PYTHON_EXECUTABLE: /usr/bin/python2
+-- Using Debian Python package layout
+-- Using empy: /usr/bin/empy
+-- Using CATKIN_ENABLE_TESTING: ON
+-- Call enable_testing()
+-- Using CATKIN_TEST_RESULTS_DIR: /home/julien/Workspaces/laird_ws/src/rpg_quadrotor_control/bridges/laird_bridge/cmake-build-debug/test_results
+-- Found gmock sources under '/usr/src/googletest': gmock will be built
+-- Found PythonInterp: /usr/bin/python2 (found version "2.7.15") 
+-- Found gtest sources under '/usr/src/googletest': gtests will be built
+-- Using Python nosetests: /usr/bin/nosetests-2.7
+-- catkin 0.7.14
+-- Marking EXECUTABLE "laird_bridge" of package "laird_bridge" for installation
+-- Marking SHARED_LIBRARY "laird_bridge_nodelet" of package "laird_bridge" for installation
+-- Marking EXECUTABLE "laird_timesync" of package "laird_bridge" for installation
+-- Marking HEADER FILES in "include" folder of package "laird_bridge" for installation
+-- Marking SHARED CONTENT FOLDER "launch" of package "laird_bridge" for installation
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/julien/Workspaces/laird_ws/src/rpg_quadrotor_control/bridges/laird_bridge/cmake-build-debug

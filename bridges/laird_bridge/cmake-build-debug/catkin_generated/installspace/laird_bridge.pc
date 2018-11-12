@@ -1,0 +1,8 @@
+prefix=/usr/local
+
+Name: laird_bridge
+Description: Description of laird_bridge
+Version: 0.0.0
+Cflags: -I/usr/local/include
+Libs: -L/usr/local/lib -llaird_bridge_nodelet
+Requires: roscpp geometry_msgs nodelet

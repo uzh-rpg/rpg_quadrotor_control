@@ -1,0 +1,8 @@
+<library path="lib/libpixhawk_bridge_nodelet">
+    <class name="pixhawk_bridge/PixHawkBridgeNodelet" 
+        type="pixhawk_bridge::PixHawkBridgeNodelet" 
+        base_class_type="nodelet::Nodelet">
+        <description>PixHawkBridgeNodelet</description>
+    </class>
+</library>
+

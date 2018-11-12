@@ -1,0 +1,10 @@
+<launch>
+    <arg name="quad_name"/>
+    <group ns="$(arg quad_name)" >
+        <node pkg="laird_bridge" name="laird_bridge" type="laird_bridge" output="screen" >
+            <rosparam file="$(find laird_bridge)/parameters/default.yaml"/>
+            <param name="port_name" value="$(env LAIRD_BRIDGE_PORT)" />
+            <param name="baud_rate" value="230400" />
+        </node>
+    </group>
+</launch>

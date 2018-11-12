@@ -1,0 +1,6 @@
+port_name: /dev/ttyUSB0
+baud_rate: 230400
+basecomputer_comp_id: 110
+basecomputer_sys_id: 42
+drone_sys_id: 1
+drone_comp_id: 50 

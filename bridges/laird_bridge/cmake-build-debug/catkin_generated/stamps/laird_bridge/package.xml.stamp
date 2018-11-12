@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package format="2">
+	<name>laird_bridge</name>
+	<version>0.0.0</version>
+	<description>The laird_bridge package</description>
+	
+	<maintainer email="jkohler@ifi.uzh.ch">Julien Kohler</maintainer>
+	<license>GNU GPL</license>
+	
+	<buildtool_depend>catkin</buildtool_depend>
+	<buildtool_depend>catkin_simple</buildtool_depend>
+	
+	<depend>quad_cmake</depend>
+	<depend>roscpp</depend>
+	<depend>eigen_catkin</depend>
+	<depend>quad_common</depend>
+	<depend>quad_msgs</depend>
+	<depend>geometry_msgs</depend>
+	<depend>quad_srvs</depend>
+	<depend>nodelet</depend>
+	<depend>rpg_single_board_io</depend>
+	
+	<export>
+		<nodelet plugin="${prefix}/nodelet_plugins.xml" />
+	</export>
+</package>
