@@ -14,4 +14,4 @@ class BasicFlightWidget(QuadWidgetCommon):
         
         self._column_2.addWidget( CameraControlWidget(self) )
 
-        self.setup_gui(two_columns=False)
+        self.setup_gui(two_columns=True)
