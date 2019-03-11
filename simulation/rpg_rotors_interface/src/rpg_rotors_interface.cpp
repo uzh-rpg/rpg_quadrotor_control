@@ -107,7 +107,7 @@ void RPGRotorsInterface::lowLevelControlLoop(const ros::TimerEvent& time)
             / rotor_thrust_coeff_;
         quadrotor_common::limit(&motor_speed_squared, 0.0,
                                 pow(max_rotor_speed_, 2.0));
-        desired_motor_speed.angular_velocities[i] = sqrt(motor_speed_squared);
+        desired_motor_speed.angular_velocities.push_back(sqrt(motor_speed_squared));
       }
     }
     else
@@ -253,6 +253,7 @@ void RPGRotorsInterface::motorSpeedCallback(
   //    |
   //    2
 
+/*
   const double f0 = rotor_thrust_coeff_ * pow(msg->angular_velocities[0], 2.0);
   const double f1 = rotor_thrust_coeff_ * pow(msg->angular_velocities[1], 2.0);
   const double f2 = rotor_thrust_coeff_ * pow(msg->angular_velocities[2], 2.0);
@@ -263,6 +264,7 @@ void RPGRotorsInterface::motorSpeedCallback(
   torques_and_thrust_estimate_.body_torques.z() = rotor_drag_coeff_
       * (f0 - f1 + f2 - f3);
   torques_and_thrust_estimate_.collective_thrust = f0 + f1 + f2 + f3;
+  */
 }
 
 void RPGRotorsInterface::armInterfaceCallback(
