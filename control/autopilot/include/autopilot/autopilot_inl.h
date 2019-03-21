@@ -343,6 +343,14 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
     time_last_state_estimate_received_ = ros::Time::now();
   }
 
+  // Check velocity norm
+  if(received_state_est_.velocity.norm() >= max_allowed_velocity_) {
+    ROS_ERROR("[%s] Estimated velocity out of bounds. Estimated norm %.3f m/s, max allowed %.3f. Emergency landing.",
+                pnh_.getNamespace().c_str(), received_state_est_.velocity.norm(), max_allowed_velocity_);
+    setAutoPilotStateForced(States::EMERGENCY_LAND);
+    return;
+  }
+
   if (!velocity_estimate_in_world_frame_)
   {
     received_state_est_.transformVelocityToWorldFrame();
@@ -386,7 +394,8 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
       control_cmd = land(predicted_state);
       break;
     case States::EMERGENCY_LAND:
-      if (state_estimate_available_)
+      if (state_estimate_available_ && received_state_est_.coordinate_frame
+          != quadrotor_common::QuadStateEstimate::CoordinateFrame::VISION)
       {
         // If we end up here it means that we have regained a valid state
         // estimate, so lets go back to HOVER state unless we were about
@@ -1525,6 +1534,7 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(control_command_input_timeout);
   GET_PARAM(enable_command_feedthrough);
   GET_PARAM(predictive_control_lookahead);
+  GET_PARAM(max_allowed_velocity);
 
   if (!base_controller_params_.loadParameters(pnh_))
   {
