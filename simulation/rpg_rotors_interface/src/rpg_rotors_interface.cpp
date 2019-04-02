@@ -20,6 +20,9 @@ RPGRotorsInterface::RPGRotorsInterface(const ros::NodeHandle& nh,
   rotors_desired_motor_speed_pub_ = nh_.advertise<mav_msgs::Actuators>(
       "command/motor_speed", 1);
 
+  low_level_feedback_pub_ = nh_.advertise<quadrotor_msgs::LowLevelFeedback>(
+      "low_level_feedback", 1);
+
   rpg_control_command_sub_ = nh_.subscribe(
       "control_command", 1, &RPGRotorsInterface::rpgControlCommandCallback,
       this);
@@ -253,7 +256,7 @@ void RPGRotorsInterface::motorSpeedCallback(
   //    |
   //    2
 
-/*
+  /*
   const double f0 = rotor_thrust_coeff_ * pow(msg->angular_velocities[0], 2.0);
   const double f1 = rotor_thrust_coeff_ * pow(msg->angular_velocities[1], 2.0);
   const double f2 = rotor_thrust_coeff_ * pow(msg->angular_velocities[2], 2.0);
@@ -265,6 +268,16 @@ void RPGRotorsInterface::motorSpeedCallback(
       * (f0 - f1 + f2 - f3);
   torques_and_thrust_estimate_.collective_thrust = f0 + f1 + f2 + f3;
   */
+  if(msg->angular_velocities.size() == 4) {
+    quadrotor_msgs::LowLevelFeedback low_level_feedback_msg;
+    low_level_feedback_msg.header.stamp = ros::Time::now();
+
+    for(int i=0; i<4; i++)
+      low_level_feedback_msg.motor_speeds.push_back(msg->angular_velocities[i]);
+
+    low_level_feedback_pub_.publish(low_level_feedback_msg);
+  }
+  
 }
 
 void RPGRotorsInterface::armInterfaceCallback(

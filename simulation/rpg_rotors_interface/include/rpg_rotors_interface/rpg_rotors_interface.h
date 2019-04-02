@@ -4,6 +4,7 @@
 #include <mav_msgs/Actuators.h>
 #include <nav_msgs/Odometry.h>
 #include <quadrotor_msgs/ControlCommand.h>
+#include <quadrotor_msgs/LowLevelFeedback.h>
 #include <quadrotor_common/control_command.h>
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
@@ -60,6 +61,7 @@ private:
   ros::Timer low_level_control_loop_timer_;
 
   ros::Publisher rotors_desired_motor_speed_pub_;
+  ros::Publisher low_level_feedback_pub_;
 
   ros::Subscriber rotors_odometry_sub_;
   ros::Subscriber rpg_control_command_sub_;
