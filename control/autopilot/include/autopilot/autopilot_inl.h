@@ -144,7 +144,9 @@ void AutoPilot<Tcontroller, Tparams>::watchdogThread()
         && time_now - time_last_state_estimate_received_
             > ros::Duration(state_estimate_timeout_))
     {
-      ROS_ERROR("[%s] Lost state estimate", pnh_.getNamespace().c_str());
+      ROS_ERROR("[%s] Lost state estimate. Time difference: %4f (max allowed %.4f s)", 
+      (time_now - time_last_state_estimate_received_).toSec(), state_estimate_timeout_, pnh_.getNamespace().c_str());
+      
       state_estimate_available_ = false;
     }
 
@@ -758,7 +760,9 @@ void AutoPilot<Tcontroller, Tparams>::startCallback(
       if (received_state_est_.coordinate_frame
           == quadrotor_common::QuadStateEstimate::CoordinateFrame::WORLD
           || received_state_est_.coordinate_frame
-            == quadrotor_common::QuadStateEstimate::CoordinateFrame::OPTITRACK)
+            == quadrotor_common::QuadStateEstimate::CoordinateFrame::OPTITRACK 
+           || received_state_est_.coordinate_frame
+            == quadrotor_common::QuadStateEstimate::CoordinateFrame::VISION)
       {
         ROS_INFO(
             "[%s] Absolute state estimate available, taking off based on it",
@@ -766,8 +770,6 @@ void AutoPilot<Tcontroller, Tparams>::startCallback(
         setAutoPilotState(States::START);
       }
       else if (received_state_est_.coordinate_frame
-          == quadrotor_common::QuadStateEstimate::CoordinateFrame::VISION
-          || received_state_est_.coordinate_frame
               == quadrotor_common::QuadStateEstimate::CoordinateFrame::LOCAL)
       {
         ROS_INFO("[%s] Relative state estimate available, switch to hover",
