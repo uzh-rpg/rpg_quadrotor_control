@@ -32,7 +32,8 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh, const ros:
     last_control_command_input_thrust_high_(false),
     stop_watchdog_thread_(false), time_last_state_estimate_received_(),
     time_started_emergency_landing_(), destructor_invoked_(false),
-    time_last_autopilot_feedback_published_()
+    time_last_autopilot_feedback_published_(), teraranger_check_active_(false),
+    height_difference_at_init_(0.0), teraranger_height_(0.0)
 
 {
   if (!loadParameters())
@@ -74,7 +75,8 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh, const ros:
     &AutoPilot<Tcontroller, Tparams>::landCallback, this);
   off_sub_ = nh_.subscribe("autopilot/off", 1,
     &AutoPilot<Tcontroller, Tparams>::offCallback, this);
-
+  teraranger_sub_ = nh_.subscribe("/filtered_range", 1,
+    &AutoPilot<Tcontroller, Tparams>::teraRangerCallback, this);
   // Start watchdog thread
   try
   {
@@ -217,6 +219,31 @@ void AutoPilot<Tcontroller, Tparams>::watchdogThread()
   }
 }
 
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::teraRangerCallback(const sensor_msgs::Range::ConstPtr& msg) {
+
+	if(!teraranger_check_active_) {
+		if (msg->range >= min_height_tera_check_active_ && state_estimate_available_) {
+
+			teraranger_check_active_ = true;
+			height_difference_at_init_ = msg->range - received_state_est_.position.z();
+
+			ROS_INFO("[%s] Range checker received first valid height measurement. Activated. Offset: %.3f",
+				ros::this_node::getName().c_str(), height_difference_at_init_);
+
+		} 
+	}
+
+	else {
+		teraranger_height_ = msg->range - height_difference_at_init_;
+	}
+
+	return;
+
+	
+}
+
+
 // Planning thread for planning GO_TO_POSE actions
 template <typename Tcontroller, typename Tparams>
 void AutoPilot<Tcontroller, Tparams>::goToPoseThread()
@@ -318,6 +345,68 @@ void AutoPilot<Tcontroller, Tparams>::goToPoseThread()
 }
 
 template <typename Tcontroller, typename Tparams>
+bool AutoPilot<Tcontroller, Tparams>::checkVelocityNorm(const double estimated_velocity_norm) {
+
+	if (estimated_velocity_norm > max_allowed_velocity_ ) {
+		ROS_ERROR("[%s] Estimated velocity out of bounds. Estimated norm %.3f m/s, max allowed %.3f. Emergency landing.",
+                pnh_.getNamespace().c_str(), estimated_velocity_norm, max_allowed_velocity_);
+
+	 	return false;
+	}
+
+	double desired_velocity_command_norm = reference_state_.velocity.norm();
+	if (estimated_velocity_norm - desired_velocity_command_norm > max_difference_velocity_command_) {
+		ROS_ERROR("[%s] Estimated velocity much larger than commanded. Estimated norm %.3f m/s, commanded %.3f. Emergency landing.",
+                pnh_.getNamespace().c_str(), estimated_velocity_norm, desired_velocity_command_norm);
+
+	 	return false;
+	}
+
+
+	return true;
+}
+
+template <typename Tcontroller, typename Tparams>
+bool AutoPilot<Tcontroller, Tparams>::checkRangerHeightDifference(const double estimated_height) {
+
+	double current_height_difference = std::fabs(teraranger_height_ - estimated_height);
+
+	if (teraranger_check_active_ && current_height_difference > max_height_difference_) {
+		ROS_ERROR("[%s] Height difference (%.3f m) larger than threshold (%.3f m).",
+                pnh_.getNamespace().c_str(), current_height_difference, max_height_difference_);
+		return false;
+	}
+
+	return true;
+}
+
+template <typename Tcontroller, typename Tparams>
+bool AutoPilot<Tcontroller, Tparams>::checkPositionWithinBoundingBox(const Eigen::Vector3d estimated_position) {
+
+
+	bool quad_within_bounding_box = true;
+	if (estimated_position.x() > max_x_ || estimated_position.x() < min_x_) {
+		quad_within_bounding_box = false;
+	}
+
+	if (estimated_position.y() > max_y_ || estimated_position.y() < min_y_) {
+		quad_within_bounding_box = false;
+	}
+
+	if (estimated_position.z() > max_z_ || estimated_position.z() < min_z_) {
+		quad_within_bounding_box = false;
+	}
+
+	if(!quad_within_bounding_box) {
+		ROS_ERROR("[%s] Estimated quad position out of bounds.", pnh_.getNamespace().c_str());
+		return false;
+	}
+
+	return true;
+
+}
+
+template <typename Tcontroller, typename Tparams>
 void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
   const nav_msgs::Odometry::ConstPtr& msg)
 {
@@ -329,6 +418,9 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
   std::lock_guard<std::mutex> main_lock(main_mutex_);
 
   received_state_est_ = quadrotor_common::QuadStateEstimate(*msg);
+  // Hack to have it working with MSF
+  received_state_est_.coordinate_frame = quadrotor_common::QuadStateEstimate::CoordinateFrame::VISION;
+
   if (!received_state_est_.isValid())
   {
     state_estimate_available_ = false;
@@ -341,18 +433,29 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
   }
   else
   {
+ 
     state_estimate_available_ = true;
     time_last_state_estimate_received_ = ros::Time::now();
+	
   }
 
-  // Check velocity norm
-  if(received_state_est_.velocity.norm() >= max_allowed_velocity_) {
-    ROS_ERROR("[%s] Estimated velocity out of bounds. Estimated norm %.3f m/s, max allowed %.3f. Emergency landing.",
-                pnh_.getNamespace().c_str(), received_state_est_.velocity.norm(), max_allowed_velocity_);
-    setAutoPilotStateForced(States::EMERGENCY_LAND);
-    return;
+  // Sanity checks on vision-based state estimate
+  if(autopilot_state_ != States::OFF && 
+     autopilot_state_ != States::START &&  
+     autopilot_state_ != States::EMERGENCY_LAND) 
+  {
+         if (!checkVelocityNorm(received_state_est_.velocity.norm()) ||
+             !checkRangerHeightDifference(received_state_est_.position.z()) ||
+             !checkPositionWithinBoundingBox(received_state_est_.position)) 
+         {
+             state_estimate_available_ = false;
+             setAutoPilotStateForced(States::EMERGENCY_LAND);
+             ROS_ERROR_ONCE("[%s] Detected a problem with the state estimate, emergency landing",
+		    	     ros::this_node::getName().c_str());
+         }
   }
 
+  
   if (!velocity_estimate_in_world_frame_)
   {
     received_state_est_.transformVelocityToWorldFrame();
@@ -447,7 +550,9 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
   const ros::Duration control_computation_time = ros::Time::now()
       - start_control_command_computation;
 
-  if (autopilot_state_ != States::COMMAND_FEEDTHROUGH)
+  // If emergency landing, the watchdog will take care of it
+  if (autopilot_state_ != States::COMMAND_FEEDTHROUGH && 
+  	  autopilot_state_ != States::EMERGENCY_LAND)
   {
     control_cmd.timestamp = wall_time_now;
     control_cmd.expected_execution_time = command_execution_time;
@@ -812,6 +917,8 @@ void AutoPilot<Tcontroller, Tparams>::forceHoverCallback(
       || autopilot_state_ == States::EMERGENCY_LAND
       || autopilot_state_ == States::RC_MANUAL)
   {
+  	ROS_INFO_THROTTLE(0.5, "[%s] FORCE HOVER command ignored because not allowed",
+                    pnh_.getNamespace().c_str());
     return;
   }
 
@@ -1537,6 +1644,15 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(enable_command_feedthrough);
   GET_PARAM(predictive_control_lookahead);
   GET_PARAM(max_allowed_velocity);
+  GET_PARAM(max_difference_velocity_command);
+  GET_PARAM(max_height_difference);
+  GET_PARAM(min_height_tera_check_active);
+  GET_PARAM(min_x);
+  GET_PARAM(min_y);
+  GET_PARAM(min_z);
+  GET_PARAM(max_x);
+  GET_PARAM(max_y);
+  GET_PARAM(max_z);
 
   if (!base_controller_params_.loadParameters(pnh_))
   {

@@ -21,6 +21,7 @@
 #include <ros/ros.h>
 #include <state_predictor/state_predictor.h>
 #include <std_msgs/Empty.h>
+#include <sensor_msgs/Range.h>
 
 #include "autopilot/autopilot_states.h"
 
@@ -63,6 +64,7 @@ private:
   void forceHoverCallback(const std_msgs::Empty::ConstPtr& msg);
   void landCallback(const std_msgs::Empty::ConstPtr& msg);
   void offCallback(const std_msgs::Empty::ConstPtr& msg);
+  void teraRangerCallback(const sensor_msgs::Range::ConstPtr& msg);
 
   quadrotor_common::ControlCommand start(
       const quadrotor_common::QuadStateEstimate& state_estimate);
@@ -135,6 +137,7 @@ private:
   ros::Subscriber force_hover_sub_;
   ros::Subscriber land_sub_;
   ros::Subscriber off_sub_;
+  ros::Subscriber teraranger_sub_;
 
   state_predictor::StatePredictor state_predictor_;
 
@@ -152,6 +155,9 @@ private:
 
   States autopilot_state_;
   States state_before_rc_manual_flight_;
+
+  double teraranger_height_;
+
 
   // State switching variables
   bool state_estimate_available_;
@@ -218,6 +224,11 @@ private:
   bool enable_command_feedthrough_;
   double predictive_control_lookahead_;
   double max_allowed_velocity_;
+  double max_difference_velocity_command_;
+  bool teraranger_check_active_;
+  double height_difference_at_init_;
+  double max_height_difference_;
+  double min_height_tera_check_active_;
 
   // Constants
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
@@ -230,8 +241,20 @@ private:
   static constexpr int kGoToPosePolynomialOrderOfContinuity_ = 5;
   static constexpr double kGoToPoseNeglectThreshold_ = 0.05;
   static constexpr double kThrustHighThreshold_ = 0.5;
-};
 
+  // Other things
+  bool checkVelocityNorm(const double estimated_velocity_norm);
+  bool checkRangerHeightDifference(const double estimated_height);
+  bool checkPositionWithinBoundingBox(const Eigen::Vector3d estimated_position);
+
+  // Boundingbox
+  double min_x_;
+  double min_y_;
+  double min_z_;
+  double max_x_;
+  double max_y_;
+  double max_z_;
+};
 } // namespace autopilot
 
 #include "./autopilot_inl.h"

@@ -19,7 +19,7 @@ go_to_pose_max_normalized_thrust: 12.0 # [m/s^2]
 go_to_pose_max_roll_pitch_rate: 0.5 # [rad/s]
 
 velocity_command_input_timeout: 0.1 # [s]
-tau_velocity_command: 0.8 # []
+tau_velocity_command: 0.000008 # []
 
 reference_state_input_timeout: 0.1 # [s]
 
@@ -32,3 +32,12 @@ predictive_control_lookahead: 2.0 # [s]
 
 max_allowed_velocity: 3.0 # [m/s]
 
+max_difference_velocity_command: 10.0 # [m/s]
+max_height_difference: 0.5 # [m]
+min_height_tera_check_active: 1.0 # [m]
+min_x: -0.5 # [m]
+min_y: -2.0 # [m]
+min_z: 0.0 # [m]
+max_x: 2.0 # [m]
+max_y: 2.0 # [m]
+max_z: 2.0 # [m]

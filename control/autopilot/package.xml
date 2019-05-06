@@ -20,6 +20,7 @@
   <depend>quadrotor_msgs</depend>
   <depend>roscpp</depend>
   <depend>state_predictor</depend>
+  <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>trajectory_generation_helper</depend>
 
