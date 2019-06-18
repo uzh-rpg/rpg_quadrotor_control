@@ -198,6 +198,7 @@ void AutoPilot<Tcontroller, Tparams>::watchdogThread()
 
     if (!state_estimate_available_)
     {
+      ROS_WARN("State Estimate Not Available");
       // Publish autopilot feedback throttled down to a maximum frequency
       // If there is no state estimate no feedback would be published otherwise
       if ((ros::Time::now() - time_last_autopilot_feedback_published_)
@@ -363,7 +364,7 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
     // If the autopilot is OFF we don't need to predict
     if(use_predictor_)
     {
-      predicted_state = getPredictedStateEstimate(command_execution_time); 
+      predicted_state = getPredictedStateEstimate(command_execution_time);
     }
   }
 
