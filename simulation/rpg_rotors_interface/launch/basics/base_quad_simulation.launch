@@ -52,8 +52,8 @@
   <group ns="$(arg quad_name)" >
 
     <group if="$(arg use_ground_truth)">
-      <node pkg="rpg_rotors_interface" type="rpg_rotors_interface" 
-          name="rpg_rotors_interface" output="screen" >
+      <node pkg="rpg_rotors_interface" type="rpg_rotors_interface"
+         name="rpg_rotors_interface" output="screen" launch-prefix="gdb -ex run --args">
         <rosparam file="$(find rpg_rotors_interface)/parameters/rpg_rotors_interface.yaml" />
         
         <remap from="odometry" to="ground_truth/odometry" />

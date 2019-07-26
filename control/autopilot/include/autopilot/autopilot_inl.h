@@ -102,6 +102,8 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh, const ros:
     ros::shutdown();
     return;
   }
+
+    ROS_WARN("Max error tolerance: %.5f", kPositionJumpTolerance_);
 }
 
 template <typename Tcontroller, typename Tparams>
@@ -602,6 +604,12 @@ void AutoPilot<Tcontroller, Tparams>::referenceStateCallback(
         "from current reference position and is therefore rejected.",
         pnh_.getNamespace().c_str(), kPositionJumpTolerance_);
     return;
+  }
+
+  else {
+
+    ROS_INFO_THROTTLE(3, "Current error norm: %.5f", (reference_state_.position
+      - quadrotor_common::geometryToEigen(msg->pose.position)).norm());
   }
 
   time_last_reference_state_input_received_ = ros::Time::now();

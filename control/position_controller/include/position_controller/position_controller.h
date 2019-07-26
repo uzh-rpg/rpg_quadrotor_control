@@ -71,6 +71,8 @@ private:
   static constexpr double kAlmostZeroThrustThreshold_ = 0.01;
 
   const Eigen::Vector3d kGravity_ = Eigen::Vector3d(0.0, 0.0, -9.81);
+
+
 };
 
 } // namespace position_controller

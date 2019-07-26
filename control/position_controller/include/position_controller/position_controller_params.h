@@ -13,7 +13,10 @@ public:
           kyaw(0.0), pxy_error_max(0.0), vxy_error_max(0.0), pz_error_max(0.0),
           vz_error_max(0.0), yaw_error_max(0.0),
           perform_aerodynamics_compensation(false), k_drag_x(0.0),
-          k_drag_y(0.0), k_drag_z(0.0), k_thrust_horz(0.0)
+          k_drag_y(0.0), k_drag_z(0.0), k_thrust_horz(0.0), perform_compensation(false),
+          compensation_coeff_xx(0.0), compensation_coeff_xy(0.0), compensation_coeff_xz(0.0),
+          compensation_coeff_yx(0.0), compensation_coeff_yy(0.0), compensation_coeff_yz(0.0),
+          compensation_coeff_zx(0.0), compensation_coeff_zy(0.0), compensation_coeff_zz(0.0) 
   {
   }
 
@@ -111,6 +114,60 @@ public:
       return false;
     }
 
+    if (!quadrotor_common::getParam(path_rel_to_node + "/perform_compensation",
+                                    perform_compensation, pnh))
+    {
+      return false;
+    }
+
+    if (!quadrotor_common::getParam(path_rel_to_node + "/compensation_coeff_xx",
+                                    compensation_coeff_xx, pnh))
+    {
+      return false;
+    }
+
+    if (!quadrotor_common::getParam(path_rel_to_node + "/compensation_coeff_xy",
+                                    compensation_coeff_xy, pnh))
+    {
+      return false;
+    }
+
+    if (!quadrotor_common::getParam(path_rel_to_node + "/compensation_coeff_xz",
+                                    compensation_coeff_xz, pnh))
+    {
+      return false;
+    }
+    if (!quadrotor_common::getParam(path_rel_to_node + "/compensation_coeff_yx",
+                                    compensation_coeff_yx, pnh))
+    {
+      return false;
+    }
+    if (!quadrotor_common::getParam(path_rel_to_node + "/compensation_coeff_yy",
+                                    compensation_coeff_yy, pnh))
+    {
+      return false;
+    }
+    if (!quadrotor_common::getParam(path_rel_to_node + "/compensation_coeff_yz",
+                                    compensation_coeff_yz, pnh))
+    {
+      return false;
+    }
+    if (!quadrotor_common::getParam(path_rel_to_node + "/compensation_coeff_zx",
+                                    compensation_coeff_zx, pnh))
+    {
+      return false;
+    }
+    if (!quadrotor_common::getParam(path_rel_to_node + "/compensation_coeff_zy",
+                                    compensation_coeff_zy, pnh))
+    {
+      return false;
+    }
+    if (!quadrotor_common::getParam(path_rel_to_node + "/compensation_coeff_zz",
+                                    compensation_coeff_zz, pnh))
+    {
+      return false;
+    }
+
     return true;
   }
 
@@ -139,6 +196,17 @@ public:
   double k_drag_z; // z-direction rotor drag coefficient
   // thrust correction coefficient due to body horizontal velocity
   double k_thrust_horz;
+
+  bool perform_compensation;
+  double compensation_coeff_xx;
+  double compensation_coeff_xy;
+  double compensation_coeff_xz;
+  double compensation_coeff_yx;
+  double compensation_coeff_yy;
+  double compensation_coeff_yz;
+  double compensation_coeff_zx; 
+  double compensation_coeff_zy; 
+  double compensation_coeff_zz; 
 };
 
 } // namespace position_controller

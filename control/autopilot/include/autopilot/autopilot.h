@@ -220,7 +220,7 @@ private:
 
   // Constants
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
-  static constexpr double kPositionJumpTolerance_ = 0.5;
+  static constexpr double kPositionJumpTolerance_ = 1;
   static constexpr double kGravityAcc_ = 9.81;
   static constexpr double kWatchdogFrequency_ = 50.0;
   static constexpr double kMaxAutopilotFeedbackPublishFrequency_ = 60.0;

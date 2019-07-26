@@ -21,3 +21,15 @@ position_controller:
   k_drag_y: 0.0
   k_drag_z: 0.0
   k_thrust_horz: 0.0
+
+# IRCULAR V6
+  perform_compensation:  false
+  compensation_coeff_xx: 0.2267
+  compensation_coeff_xy: 0.0021 
+  compensation_coeff_xz: 0.0004
+  compensation_coeff_yx: -0.0022
+  compensation_coeff_yy: 0.2278 
+  compensation_coeff_yz: 0.0008
+  compensation_coeff_zx: 0.0003
+  compensation_coeff_zy: 0.0025 
+  compensation_coeff_zz: 0.4567
