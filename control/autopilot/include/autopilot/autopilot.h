@@ -7,6 +7,7 @@
 
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <foldable_drone_msgs/ModelErrorPrediction.h>
 #include <nav_msgs/Odometry.h>
 #include <position_controller/position_controller.h>
 #include <position_controller/position_controller_params.h>
@@ -63,6 +64,8 @@ private:
   void forceHoverCallback(const std_msgs::Empty::ConstPtr& msg);
   void landCallback(const std_msgs::Empty::ConstPtr& msg);
   void offCallback(const std_msgs::Empty::ConstPtr& msg);
+
+  void mlpCompensationCallback(const foldable_drone_msgs::ModelErrorPrediction::ConstPtr& msg);
 
   quadrotor_common::ControlCommand start(
       const quadrotor_common::QuadStateEstimate& state_estimate);
@@ -135,6 +138,8 @@ private:
   ros::Subscriber force_hover_sub_;
   ros::Subscriber land_sub_;
   ros::Subscriber off_sub_;
+
+  ros::Subscriber mlp_compensation_sub_;
 
   state_predictor::StatePredictor state_predictor_;
 

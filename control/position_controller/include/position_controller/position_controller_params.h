@@ -207,6 +207,10 @@ public:
   double compensation_coeff_zx; 
   double compensation_coeff_zy; 
   double compensation_coeff_zz; 
+
+  double mlp_compensation_x_{0.0};
+  double mlp_compensation_y_{0.0};
+  double mlp_compensation_z_{0.0};
 };
 
 } // namespace position_controller

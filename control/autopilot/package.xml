@@ -21,6 +21,7 @@
   <depend>roscpp</depend>
   <depend>state_predictor</depend>
   <depend>std_msgs</depend>
+
   <depend>trajectory_generation_helper</depend>
 
   <export>

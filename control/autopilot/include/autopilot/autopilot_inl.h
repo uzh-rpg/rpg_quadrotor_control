@@ -1,5 +1,6 @@
 #pragma once
 
+
 #include <quadrotor_common/geometry_eigen_conversions.h>
 #include <quadrotor_common/math_common.h>
 #include <quadrotor_common/parameter_helper.h>
@@ -66,6 +67,10 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh, const ros:
       "autopilot/control_command_input", 1,
       &AutoPilot<Tcontroller, Tparams>::controlCommandInputCallback, this);
 
+
+  mlp_compensation_sub_ = nh_.subscribe("mlp_compensation", 1,
+    &AutoPilot<Tcontroller, Tparams>::mlpCompensationCallback, this);
+
   start_sub_ = nh_.subscribe("autopilot/start", 1,
     &AutoPilot<Tcontroller, Tparams>::startCallback, this);
   force_hover_sub_ = nh_.subscribe("autopilot/force_hover", 1,
@@ -105,6 +110,7 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh, const ros:
 
     ROS_WARN("Max error tolerance: %.5f", kPositionJumpTolerance_);
 }
+
 
 template <typename Tcontroller, typename Tparams>
 AutoPilot<Tcontroller, Tparams>::~AutoPilot()
@@ -215,6 +221,17 @@ void AutoPilot<Tcontroller, Tparams>::watchdogThread()
 
     // Mutex is unlocked because it goes out of scope here
   }
+}
+
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>:: mlpCompensationCallback(const foldable_drone_msgs::ModelErrorPrediction::ConstPtr& msg) {
+
+    if(base_controller_params_.perform_compensation) {
+        base_controller_params_.mlp_compensation_x_ = msg->e_acc_lin_x;
+        base_controller_params_.mlp_compensation_y_ = msg->e_acc_lin_y;
+        base_controller_params_.mlp_compensation_z_ = msg->e_acc_lin_z;
+    }
+
 }
 
 // Planning thread for planning GO_TO_POSE actions

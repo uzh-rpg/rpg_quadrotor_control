@@ -15,7 +15,7 @@
   <depend>eigen_catkin</depend>
   <depend>quadrotor_common</depend>
   <depend>roscpp</depend>
-
+  <depend>foldable_drone_msgs</depend>
   <export>
 
   </export>
