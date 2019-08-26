@@ -47,6 +47,8 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh, const ros:
       "control_command", 1);
   autopilot_feedback_pub_ = nh_.advertise<quadrotor_msgs::AutopilotFeedback>(
       "autopilot/feedback", 1);
+  pose_command_pub_ = nh_.advertise<geometry_msgs::PoseStamped>(
+      "autopilot/pose_command", 1);
 
   // Subscribers
   state_estimate_sub_ = nh_.subscribe("autopilot/state_estimate", 1,
@@ -1139,6 +1141,10 @@ AutoPilot<Tcontroller, Tparams>::velocityControl(
 
   time_last_velocity_command_handled_ = ros::Time::now();
 
+  geometry_msgs::PoseStamped ref_pose;
+  ref_pose.pose.position = quadrotor_common::vectorToPoint(quadrotor_common::eigenToGeometry(reference_state_.position));
+  ref_pose.pose.orientation = quadrotor_common::eigenToGeometry(quadrotor_common::eulerAnglesZYXToQuaternion(Eigen::Vector3d(0,0,reference_state_.heading)));
+  pose_command_pub_.publish(ref_pose);
 
   reference_trajectory_ = quadrotor_common::Trajectory(reference_state_);
   const quadrotor_common::ControlCommand command = base_controller_.run(

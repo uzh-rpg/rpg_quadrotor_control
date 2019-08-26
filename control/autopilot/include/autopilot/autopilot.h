@@ -123,6 +123,7 @@ private:
 
   ros::Publisher control_command_pub_;
   ros::Publisher autopilot_feedback_pub_;
+  ros::Publisher pose_command_pub_; // added for precision landing project
 
   ros::Subscriber state_estimate_sub_;
   ros::Subscriber low_level_feedback_sub_;
