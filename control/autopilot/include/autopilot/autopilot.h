@@ -168,6 +168,7 @@ private:
   States desired_state_after_breaking_;
   States state_before_emergency_landing_;
   bool force_breaking_;
+  bool velocity_input_terminated_ = false;
 
   // Go to pose variables
   std::thread go_to_pose_thread_;

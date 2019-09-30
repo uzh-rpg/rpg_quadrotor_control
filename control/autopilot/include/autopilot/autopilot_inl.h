@@ -549,7 +549,8 @@ void AutoPilot<Tcontroller, Tparams>::velocityCommandCallback(
       <= kVelocityCommandZeroThreshold_
       && fabs(msg->twist.angular.z) <= kVelocityCommandZeroThreshold_)
   {
-    ROS_WARN("----- Velocity Below Threshold ----");	  
+    ROS_WARN("----- Velocity Below Threshold ----");
+    velocity_input_terminated_ = true;
     // Only consider commands with non negligible velocities
     return;
   }
@@ -561,6 +562,7 @@ void AutoPilot<Tcontroller, Tparams>::velocityCommandCallback(
   if (autopilot_state_ != States::VELOCITY_CONTROL)
   {
     setAutoPilotState(States::VELOCITY_CONTROL);
+    velocity_input_terminated_ = false;
   }
 
   desired_velocity_command_ = *msg;
@@ -1122,8 +1124,8 @@ AutoPilot<Tcontroller, Tparams>::velocityControl(
   reference_state_.velocity = (1.0 - alpha_velocity) * reference_state_.velocity
       + alpha_velocity * commanded_velocity;
 
-  if (reference_state_.velocity.norm() < kVelocityCommandZeroThreshold_
-      && commanded_velocity.norm() < kVelocityCommandZeroThreshold_)
+  if ((reference_state_.velocity.norm() < kVelocityCommandZeroThreshold_
+      && commanded_velocity.norm() < kVelocityCommandZeroThreshold_) || velocity_input_terminated_)
   {
     ROS_WARN("Velocity Low");	  
     reference_state_.velocity = Eigen::Vector3d::Zero();
