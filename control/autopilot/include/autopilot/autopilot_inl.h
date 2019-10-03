@@ -1108,7 +1108,7 @@ AutoPilot<Tcontroller, Tparams>::fineBreaking(
     const quadrotor_common::ControlCommand command = base_controller_.run(
         state_estimate, reference_trajectory_, base_controller_params_);
     fine_breaking_started_ = false;
-
+    setAutoPilotState(States::HOVER);
     return command;
   }
 }
