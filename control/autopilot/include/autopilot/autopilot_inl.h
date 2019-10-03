@@ -1531,6 +1531,9 @@ void AutoPilot<Tcontroller, Tparams>::publishAutopilotFeedback(
     case States::BREAKING:
       fb_msg.autopilot_state = fb_msg.BREAKING;
       break;
+    case States::FINE_BREAKING:
+      fb_msg.autopilot_state = fb_msg.FINE_BREAKING;
+      break;
     case States::GO_TO_POSE:
       fb_msg.autopilot_state = fb_msg.GO_TO_POSE;
       break;
