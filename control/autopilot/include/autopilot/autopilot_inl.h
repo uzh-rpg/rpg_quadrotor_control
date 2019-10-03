@@ -1134,6 +1134,8 @@ AutoPilot<Tcontroller, Tparams>::velocityControl(
     {
       ROS_WARN("Going To HOVER");	    
       reference_state_.heading_rate = 0.0;
+      reference_state_.position = state_estimate.position;
+      reference_state_.orientation = state_estimate.orientation;
       setAutoPilotState(States::HOVER);
     }
   }
