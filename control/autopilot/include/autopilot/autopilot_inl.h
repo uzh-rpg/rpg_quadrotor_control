@@ -412,6 +412,9 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
     case States::BREAKING:
       control_cmd = breakVelocity(predicted_state);
       break;
+    case States::FINE_BREAKING:
+      control_cmd = fineBreaking(predicted_state);
+      break;
     case States::GO_TO_POSE:
       control_cmd = waitForGoToPoseAction(predicted_state);
       break;
@@ -1071,6 +1074,47 @@ quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::breakVelocity(
 
 template <typename Tcontroller, typename Tparams>
 quadrotor_common::ControlCommand
+AutoPilot<Tcontroller, Tparams>::fineBreaking(
+    const quadrotor_common::QuadStateEstimate& state_estimate)
+{
+  if (first_time_in_new_state_)
+  {
+    first_time_in_new_state_ = false;
+  }
+  if(!fine_breaking_started_)
+  {
+    reference_state_ = quadrotor_common::TrajectoryPoint();
+    reference_state_.position = state_estimate.position;
+    reference_state_.orientation = state_estimate.orientation;
+    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
+        state_estimate.orientation).z();
+    reference_trajectory_ = quadrotor_common::Trajectory(reference_state_);
+    const quadrotor_common::ControlCommand command = base_controller_.run(
+        state_estimate, reference_trajectory_, base_controller_params_);
+    fine_breaking_started_ = true;
+
+    return command;
+  }
+  ROS_WARN("Velocity %f", state_estimate.velocity.norm());
+  if (state_estimate.velocity.norm() < breaking_velocity_threshold_)
+  {
+    ROS_WARN("Velocity Less Than Break Velocity Threshold");
+    reference_state_ = quadrotor_common::TrajectoryPoint();
+    reference_state_.position = state_estimate.position;
+    reference_state_.orientation = state_estimate.orientation;
+    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
+        state_estimate.orientation).z();
+    reference_trajectory_ = quadrotor_common::Trajectory(reference_state_);
+    const quadrotor_common::ControlCommand command = base_controller_.run(
+        state_estimate, reference_trajectory_, base_controller_params_);
+    fine_breaking_started_ = false;
+
+    return command;
+  }
+}
+
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::ControlCommand
 AutoPilot<Tcontroller, Tparams>::waitForGoToPoseAction(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
@@ -1127,18 +1171,16 @@ AutoPilot<Tcontroller, Tparams>::velocityControl(
   if ((reference_state_.velocity.norm() < kVelocityCommandZeroThreshold_
       && commanded_velocity.norm() < kVelocityCommandZeroThreshold_) || velocity_input_terminated_)
   {
-    ROS_WARN("Velocity Low");	  
+    ROS_WARN("Commanded Velocity Low");
     reference_state_.velocity = Eigen::Vector3d::Zero();
     if (fabs(desired_velocity_command_.twist.angular.z)
         < kVelocityCommandZeroThreshold_)
     {
-//      ROS_WARN("Going To HOVER");
+      ROS_WARN("Going To HOVER");
 //      reference_state_.heading_rate = 0.0;
 //      reference_state_.position = state_estimate.position;
 //      reference_state_.orientation = state_estimate.orientation;
-//      setAutoPilotState(States::HOVER);
-        desired_state_after_breaking_ = States::HOVER;
-        setAutoPilotState(States::BREAKING);
+      setAutoPilotState(States::FINE_BREAKING);
     }
   }
   reference_state_.position += reference_state_.velocity * dt;

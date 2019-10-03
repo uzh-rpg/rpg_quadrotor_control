@@ -72,6 +72,8 @@ private:
       const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand breakVelocity(
       const quadrotor_common::QuadStateEstimate& state_estimate);
+  quadrotor_common::ControlCommand fineBreaking(
+      const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand waitForGoToPoseAction(
       const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand velocityControl(
@@ -206,7 +208,7 @@ private:
   double optitrack_start_land_timeout_;
   double optitrack_land_drop_height_;
   double propeller_ramp_down_timeout_;
-  double breaking_velocity_threshold_;
+  double breaking_velocity_threshold_ = 0.1;
   double breaking_timeout_;
   double go_to_pose_max_velocity_;
   double go_to_pose_max_normalized_thrust_;
@@ -220,6 +222,7 @@ private:
   bool enable_command_feedthrough_;
   double predictive_control_lookahead_;
   bool use_predictor_;
+  bool fine_breaking_started_ = false;
 
   // Constants
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
