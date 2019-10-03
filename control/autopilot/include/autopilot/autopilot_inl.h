@@ -1132,11 +1132,13 @@ AutoPilot<Tcontroller, Tparams>::velocityControl(
     if (fabs(desired_velocity_command_.twist.angular.z)
         < kVelocityCommandZeroThreshold_)
     {
-      ROS_WARN("Going To HOVER");	    
-      reference_state_.heading_rate = 0.0;
-      reference_state_.position = state_estimate.position;
-      reference_state_.orientation = state_estimate.orientation;
-      setAutoPilotState(States::HOVER);
+//      ROS_WARN("Going To HOVER");
+//      reference_state_.heading_rate = 0.0;
+//      reference_state_.position = state_estimate.position;
+//      reference_state_.orientation = state_estimate.orientation;
+//      setAutoPilotState(States::HOVER);
+        desired_state_after_breaking_ = States::HOVER;
+        setAutoPilotState(States::BREAKING);
     }
   }
   reference_state_.position += reference_state_.velocity * dt;
