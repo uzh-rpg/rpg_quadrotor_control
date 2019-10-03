@@ -47,6 +47,8 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh, const ros:
       "control_command", 1);
   autopilot_feedback_pub_ = nh_.advertise<quadrotor_msgs::AutopilotFeedback>(
       "autopilot/feedback", 1);
+  pose_command_pub_ = nh_.advertise<geometry_msgs::PoseStamped>(
+      "autopilot/pose_command", 1);
 
   // Subscribers
   state_estimate_sub_ = nh_.subscribe("autopilot/state_estimate", 1,
@@ -198,6 +200,7 @@ void AutoPilot<Tcontroller, Tparams>::watchdogThread()
 
     if (!state_estimate_available_)
     {
+      //ROS_WARN("State Estimate Not Available");
       // Publish autopilot feedback throttled down to a maximum frequency
       // If there is no state estimate no feedback would be published otherwise
       if ((ros::Time::now() - time_last_autopilot_feedback_published_)
@@ -361,7 +364,10 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
   if (autopilot_state_ != States::OFF)
   {
     // If the autopilot is OFF we don't need to predict
-    predicted_state = getPredictedStateEstimate(command_execution_time);
+    if(use_predictor_)
+    {
+      predicted_state = getPredictedStateEstimate(command_execution_time);
+    }
   }
 
   ros::Duration trajectory_execution_left_duration(0.0);
@@ -405,6 +411,9 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
       break;
     case States::BREAKING:
       control_cmd = breakVelocity(predicted_state);
+      break;
+    case States::FINE_BREAKING:
+      control_cmd = fineBreaking(predicted_state);
       break;
     case States::GO_TO_POSE:
       control_cmd = waitForGoToPoseAction(predicted_state);
@@ -543,6 +552,8 @@ void AutoPilot<Tcontroller, Tparams>::velocityCommandCallback(
       <= kVelocityCommandZeroThreshold_
       && fabs(msg->twist.angular.z) <= kVelocityCommandZeroThreshold_)
   {
+    ROS_WARN("----- Velocity Below Threshold ----");
+    velocity_input_terminated_ = true;
     // Only consider commands with non negligible velocities
     return;
   }
@@ -554,6 +565,7 @@ void AutoPilot<Tcontroller, Tparams>::velocityCommandCallback(
   if (autopilot_state_ != States::VELOCITY_CONTROL)
   {
     setAutoPilotState(States::VELOCITY_CONTROL);
+    velocity_input_terminated_ = false;
   }
 
   desired_velocity_command_ = *msg;
@@ -1062,6 +1074,56 @@ quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::breakVelocity(
 
 template <typename Tcontroller, typename Tparams>
 quadrotor_common::ControlCommand
+AutoPilot<Tcontroller, Tparams>::fineBreaking(
+    const quadrotor_common::QuadStateEstimate& state_estimate)
+{
+  if (first_time_in_new_state_)
+  {
+    first_time_in_new_state_ = false;
+  }
+  if(!fine_breaking_started_)
+  {
+    reference_state_ = quadrotor_common::TrajectoryPoint();
+    reference_state_.position = state_estimate.position;
+    reference_state_.orientation = state_estimate.orientation;
+    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
+        state_estimate.orientation).z();
+    reference_trajectory_ = quadrotor_common::Trajectory(reference_state_);
+    const quadrotor_common::ControlCommand command = base_controller_.run(
+        state_estimate, reference_trajectory_, base_controller_params_);
+    fine_breaking_started_ = true;
+    geometry_msgs::PoseStamped ref_pose;
+    ref_pose.pose.position = quadrotor_common::vectorToPoint(quadrotor_common::eigenToGeometry(reference_state_.position));
+    ref_pose.pose.orientation = quadrotor_common::eigenToGeometry(quadrotor_common::eulerAnglesZYXToQuaternion(Eigen::Vector3d(0,0,reference_state_.heading)));
+    pose_command_pub_.publish(ref_pose);
+
+    return command;
+  }
+  ROS_WARN("Velocity %f", state_estimate.velocity.norm());
+  if (state_estimate.velocity.norm() < breaking_velocity_threshold_)
+  {
+    ROS_WARN("Velocity Less Than Break Velocity Threshold");
+    reference_state_ = quadrotor_common::TrajectoryPoint();
+    reference_state_.position = state_estimate.position;
+    reference_state_.orientation = state_estimate.orientation;
+    reference_state_.heading = quadrotor_common::quaternionToEulerAnglesZYX(
+        state_estimate.orientation).z();
+    reference_trajectory_ = quadrotor_common::Trajectory(reference_state_);
+    const quadrotor_common::ControlCommand command = base_controller_.run(
+        state_estimate, reference_trajectory_, base_controller_params_);
+    fine_breaking_started_ = false;
+    setAutoPilotState(States::HOVER);
+    geometry_msgs::PoseStamped ref_pose;
+    ref_pose.pose.position = quadrotor_common::vectorToPoint(quadrotor_common::eigenToGeometry(reference_state_.position));
+    ref_pose.pose.orientation = quadrotor_common::eigenToGeometry(quadrotor_common::eulerAnglesZYXToQuaternion(Eigen::Vector3d(0,0,reference_state_.heading)));
+    pose_command_pub_.publish(ref_pose);
+    return command;
+  }
+  return quadrotor_common::ControlCommand();
+}
+
+template <typename Tcontroller, typename Tparams>
+quadrotor_common::ControlCommand
 AutoPilot<Tcontroller, Tparams>::waitForGoToPoseAction(
     const quadrotor_common::QuadStateEstimate& state_estimate)
 {
@@ -1115,15 +1177,19 @@ AutoPilot<Tcontroller, Tparams>::velocityControl(
   reference_state_.velocity = (1.0 - alpha_velocity) * reference_state_.velocity
       + alpha_velocity * commanded_velocity;
 
-  if (reference_state_.velocity.norm() < kVelocityCommandZeroThreshold_
-      && commanded_velocity.norm() < kVelocityCommandZeroThreshold_)
+  if ((reference_state_.velocity.norm() < kVelocityCommandZeroThreshold_
+      && commanded_velocity.norm() < kVelocityCommandZeroThreshold_) || velocity_input_terminated_)
   {
+    ROS_WARN("Commanded Velocity Low");
     reference_state_.velocity = Eigen::Vector3d::Zero();
     if (fabs(desired_velocity_command_.twist.angular.z)
         < kVelocityCommandZeroThreshold_)
     {
-      reference_state_.heading_rate = 0.0;
-      setAutoPilotState(States::HOVER);
+      ROS_WARN("Going To Fine Breaking");
+//      reference_state_.heading_rate = 0.0;
+//      reference_state_.position = state_estimate.position;
+//      reference_state_.orientation = state_estimate.orientation;
+      setAutoPilotState(States::FINE_BREAKING);
     }
   }
   reference_state_.position += reference_state_.velocity * dt;
@@ -1135,6 +1201,10 @@ AutoPilot<Tcontroller, Tparams>::velocityControl(
 
   time_last_velocity_command_handled_ = ros::Time::now();
 
+  geometry_msgs::PoseStamped ref_pose;
+  ref_pose.pose.position = quadrotor_common::vectorToPoint(quadrotor_common::eigenToGeometry(reference_state_.position));
+  ref_pose.pose.orientation = quadrotor_common::eigenToGeometry(quadrotor_common::eulerAnglesZYXToQuaternion(Eigen::Vector3d(0,0,reference_state_.heading)));
+  pose_command_pub_.publish(ref_pose);
 
   reference_trajectory_ = quadrotor_common::Trajectory(reference_state_);
   const quadrotor_common::ControlCommand command = base_controller_.run(
@@ -1461,6 +1531,9 @@ void AutoPilot<Tcontroller, Tparams>::publishAutopilotFeedback(
     case States::BREAKING:
       fb_msg.autopilot_state = fb_msg.BREAKING;
       break;
+    case States::FINE_BREAKING:
+      fb_msg.autopilot_state = fb_msg.FINE_BREAKING;
+      break;
     case States::GO_TO_POSE:
       fb_msg.autopilot_state = fb_msg.GO_TO_POSE;
       break;
@@ -1525,6 +1598,7 @@ if (!quadrotor_common::getParam(#name, name ## _, pnh_)) \
   GET_PARAM(control_command_input_timeout);
   GET_PARAM(enable_command_feedthrough);
   GET_PARAM(predictive_control_lookahead);
+  GET_PARAM(use_predictor);
 
   if (!base_controller_params_.loadParameters(pnh_))
   {

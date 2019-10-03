@@ -72,6 +72,8 @@ private:
       const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand breakVelocity(
       const quadrotor_common::QuadStateEstimate& state_estimate);
+  quadrotor_common::ControlCommand fineBreaking(
+      const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand waitForGoToPoseAction(
       const quadrotor_common::QuadStateEstimate& state_estimate);
   quadrotor_common::ControlCommand velocityControl(
@@ -123,6 +125,7 @@ private:
 
   ros::Publisher control_command_pub_;
   ros::Publisher autopilot_feedback_pub_;
+  ros::Publisher pose_command_pub_; // added for precision landing project
 
   ros::Subscriber state_estimate_sub_;
   ros::Subscriber low_level_feedback_sub_;
@@ -167,6 +170,7 @@ private:
   States desired_state_after_breaking_;
   States state_before_emergency_landing_;
   bool force_breaking_;
+  bool velocity_input_terminated_ = false;
 
   // Go to pose variables
   std::thread go_to_pose_thread_;
@@ -204,7 +208,7 @@ private:
   double optitrack_start_land_timeout_;
   double optitrack_land_drop_height_;
   double propeller_ramp_down_timeout_;
-  double breaking_velocity_threshold_;
+  double breaking_velocity_threshold_ = 0.1;
   double breaking_timeout_;
   double go_to_pose_max_velocity_;
   double go_to_pose_max_normalized_thrust_;
@@ -217,6 +221,8 @@ private:
   double control_command_input_timeout_;
   bool enable_command_feedthrough_;
   double predictive_control_lookahead_;
+  bool use_predictor_;
+  bool fine_breaking_started_ = false;
 
   // Constants
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
