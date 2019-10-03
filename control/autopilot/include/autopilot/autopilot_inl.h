@@ -1092,6 +1092,10 @@ AutoPilot<Tcontroller, Tparams>::fineBreaking(
     const quadrotor_common::ControlCommand command = base_controller_.run(
         state_estimate, reference_trajectory_, base_controller_params_);
     fine_breaking_started_ = true;
+    geometry_msgs::PoseStamped ref_pose;
+    ref_pose.pose.position = quadrotor_common::vectorToPoint(quadrotor_common::eigenToGeometry(reference_state_.position));
+    ref_pose.pose.orientation = quadrotor_common::eigenToGeometry(quadrotor_common::eulerAnglesZYXToQuaternion(Eigen::Vector3d(0,0,reference_state_.heading)));
+    pose_command_pub_.publish(ref_pose);
 
     return command;
   }
@@ -1109,8 +1113,13 @@ AutoPilot<Tcontroller, Tparams>::fineBreaking(
         state_estimate, reference_trajectory_, base_controller_params_);
     fine_breaking_started_ = false;
     setAutoPilotState(States::HOVER);
+    geometry_msgs::PoseStamped ref_pose;
+    ref_pose.pose.position = quadrotor_common::vectorToPoint(quadrotor_common::eigenToGeometry(reference_state_.position));
+    ref_pose.pose.orientation = quadrotor_common::eigenToGeometry(quadrotor_common::eulerAnglesZYXToQuaternion(Eigen::Vector3d(0,0,reference_state_.heading)));
+    pose_command_pub_.publish(ref_pose);
     return command;
   }
+  return quadrotor_common::ControlCommand();
 }
 
 template <typename Tcontroller, typename Tparams>
@@ -1176,7 +1185,7 @@ AutoPilot<Tcontroller, Tparams>::velocityControl(
     if (fabs(desired_velocity_command_.twist.angular.z)
         < kVelocityCommandZeroThreshold_)
     {
-      ROS_WARN("Going To HOVER");
+      ROS_WARN("Going To Fine Breaking");
 //      reference_state_.heading_rate = 0.0;
 //      reference_state_.position = state_estimate.position;
 //      reference_state_.orientation = state_estimate.orientation;
