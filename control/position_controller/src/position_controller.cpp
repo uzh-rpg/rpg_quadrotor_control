@@ -58,6 +58,7 @@ quadrotor_common::ControlCommand PositionController::run(
   const Eigen::Vector3d pid_error_accelerations = computePIDErrorAcc(
       state_estimate, reference_state, config);
 
+    // TODO remove or integrate correctly
     /*
     Eigen::Vector3d learned_acceleration = Eigen::Vector3d::Zero();
 
@@ -81,11 +82,10 @@ quadrotor_common::ControlCommand PositionController::run(
   Eigen::Vector3d desired_acceleration = pid_error_accelerations
       + reference_state.acceleration - kGravity_ - drag_accelerations;
     
-    Eigen::Vector3d learned_acceleration = Eigen::Vector3d(config.mlp_compensation_x_, config.mlp_compensation_y_, config.mlp_compensation_z_);
-    ROS_INFO_THROTTLE(5, "Compensation: %.3f, %.3f, %.3f", learned_acceleration.x(), learned_acceleration.y(), learned_acceleration.z());
+  Eigen::Vector3d learned_acceleration = Eigen::Vector3d(config.mlp_compensation_x_, config.mlp_compensation_y_, config.mlp_compensation_z_);
+  ROS_DEBUG_THROTTLE(5, "Linear compensation: %.3f, %.3f, %.3f", learned_acceleration.x(), learned_acceleration.y(), learned_acceleration.z());
 
   desired_acceleration += learned_acceleration;
-    
 
   command.collective_thrust = computeDesiredCollectiveMassNormalizedThrust(
       state_estimate.orientation, desired_acceleration, config);

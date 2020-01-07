@@ -625,7 +625,7 @@ void AutoPilot<Tcontroller, Tparams>::referenceStateCallback(
 
   else {
 
-    ROS_INFO_THROTTLE(3, "Current error norm: %.5f", (reference_state_.position
+    ROS_DEBUG_THROTTLE(3, "Current error norm: %.5f", (reference_state_.position
       - quadrotor_common::geometryToEigen(msg->pose.position)).norm());
   }
 
