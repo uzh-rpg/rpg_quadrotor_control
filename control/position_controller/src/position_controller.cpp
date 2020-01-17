@@ -57,35 +57,21 @@ quadrotor_common::ControlCommand PositionController::run(
   // Compute desired control commands
   const Eigen::Vector3d pid_error_accelerations = computePIDErrorAcc(
       state_estimate, reference_state, config);
-
-    // TODO remove or integrate correctly
-    /*
-    Eigen::Vector3d learned_acceleration = Eigen::Vector3d::Zero();
-
-    if (config.perform_compensation) {
-    ROS_WARN_ONCE("[%s] Performing learned compensation", ros::this_node::getName().c_str());
-    //static Eigen::Vector3d learned_coeffs = Eigen::Vector3d(config.compensation_coeff_xx, config.compensation_coeff_xy, config.compensation_coeff_xz, 
-    //config.compensation_coeff_yx, config.compensation_coeff_yy, config.compensation_coeff_yz,
-    //config.compensation_coeff_zx, config.compensation_coeff_zy, config.compensation_coeff_zz);
-    Eigen::Matrix3d coeffs_matrix;
-    coeffs_matrix << config.compensation_coeff_xx, config.compensation_coeff_xy, config.compensation_coeff_xz, 
-    config.compensation_coeff_yx, config.compensation_coeff_yy, config.compensation_coeff_yz,
-    config.compensation_coeff_zx, config.compensation_coeff_zy, config.compensation_coeff_zz;
-
-    learned_acceleration = state_estimate.orientation.toRotationMatrix() * coeffs_matrix * state_estimate.orientation.toRotationMatrix().transpose() *
-                           Eigen::Vector3d(state_estimate.velocity.x(), state_estimate.velocity.y(), state_estimate.velocity.z());
-
-    ROS_INFO_THROTTLE(5, "Compensation: %.3f, %.3f, %.3f", learned_acceleration.x(), learned_acceleration.y(), learned_acceleration.z());
-    }
-    */
   
   Eigen::Vector3d desired_acceleration = pid_error_accelerations
       + reference_state.acceleration - kGravity_ - drag_accelerations;
-    
-  Eigen::Vector3d learned_acceleration = Eigen::Vector3d(config.mlp_compensation_x_, config.mlp_compensation_y_, config.mlp_compensation_z_);
-  ROS_DEBUG_THROTTLE(5, "Linear compensation: %.3f, %.3f, %.3f", learned_acceleration.x(), learned_acceleration.y(), learned_acceleration.z());
 
-  desired_acceleration += learned_acceleration;
+  if(config.perform_learned_compensation) {
+    // This adds compensation values published to topic 'learned_compensation' from MLP_estimation_node.py
+    // Currently, subscribing to this topic is at the moment the autopilot_inl.h (mlpCompensationCallback) and stores it
+    // to the variables learned_compensation_i_ in position_controller_params.h
+    Eigen::Vector3d learned_acceleration = Eigen::Vector3d(config.learned_compensation_x, config.learned_compensation_y,
+                                                           config.learned_compensation_z);
+    ROS_DEBUG_THROTTLE(5, "Linear compensation: %.3f, %.3f, %.3f", learned_acceleration.x(), learned_acceleration.y(),
+                       learned_acceleration.z());
+
+    desired_acceleration += learned_acceleration;
+  }
 
   command.collective_thrust = computeDesiredCollectiveMassNormalizedThrust(
       state_estimate.orientation, desired_acceleration, config);

@@ -22,16 +22,5 @@ position_controller:
   k_drag_z: 0.0
   k_thrust_horz: 0.0
 
-  perform_MLP_compensation:  false
-  perform_compensation:  false
-
-  # CIRCULAR V3
-  compensation_coeff_xx: 0.2161
-  compensation_coeff_xy: 0.0011
-  compensation_coeff_xz: 0.0005
-  compensation_coeff_yx: -0.0010
-  compensation_coeff_yy: 0.2158
-  compensation_coeff_yz: -0.0022
-  compensation_coeff_zx: -0.0002
-  compensation_coeff_zy: -0.0004
-  compensation_coeff_zz: 0.5534
+  # Learned compensation for linear accelerations
+  perform_learned_compensation:  true

@@ -68,7 +68,7 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh, const ros:
       &AutoPilot<Tcontroller, Tparams>::controlCommandInputCallback, this);
 
 
-  mlp_compensation_sub_ = nh_.subscribe("mlp_compensation", 1,
+  learned_compensation_sub_ = nh_.subscribe("learned_compensation", 1,
     &AutoPilot<Tcontroller, Tparams>::mlpCompensationCallback, this);
 
   start_sub_ = nh_.subscribe("autopilot/start", 1,
@@ -226,10 +226,10 @@ void AutoPilot<Tcontroller, Tparams>::watchdogThread()
 template <typename Tcontroller, typename Tparams>
 void AutoPilot<Tcontroller, Tparams>:: mlpCompensationCallback(const foldable_drone_msgs::ModelErrorPrediction::ConstPtr& msg) {
 
-    if(base_controller_params_.perform_compensation) {
-        base_controller_params_.mlp_compensation_x_ = msg->e_acc_lin_x;
-        base_controller_params_.mlp_compensation_y_ = msg->e_acc_lin_y;
-        base_controller_params_.mlp_compensation_z_ = msg->e_acc_lin_z;
+    if(base_controller_params_.perform_learned_compensation) {
+        base_controller_params_.learned_compensation_x = msg->e_acc_lin_x;
+        base_controller_params_.learned_compensation_y = msg->e_acc_lin_y;
+        base_controller_params_.learned_compensation_z = msg->e_acc_lin_z;
     }
 
 }

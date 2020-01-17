@@ -139,7 +139,7 @@ private:
   ros::Subscriber land_sub_;
   ros::Subscriber off_sub_;
 
-  ros::Subscriber mlp_compensation_sub_;
+  ros::Subscriber learned_compensation_sub_;
 
   state_predictor::StatePredictor state_predictor_;
 
