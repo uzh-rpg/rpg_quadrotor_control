@@ -2,21 +2,22 @@
 
 #include <vector>
 
-#include <Eigen/Dense>
 #include <quadrotor_common/trajectory_point.h>
 #include <ros/duration.h>
+#include <Eigen/Dense>
 
-namespace polynomial_trajectories
-{
+namespace polynomial_trajectories {
 
-enum class TrajectoryType
-{
-  UNDEFINED, FULLY_CONSTRAINED, MINIMUM_SNAP, MINIMUM_SNAP_RING,
-  MINIMUM_SNAP_OPTIMIZED_SEGMENTS, MINIMUM_SNAP_RING_OPTIMIZED_SEGMENTS
+enum class TrajectoryType {
+  UNDEFINED,
+  FULLY_CONSTRAINED,
+  MINIMUM_SNAP,
+  MINIMUM_SNAP_RING,
+  MINIMUM_SNAP_OPTIMIZED_SEGMENTS,
+  MINIMUM_SNAP_RING_OPTIMIZED_SEGMENTS
 };
 
-struct PolynomialTrajectory
-{
+struct PolynomialTrajectory {
   PolynomialTrajectory();
   virtual ~PolynomialTrajectory();
 
@@ -33,4 +34,4 @@ struct PolynomialTrajectory
   double optimization_cost;
 };
 
-} // namespace polynomial_trajectories
+}  // namespace polynomial_trajectories

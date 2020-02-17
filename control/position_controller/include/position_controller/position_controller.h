@@ -1,20 +1,18 @@
 #pragma once
 
-#include <Eigen/Dense>
 #include <quadrotor_common/control_command.h>
 #include <quadrotor_common/quad_state_estimate.h>
-#include <quadrotor_common/trajectory_point.h>
 #include <quadrotor_common/trajectory.h>
+#include <quadrotor_common/trajectory_point.h>
 #include <ros/ros.h>
+#include <Eigen/Dense>
 
 #include "position_controller/position_controller_params.h"
 
-namespace position_controller
-{
+namespace position_controller {
 
-class PositionController
-{
-public:
+class PositionController {
+ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   PositionController();
@@ -26,8 +24,7 @@ public:
       const quadrotor_common::Trajectory& reference_trajectory,
       const PositionControllerParams& config);
 
-private:
-
+ private:
   quadrotor_common::ControlCommand computeNominalReferenceInputs(
       const quadrotor_common::TrajectoryPoint& reference_state,
       const Eigen::Quaterniond& attitude_estimate) const;
@@ -73,4 +70,4 @@ private:
   const Eigen::Vector3d kGravity_ = Eigen::Vector3d(0.0, 0.0, -9.81);
 };
 
-} // namespace position_controller
+}  // namespace position_controller

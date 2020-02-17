@@ -12,8 +12,8 @@
 #include <position_controller/position_controller_params.h>
 #include <quadrotor_common/control_command.h>
 #include <quadrotor_common/quad_state_estimate.h>
-#include <quadrotor_common/trajectory_point.h>
 #include <quadrotor_common/trajectory.h>
+#include <quadrotor_common/trajectory_point.h>
 #include <quadrotor_msgs/ControlCommand.h>
 #include <quadrotor_msgs/LowLevelFeedback.h>
 #include <quadrotor_msgs/Trajectory.h>
@@ -24,26 +24,20 @@
 
 #include "autopilot/autopilot_states.h"
 
-namespace autopilot
-{
+namespace autopilot {
 
 template <typename Tcontroller, typename Tparams>
-class AutoPilot
-{
-public:
+class AutoPilot {
+ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   AutoPilot(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
-  AutoPilot() :
-      AutoPilot(ros::NodeHandle(), ros::NodeHandle("~"))
-  {
-  }
+  AutoPilot() : AutoPilot(ros::NodeHandle(), ros::NodeHandle("~")) {}
 
   virtual ~AutoPilot();
 
-private:
-
+ private:
   void watchdogThread();
   void goToPoseThread();
 
@@ -231,6 +225,6 @@ private:
   static constexpr double kThrustHighThreshold_ = 0.5;
 };
 
-} // namespace autopilot
+}  // namespace autopilot
 
 #include "./autopilot_inl.h"

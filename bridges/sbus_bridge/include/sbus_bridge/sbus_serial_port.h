@@ -5,19 +5,15 @@
 
 #include "sbus_bridge/sbus_msg.h"
 
-namespace sbus_bridge
-{
+namespace sbus_bridge {
 
-class SBusSerialPort
-{
-public:
-
+class SBusSerialPort {
+ public:
   SBusSerialPort();
   SBusSerialPort(const std::string& port, const bool start_receiver_thread);
   virtual ~SBusSerialPort();
 
-protected:
-
+ protected:
   bool setUpSBusSerialPort(const std::string& port,
                            const bool start_receiver_thread);
 
@@ -31,8 +27,7 @@ protected:
   virtual void handleReceivedSbusMessage(
       const sbus_bridge::SBusMsg& received_sbus_msg) = 0;
 
-private:
-
+ private:
   static constexpr int kSbusFrameLength_ = 25;
   static constexpr uint8_t kSbusHeaderByte_ = 0x0F;
   static constexpr uint8_t kSbusFooterByte_ = 0x00;
@@ -49,4 +44,4 @@ private:
   int serial_port_fd_;
 };
 
-} // namespace sbus_bridge
+}  // namespace sbus_bridge
