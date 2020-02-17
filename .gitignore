@@ -41,3 +41,7 @@ ROS_NOBUILD
 
 # Matlab msgs gen
 matlab_gen
+
+# CLion 
+.idea/
+cmake-build-debug/
