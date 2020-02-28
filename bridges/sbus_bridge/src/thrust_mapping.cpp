@@ -54,8 +54,11 @@ uint16_t CollectiveThrustMapping::inverseThrustMapping(
     }
   }
 
-  //Citardauq Formula: Gives a numerically stable solution of the quadratic equation for thrust_map_a ~ 0, which is not the case for the standard formula.
-    const uint16_t cmd = 2.0 * (thrust_map_c_ - thrust_applied) / (-thrust_map_b_ - sqrt(thrust_map_b_ * thrust_map_b_ - 4.0 * thrust_map_a_ * (thrust_map_c_ - thrust_applied)));
+  const uint16_t cmd = (-thrust_map_b_
+      + sqrt(
+          thrust_map_b_ * thrust_map_b_
+              - 4.0 * thrust_map_a_ * (thrust_map_c_ - thrust_applied)))
+      / (2.0 * thrust_map_a_);
 
   return cmd;
 }

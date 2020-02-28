@@ -50,7 +50,7 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh, const ros:
 
   // Subscribers
   state_estimate_sub_ = nh_.subscribe("autopilot/state_estimate", 1,
-    &AutoPilot<Tcontroller, Tparams>::stateEstimateCallback, this, ros::TransportHints().tcpNoDelay());
+    &AutoPilot<Tcontroller, Tparams>::stateEstimateCallback, this);
   low_level_feedback_sub_ = nh_.subscribe("low_level_feedback", 1,
     &AutoPilot<Tcontroller, Tparams>::lowLevelFeedbackCallback, this);
 
