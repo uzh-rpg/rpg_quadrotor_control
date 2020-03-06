@@ -3,8 +3,9 @@
   <arg name="quad_name" default="hummingbird"/>
 
   <arg name="mav_name" default="$(arg quad_name)"/>
-  <arg name="model" value="$(find rotors_description)/urdf/mav_generic_odometry_sensor.gazebo"/>
-  <arg name="world_name" default="$(find rotors_gazebo)/worlds/basic.world"/>
+  <!--<arg name="model" value="$(find rotors_description)/urdf/mav_generic_odometry_sensor.gazebo"/>-->
+  <arg name="model" value="$(find rpg_rotors_interface)/vehicles/hummingbird_downlooking_camera.gazebo"/>
+  <arg name="world_name" default="$(find rotors_gazebo)/worlds/outdoor.world"/>
 
   <arg name="x_init" default="0"/>
   <arg name="y_init" default="0"/>
@@ -12,7 +13,6 @@
   <arg name="use_mpc" default="false"/>
   <arg name="enable_logging" default="false" />
   <arg name="enable_ground_truth" default="true" />
-  <arg name="enable_command_feedthrough" default="false"/>
   <arg name="log_file" default="$(arg mav_name)" />
   <arg name="paused" value="true"/>
   <arg name="gui" value="true"/>
@@ -28,7 +28,6 @@
     <arg name="gui" value="$(arg gui)"/>
     <arg name="use_ground_truth" value="$(arg use_ground_truth)"/>
     <arg name="use_mpc" value="$(arg use_mpc)"/>
-    <arg name="enable_command_feedthrough" value="$(arg enable_command_feedthrough)" />
 
     <arg name="mav_name" value="$(arg mav_name)"/>
     <arg name="model" value="$(arg model)"/>
@@ -41,5 +40,9 @@
     <arg name="x_init" value="$(arg x_init)"/>
     <arg name="y_init" value="$(arg y_init)"/>
   </include>
+
+  <arg name="camera_name" default="camera"/>   
+  <!-- <node pkg="tf" type="static_transform_publisher" name="camera_kinect_frame" args="0.0 0.0 0.0 0.0 0.1305262 0.0 0.9914449 hummingbird/base_link hummingbird/kinect1 100"/> -->
+  <node pkg="tf" type="static_transform_publisher" name="camera_kinect_frame" args="0.0 0.0 0.0 -0.5609855 0.5609855 -0.4304593 0.4304593 hummingbird/base_link hummingbird/kinect1 10"/>
 
 </launch>

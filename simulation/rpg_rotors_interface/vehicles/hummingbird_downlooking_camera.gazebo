@@ -4,24 +4,14 @@
 
   <!-- Instantiate default hummingbird-->
   <xacro:include filename="$(find rotors_description)/urdf/mav_generic_odometry_sensor.gazebo" />
+  <xacro:include filename="$(find rpg_rotors_interface)/vehicles/components/kinect.urdf.xacro" />
 
-  <xacro:camera_macro
-    namespace="${namespace}/camera"
-    parent_link="${namespace}/base_link"
-    frame_rate="500"
-    camera_suffix="bluefox"
-    horizontal_fov="2"
-    image_width="752"
-    image_height="480"
-    image_format="L8"
-    min_distance="0.02"
-    max_distance="50"
-    noise_mean="0.0"
-    noise_stddev="0.007"
-    enable_visual="true"
+ <xacro:kinect_camera
+         name="camera"
+         parent="${namespace}/base_link"
   >
-    <box size="0.02 0.035 0.035" />
-    <origin xyz="0.0 0.0 -0.075" rpy="0.0 ${pi/2} 0.0" />
-  </xacro:camera_macro>
+ <origin xyz="0.0 0.0 0.0" rpy="0.0 ${PI*15.0/180.0} 0.0" />
+   <!-- <box size="0.02 0.035 0.035" /> -->
+  </xacro:kinect_camera>
 
 </robot>

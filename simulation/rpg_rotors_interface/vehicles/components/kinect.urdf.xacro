@@ -1,0 +1,137 @@
+<?xml version="1.0"?>
+
+<root xmlns:xacro="http://ros.org/wiki/xacro">
+
+
+
+	<xacro:include filename="$(find rpg_rotors_interface)/vehicles/components/kinect.gazebo.xacro" />
+        <xacro:property name="PI" value="3.1415926535897931"/>
+        <xacro:property name="kinect_x" value="0.025"/>
+	<xacro:property name="kinect_ir_y" value="0.01"/>
+	<xacro:property name="kinect_rgb_y" value="0.015"/>
+	<xacro:property name="kinect_z" value="0.052"/>
+
+	<xacro:property name="kinect_roll" value="0.0"/>
+  <xacro:property name="kinect_pitch" value="0.0"/>
+	<xacro:property name="kinect_yaw" value="0.0"/>
+
+  <!--
+	<xacro:property name="kinect_roll" value="${-PI/2}"/>
+	<xacro:property name="kinect_pitch" value="0.0"/>
+	<xacro:property name="kinect_yaw" value="${-PI/2}"/>
+  -->
+
+
+	<xacro:property name="ir_depth_rgb_offset_y" value="0.01"/> <!-- FIXME: what is this offset? -->
+
+	<!-- ===================================== KINECT & PROSILICA ==================================== -->
+	<!-- The xacro macro xacro:kinect_prosilica_camera_swept_back contains: kinect and prosilica combo -->
+	<xacro:macro name="kinect_camera" params="name parent *origin">
+
+		<!-- Joints -->
+		<joint name="${name}_kinect_joint" type="fixed">
+			<xacro:insert_block name="origin"/>
+			<parent link="${parent}"/>
+			<child link="${name}_kinect_link"/>
+		</joint>
+		<!-- kinect ir sensor physical attachment -->
+		<joint name="${name}_kinect_ir_joint" type="fixed">
+			<origin xyz="${kinect_x} ${kinect_ir_y} ${kinect_z}" rpy="0.0 0.0 0.0"/>
+			<parent link="${name}_kinect_link"/>
+			<child link="${name}_kinect_ir_link"/>
+		</joint>
+		<!-- kinect ir sensor frame -->
+		<joint name="${name}_kinect_ir_optical_frame_joint" type="fixed">
+			<origin xyz="0 0 0"	rpy="${kinect_roll} ${kinect_pitch} ${kinect_yaw}"/>
+			<parent link="${name}_kinect_ir_link"/>
+			<child link="${name}_kinect_ir_optical_frame"/>
+		</joint>
+		<!-- kinect rgb sensor physical attachment -->
+		<joint name="${name}_kinect_rgb_joint" type="fixed">
+			<origin xyz="${kinect_x} -${kinect_rgb_y} ${kinect_z}" rpy="0.0 0.0 0.0"/>
+			<parent link="${name}_kinect_link"/>
+			<child link="${name}_kinect_rgb_link"/>
+		</joint>
+		<!-- kinect rgb sensor frame -->
+		<joint name="${name}_kinect_rgb_optical_frame_joint" type="fixed">
+			<origin xyz="0 0 0"	rpy="${kinect_roll} ${kinect_pitch} ${kinect_yaw}"/>
+			<parent link="${name}_kinect_rgb_link"/>
+			<child link="${name}_kinect_rgb_optical_frame"/>
+		</joint>
+
+
+		<!-- Links -->
+		<link name="${name}_kinect_link">
+			<inertial>
+				<mass value="0.001"/>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+			</inertial>
+			<visual>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0"/>
+				<geometry>
+					<mesh filename="$(find rpg_rotors_interface)/vehicles/components/kinect.dae" scale="0.1 0.1 0.1" />
+				</geometry>
+				<material name="gray">
+					<color rgba="0.5 0.5 0.5 1"/>
+				</material>
+			</visual>
+			<collision>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<geometry>
+					<mesh filename="$(find rpg_rotors_interface)/vehicles/components/kinect.dae" scale="0.1 0.1 0.1" />
+				</geometry>
+			</collision>
+		</link>
+
+		<link name="${name}_kinect_ir_link">
+			<inertial>
+				<mass value="0.001" />
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
+			</inertial>
+			<visual>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<geometry>
+					<sphere radius="0.0005"/>
+				</geometry>
+			</visual>
+			<collision>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<geometry>
+					<sphere radius="0.0005"/>
+				</geometry>
+			</collision>
+		</link>
+
+		<link name="${name}_kinect_ir_optical_frame"/>
+
+		<link name="${name}_kinect_rgb_link" >
+			<inertial>
+				<mass value="0.001" />
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001" />
+			</inertial>
+			<visual>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<geometry>
+					<sphere radius="0.0005"/>
+				</geometry>
+			</visual>
+			<collision>
+				<origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
+				<geometry>
+					<sphere radius="0.0005"/>
+				</geometry>
+			</collision>
+		</link>
+
+		<link name="${name}_kinect_rgb_optical_frame"/>
+
+
+    <!-- gazebo extensions -->
+    <xacro:kinect_ir_sensor link_name="${name}_kinect_ir_link" frame_name="kinect1" camera_name="head_mount_kinect" />
+    <xacro:kinect_rgb_sensor link_name="${name}_kinect_rgb_link" frame_name="kinect1" camera_name="head_mount_kinect" />
+
+	</xacro:macro>
+</root>

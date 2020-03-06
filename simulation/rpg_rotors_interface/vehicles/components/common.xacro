@@ -1,0 +1,83 @@
+<?xml version="1.0"?>
+
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+
+	<xacro:property name="PI" value="3.1415926535897931"/>
+
+	<!-- TODO checks the imu properties -->
+	<!-- Microstrain kvh1775 IMU -->
+	<xacro:property name="kvh_1775_vel_mean" value="0" />
+	<xacro:property name="kvh_1775_vel_stddev" value="2e-4" />
+	<xacro:property name="kvh_1775_vel_bias_mean" value="0.00087" />
+	<xacro:property name="kvh_1775_vel_bias_stddev" value="0.0000008" />
+	<xacro:property name="kvh_1775_acc_mean" value="0" />
+	<xacro:property name="kvh_1775_acc_stddev" value="1.7e-2" />
+	<xacro:property name="kvh_1775_acc_bias_mean" value="0.002" />
+	<xacro:property name="kvh_1775_acc_bias_stddev" value="0.001" />	
+
+	<!-- Microstrain 3dmgx425 IMU -->
+	<xacro:property name="microstrain_gx425_vel_mean" value="0" />
+	<xacro:property name="microstrain_gx425_vel_stddev" value="2e-4" />
+	<xacro:property name="microstrain_gx425_vel_bias_mean" value="0.00087" />
+	<xacro:property name="microstrain_gx425_vel_bias_stddev" value="0.0000008" />
+	<xacro:property name="microstrain_gx425_acc_mean" value="0" />
+	<xacro:property name="microstrain_gx425_acc_stddev" value="1.7e-2" />
+	<xacro:property name="microstrain_gx425_acc_bias_mean" value="0.002" />
+	<xacro:property name="microstrain_gx425_acc_bias_stddev" value="0.001" />	
+
+	<!-- Microstrain 3dmgx325 IMU -->
+	<xacro:property name="microstrain_gx325_vel_mean" value="0" />
+	<xacro:property name="microstrain_gx325_vel_stddev" value="2e-4" />
+	<xacro:property name="microstrain_gx325_vel_bias_mean" value="0.00087" />
+	<xacro:property name="microstrain_gx325_vel_bias_stddev" value="0.0000008" />
+	<xacro:property name="microstrain_gx325_acc_mean" value="0" />
+	<xacro:property name="microstrain_gx325_acc_stddev" value="1.7e-2" />
+	<xacro:property name="microstrain_gx325_acc_bias_mean" value="0.002" />
+	<xacro:property name="microstrain_gx325_acc_bias_stddev" value="0.001" />		
+
+	<!-- PTU unit -->
+	<xacro:property name="pan_velocity" value="1.0" />
+	<xacro:property name="pan_range" value="2.775" />
+	<xacro:property name="tilt_velocity" value="1.0" />
+	<xacro:property name="tilt_up_range" value="0.52" />
+	<xacro:property name="tilt_down_range" value="0.82" />
+	<xacro:property name="joint_effort" value="30" /> 
+
+	<!-- Asus Xtion Camera Location (Nominally 0) -->
+	<xacro:property name="asus_xtion_x" value="0.009"/>
+	<xacro:property name="asus_xtion_depth_y" value="0.045"/>
+	<xacro:property name="asus_xtion_rgb_y" value="0.01875"/>
+	<xacro:property name="asus_xtion_z" value="0.035"/>
+	<xacro:property name="asus_xtion_roll" value="${-PI/2}"/>
+	<xacro:property name="asus_xtion_pitch" value="0.0"/>
+	<xacro:property name="asus_xtion_yaw" value="${-PI/2}"/>
+
+	<!-- Kinect Camera Location (Nominally 0) -->
+	<xacro:property name="kinect_x" value="0.025"/>
+	<xacro:property name="kinect_ir_y" value="0.01"/>
+	<xacro:property name="kinect_rgb_y" value="0.015"/>
+	<xacro:property name="kinect_z" value="0.052"/>
+	<xacro:property name="kinect_roll" value="${-PI/2}"/>
+	<xacro:property name="kinect_pitch" value="0.0"/>
+	<xacro:property name="kinect_yaw" value="${-PI/2}"/>
+	
+	<!-- Bumblebee mass and lengths for computing inertia tensor -->
+	<xacro:property name="b2mass" value="0.342"/>
+	<xacro:property name="b2lx" value="0.157"/>
+	<xacro:property name="b2ly" value="0.036"/>
+	<xacro:property name="b2lz" value="0.0474"/>
+
+	<!-- Velodyne Lidar Location (Nominally 0) -->
+	<xacro:property name="velodyne_x" value="0.0"/>
+	<xacro:property name="velodyne_y" value="0.0"/>
+	<xacro:property name="velodyne_z" value="0.09"/>
+
+	<!-- HighDef Camera Location (Nominally 0) -->
+	<xacro:property name="cal_high_def_x" value="0.0" />
+	<xacro:property name="cal_high_def_y" value="0.0" />
+	<xacro:property name="cal_high_def_z" value="0.0" />
+	<xacro:property name="cal_high_def_roll" value="0.0" />
+	<xacro:property name="cal_high_def_pitch" value="0.0" />
+	<xacro:property name="cal_high_def_yaw" value="0.0" />
+
+</robot>
