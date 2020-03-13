@@ -57,6 +57,7 @@ class AutoPilot {
   void forceHoverCallback(const std_msgs::Empty::ConstPtr& msg);
   void landCallback(const std_msgs::Empty::ConstPtr& msg);
   void offCallback(const std_msgs::Empty::ConstPtr& msg);
+  void reloadParamsCallback(const std_msgs::Empty::ConstPtr& msg);
 
   quadrotor_common::ControlCommand start(
       const quadrotor_common::QuadStateEstimate& state_estimate);
@@ -129,6 +130,7 @@ class AutoPilot {
   ros::Subscriber force_hover_sub_;
   ros::Subscriber land_sub_;
   ros::Subscriber off_sub_;
+  ros::Subscriber reload_param_sub_;
 
   state_predictor::StatePredictor state_predictor_;
 
@@ -185,6 +187,7 @@ class AutoPilot {
   std::atomic_bool destructor_invoked_;
 
   ros::Time time_last_autopilot_feedback_published_;
+  ros::Time time_last_control_command_published_;
 
   // Parameters
   double state_estimate_timeout_;
@@ -211,6 +214,7 @@ class AutoPilot {
   double control_command_input_timeout_;
   bool enable_command_feedthrough_;
   double predictive_control_lookahead_;
+  double min_control_period_;
 
   // Constants
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;

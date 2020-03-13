@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="quad_name"/>
+  <arg name="world_name"/>
+  <arg name="paused"/>
+  <arg name="gui"/>
+  <arg name="use_ground_truth"/>
+  <arg name="custom_models" default=""/>
+
+  <arg name="mav_name"/>
+  <arg name="model"/>
+  <arg name="enable_logging"/>
+  <arg name="enable_ground_truth"/>
+  <arg name="log_file"/>
+
+  <arg name="x_init"/>
+  <arg name="y_init"/>
+
+  <arg name="debug"/>
+  <arg name="verbose"/>
+
+  <!-- Gazebo stuff to spawn the world !-->
+  <env name="GAZEBO_MODEL_PATH" 
+      value="${GAZEBO_MODEL_PATH}:$(find rotors_gazebo)/models:$(arg custom_models)"/>
+  <env name="GAZEBO_RESOURCE_PATH" 
+      value="${GAZEBO_RESOURCE_PATH}:$(find rotors_gazebo)/models"/>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(arg world_name)" />
+    <arg name="debug" value="$(arg debug)" />
+    <arg name="paused" value="$(arg paused)" />
+    <arg name="gui" value="$(arg gui)" />
+    <arg name="verbose" value="$(arg verbose)"/>
+  </include>
+
+  <!-- RotorS stuff to spawn the quadrotor !-->
+  <group ns="$(arg mav_name)">
+    <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
+      <arg name="mav_name" value="$(arg mav_name)" />
+      <arg name="model" value="$(arg model)" />
+      <arg name="enable_logging" value="$(arg enable_logging)" />
+      <arg name="enable_ground_truth" value="$(arg enable_ground_truth)" />
+      <arg name="log_file" value="$(arg log_file)"/>
+      <arg name="x" value="$(arg x_init)" />
+      <arg name="y" value="$(arg y_init)" />
+    </include>
+  </group>
+
+  <!-- RPG stuff !-->
+  <group ns="$(arg quad_name)" >
+
+    <node pkg="joy" type="joy_node" name="joy_node">
+      <param name="autorepeat_rate" value="10"/>
+    </node>
+
+    <node pkg="manual_flight_assistant" type="manual_flight_assistant" 
+        name="manual_flight_assistant" output="screen">
+      <rosparam file="$(find rpg_rotors_interface)/parameters/manual_flight_assistant.yaml"/>
+    </node>
+
+    <node name="rqt_quad_gui" pkg="rqt_gui" type="rqt_gui" 
+        args="-s rqt_quad_gui.basic_flight.BasicFlight --args 
+        --quad_name $(arg quad_name)" output="screen"/>
+
+  </group> 
+
+</launch>

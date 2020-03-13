@@ -7,7 +7,7 @@ start_land_acceleration: 1 # [m/s^2]
 start_idle_duration: 2.0 # [s]
 idle_thrust: 2.0 # [m/s]
 optitrack_start_height: 1.0 # [m]
-optitrack_start_land_timeout: 5 # [s]
+optitrack_start_land_timeout: 10 # [s]
 optitrack_land_drop_height: 0.3 # [m]
 propeller_ramp_down_timeout: 1.5 # [s]
 
@@ -29,3 +29,5 @@ emergency_land_thrust: 9.0 # [m/s^2]
 control_command_input_timeout: 0.1 # [s]
 enable_command_feedthrough: true
 predictive_control_lookahead: 2.0 # [s]
+
+min_control_period: 0.02 # [s]

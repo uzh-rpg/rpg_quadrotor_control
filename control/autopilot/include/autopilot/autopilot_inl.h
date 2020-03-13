@@ -6,6 +6,7 @@
 #include <quadrotor_msgs/AutopilotFeedback.h>
 #include <trajectory_generation_helper/heading_trajectory_helper.h>
 #include <trajectory_generation_helper/polynomial_trajectory_helper.h>
+#include <visualization_msgs/MarkerArray.h>
 
 namespace autopilot {
 
@@ -46,9 +47,8 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh,
       time_last_state_estimate_received_(),
       time_started_emergency_landing_(),
       destructor_invoked_(false),
-      time_last_autopilot_feedback_published_()
-
-{
+      time_last_autopilot_feedback_published_(),
+      time_last_control_command_published_() {
   if (!loadParameters()) {
     ROS_ERROR("[%s] Could not load parameters.", pnh_.getNamespace().c_str());
     ros::shutdown();
@@ -97,6 +97,10 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh,
                     &AutoPilot<Tcontroller, Tparams>::landCallback, this);
   off_sub_ = nh_.subscribe("autopilot/off", 1,
                            &AutoPilot<Tcontroller, Tparams>::offCallback, this);
+
+  reload_param_sub_ = nh_.subscribe(
+      "autopilot/reload_parameters", 1,
+      &AutoPilot<Tcontroller, Tparams>::reloadParamsCallback, this);
 
   // Start watchdog thread
   try {
@@ -165,6 +169,8 @@ void AutoPilot<Tcontroller, Tparams>::watchdogThread() {
         autopilot_state_ != States::EMERGENCY_LAND &&
         autopilot_state_ != States::COMMAND_FEEDTHROUGH &&
         autopilot_state_ != States::RC_MANUAL) {
+      ROS_INFO("[%s] No state estimate available, switching to emergency land.",
+               pnh_.getNamespace().c_str());
       setAutoPilotStateForced(States::EMERGENCY_LAND);
     }
 
@@ -325,6 +331,21 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
 
   received_state_est_ = quadrotor_common::QuadStateEstimate(*msg);
   if (!received_state_est_.isValid()) {
+    ROS_INFO("[%s] Received invalid state estimate",
+             pnh_.getNamespace().c_str());
+    ROS_INFO(
+        "[%s] x: %.2f,  y: %.2f,  z: %.2f,  qw: %.2f,  qx: %.2f,  qy: %.2f,  "
+        "qz: %.2f,  vx: %.2f,  vy: %.2f,  vz: %.2f,  brx: %.2f,  bry: %.2f,  "
+        "brz: %.2f",
+        pnh_.getNamespace().c_str(), received_state_est_.position.x(),
+        received_state_est_.position.y(), received_state_est_.position.z(),
+        received_state_est_.orientation.w(),
+        received_state_est_.orientation.x(),
+        received_state_est_.orientation.y(),
+        received_state_est_.orientation.z(), received_state_est_.velocity.x(),
+        received_state_est_.velocity.y(), received_state_est_.velocity.z(),
+        received_state_est_.bodyrates.x(), received_state_est_.bodyrates.y(),
+        received_state_est_.bodyrates.z());
     state_estimate_available_ = false;
     if (autopilot_state_ != States::OFF) {
       // Do not run control loop if state estimate is not valid
@@ -780,10 +801,35 @@ void AutoPilot<Tcontroller, Tparams>::offCallback(
 }
 
 template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::reloadParamsCallback(
+    const std_msgs::Empty::ConstPtr& msg) {
+  if (destructor_invoked_) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+  if (autopilot_state_ != States::OFF) {
+    ROS_INFO("[%s] Setting autopilot to OFF before reloading parameters",
+             pnh_.getNamespace().c_str());
+    setAutoPilotStateForced(States::OFF);
+    // Allow user to take over manually and land the vehicle, then off the
+    // controller and disable the RC without the vehicle going back to hover
+    state_before_rc_manual_flight_ = States::OFF;
+  }
+  if (!loadParameters()) {
+    ROS_ERROR("[%s] Could not load parameters.", pnh_.getNamespace().c_str());
+    ros::shutdown();
+    return;
+  }
+
+  // Mutex is unlocked because it goes out of scope here
+}
+
+template <typename Tcontroller, typename Tparams>
 quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::start(
     const quadrotor_common::QuadStateEstimate& state_estimate) {
   quadrotor_common::ControlCommand command;
-
   if (first_time_in_new_state_) {
     first_time_in_new_state_ = false;
     initial_start_position_ = state_estimate.position;
@@ -792,7 +838,11 @@ quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::start(
     reference_state_.heading =
         quadrotor_common::quaternionToEulerAnglesZYX(state_estimate.orientation)
             .z();
-    if (state_estimate.position.z() >= optitrack_land_drop_height_) {
+    if (state_estimate.position.z() >= optitrack_land_drop_height_ + 0.5) {
+      // assuming start from handheld configuration, go directly to hover
+      ROS_INFO(
+          "Assuming handheld start, since state_estimate.position.z() > %.2f",
+          optitrack_land_drop_height_);
       setAutoPilotState(States::HOVER);
     }
   }
@@ -1091,7 +1141,6 @@ AutoPilot<Tcontroller, Tparams>::executeTrajectory(
       *trajectories_left_in_queue = 0;
       trajectory_queue_.pop_front();
       setAutoPilotStateForced(States::HOVER);
-
       reference_trajectory_ = quadrotor_common::Trajectory(reference_state_);
       return base_controller_.run(state_estimate, reference_trajectory_,
                                   base_controller_params_);
@@ -1115,30 +1164,30 @@ AutoPilot<Tcontroller, Tparams>::executeTrajectory(
   // Time wrap if lookahead spans multiple trajectories:
   double time_wrapover(0.0);
 
-  // Loop over possible trajectories.
-  for (std::list<quadrotor_common::Trajectory>::const_iterator it_trajectories =
-           trajectory_queue_.begin();
-       it_trajectories != trajectory_queue_.end(); it_trajectories++) {
-    // Loop over points on the trajectory
-    for (std::list<quadrotor_common::TrajectoryPoint>::const_iterator
-             it_points = it_trajectories->points.begin();
-         it_points != it_trajectories->points.end(); it_points++) {
+  for (auto trajectory : trajectory_queue_) {
+    for (auto point : trajectory.points) {
       // Check wether we reached our lookahead.
-      // Use boolen flag to also break the outer loop.
-      if (it_points->time_from_start.toSec() >
-          (dt.toSec() + predictive_control_lookahead_)) {
+      // Use boolean flag to also break the outer loop.
+      if (point.time_from_start.toSec() >
+          (dt.toSec() - time_wrapover + predictive_control_lookahead_)) {
         lookahead_reached = true;
         break;
       }
       // Add a point if the time corresponds to a sample on the lookahead.
-      if (it_points->time_from_start.toSec() > (dt.toSec() - time_wrapover)) {
-        reference_trajectory_.points.push_back(*it_points);
-        break;
+      if (point.time_from_start.toSec() > (dt.toSec() - time_wrapover)) {
+        // check if two trajectory points are the same...
+        if (reference_trajectory_.points.size() > 1) {
+          point.time_from_start += ros::Duration(time_wrapover);
+          reference_trajectory_.points.push_back(point);
+        } else {
+          // this is the first point of the reference trajectory
+          reference_trajectory_.points.push_back(point);
+        }
       }
     }
     if (lookahead_reached) break;  // Break on boolean flag.
-    // Sum up the wrap-ovvr time if lookahead spans multiple trajectories.
-    time_wrapover += it_trajectories->points.back().time_from_start.toSec();
+    // Sum up the wrap-over time if lookahead spans multiple trajectories.
+    time_wrapover += trajectory.points.back().time_from_start.toSec();
   }
 
   *trajectory_execution_left_duration =
@@ -1153,6 +1202,18 @@ AutoPilot<Tcontroller, Tparams>::executeTrajectory(
   }
   *trajectories_left_in_queue = trajectory_queue_.size();
 
+  // handle case of empty reference_trajectory
+  if (reference_trajectory_.points.empty()) {
+    ROS_WARN("Empty reference trajectory!");
+    *trajectory_execution_left_duration = ros::Duration(0.0);
+    *trajectories_left_in_queue = 0;
+    setAutoPilotState(States::HOVER);
+
+    reference_trajectory_ = quadrotor_common::Trajectory(reference_state_);
+    return base_controller_.run(state_estimate, reference_trajectory_,
+                                base_controller_params_);
+  }
+
   const quadrotor_common::ControlCommand command = base_controller_.run(
       state_estimate, reference_trajectory_, base_controller_params_);
 
@@ -1166,6 +1227,8 @@ void AutoPilot<Tcontroller, Tparams>::setAutoPilotState(
       new_state != States::EMERGENCY_LAND &&
       new_state != States::COMMAND_FEEDTHROUGH &&
       new_state != States::RC_MANUAL) {
+    ROS_INFO("[%s] No state estimate available, switching to emergency land.",
+             pnh_.getNamespace().c_str());
     setAutoPilotStateForced(States::EMERGENCY_LAND);
     return;
   }
@@ -1274,7 +1337,13 @@ void AutoPilot<Tcontroller, Tparams>::publishControlCommand(
 
     control_cmd_msg = control_cmd.toRosMessage();
 
-    control_command_pub_.publish(control_cmd_msg);
+    // in optitrack flight, the laird module can only handle control commands at
+    // 50-60Hz. Limit publishing frequency here
+    if ((ros::Time::now() - time_last_control_command_published_).toSec() >
+        min_control_period_) {
+      control_command_pub_.publish(control_cmd_msg);
+      time_last_control_command_published_ = ros::Time::now();
+    }
     state_predictor_.pushCommandToQueue(control_cmd);
     // Save applied thrust to initialize propeller ramping down if necessary
     initial_drop_thrust_ = control_cmd.collective_thrust;
@@ -1374,6 +1443,7 @@ bool AutoPilot<Tcontroller, Tparams>::loadParameters() {
   GET_PARAM(control_command_input_timeout);
   GET_PARAM(enable_command_feedthrough);
   GET_PARAM(predictive_control_lookahead);
+  GET_PARAM(min_control_period);
 
   if (!base_controller_params_.loadParameters(pnh_)) {
     return false;

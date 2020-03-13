@@ -29,3 +29,5 @@ emergency_land_thrust: 9.0 # [m/s^2]
 control_command_input_timeout: 0.1 # [s]
 enable_command_feedthrough: false
 predictive_control_lookahead: 2.0 # [s]
+
+min_control_period: 0.0 # [s]

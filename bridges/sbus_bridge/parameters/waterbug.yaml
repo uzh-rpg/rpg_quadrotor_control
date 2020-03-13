@@ -1,0 +1,26 @@
+port_name: /dev/ttyUSB0
+enable_receiving_sbus_messages: true
+control_command_timeout: 0.5 # [s] (Must be larger than 'state_estimate_timeout'
+# set in the 'flight_controller'!)
+rc_timeout: 0.1 # [s]
+mass: 0.947   # 0.856 without realsense [kg]
+disable_thrust_mapping: false
+# Note: When updating the thrust mapping also the voltage dependency mapping 
+# has to be updated!
+# thrust = thrust_map_a * u^2 + thrust_map_b * u + thrust_map_c
+thrust_map_a: 5.110632e-06 #
+thrust_map_b: 2.099866e-02 #
+thrust_map_c: -13.791728 #
+# Maximum values for body rates and roll and pitch angles as they are set
+# on the Flight Controller. The max roll an pitch angles are only active
+# when flying in angle mode
+max_roll_rate: 1022.0 # [deg/s]
+max_pitch_rate: 1022.0 # [deg/s]
+max_yaw_rate: 524.0 # [deg/s]
+max_roll_angle: 50 # [deg]
+max_pitch_angle: 50 # [deg]
+alpha_vbat_filter: 0.01
+perform_thrust_voltage_compensation: true
+thrust_ratio_voltage_map_a: -0.099478 # [1/V]
+thrust_ratio_voltage_map_b: 2.638588 # [-]
+n_lipo_cells: 4 # [-]

@@ -19,6 +19,7 @@
   <depend>quadrotor_common</depend>
   <depend>quadrotor_msgs</depend>
   <depend>roscpp</depend>
+  <depend>rpg_common</depend>
   <depend>std_srvs</depend>
   
   <export>
