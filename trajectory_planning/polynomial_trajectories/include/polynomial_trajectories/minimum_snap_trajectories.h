@@ -2,17 +2,15 @@
 
 #include <vector>
 
-#include <Eigen/Dense>
 #include <quadrotor_common/trajectory_point.h>
+#include <Eigen/Dense>
 
 #include "polynomial_trajectories/polynomial_trajectory.h"
 #include "polynomial_trajectories/polynomial_trajectory_settings.h"
 
-namespace polynomial_trajectories
-{
+namespace polynomial_trajectories {
 
-namespace minimum_snap_trajectories
-{
+namespace minimum_snap_trajectories {
 
 PolynomialTrajectory generateMinimumSnapTrajectory(
     const Eigen::VectorXd& segment_times,
@@ -59,8 +57,7 @@ PolynomialTrajectory generateMinimumSnapRingTrajectoryWithSegmentRefinement(
     const double max_roll_pitch_rate);
 
 // these functions should not be used from the outside
-namespace implementation
-{
+namespace implementation {
 Eigen::MatrixXd generate1DTrajectory(const int num_polynoms,
                                      const int polynomial_order,
                                      const Eigen::MatrixXd& H,
@@ -128,8 +125,8 @@ Eigen::VectorXd solveQuadraticProgram(const Eigen::MatrixXd& H,
                                       const Eigen::MatrixXd& A_eq,
                                       const Eigen::VectorXd& b_eq,
                                       double* objective_value);
-} // namespace implementation
+}  // namespace implementation
 
-} // namespace minimum_snap_trajectories
+}  // namespace minimum_snap_trajectories
 
-} //namespace polynomial_trajectories
+}  // namespace polynomial_trajectories

@@ -1,13 +1,12 @@
 #pragma once
 
-#include <Eigen/Dense>
 #include <quadrotor_common/trajectory_point.h>
 #include <ros/duration.h>
+#include <Eigen/Dense>
 
 #include "polynomial_trajectories/polynomial_trajectory.h"
 
-namespace polynomial_trajectories
-{
+namespace polynomial_trajectories {
 
 quadrotor_common::TrajectoryPoint getPointFromTrajectory(
     const PolynomialTrajectory& trajectory,
@@ -32,4 +31,4 @@ bool isStartAndEndStateFeasibleUnderConstraints(
 double computeRollPitchRateNormFromTrajectoryPoint(
     const quadrotor_common::TrajectoryPoint& desired_state);
 
-} // namespace polynomial_trajectories
+}  // namespace polynomial_trajectories

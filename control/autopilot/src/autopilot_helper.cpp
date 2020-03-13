@@ -1,29 +1,29 @@
 #include "autopilot/autopilot_helper.h"
 
-#include <quadrotor_common/geometry_eigen_conversions.h>
-#include <quadrotor_common/math_common.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TwistStamped.h>
+#include <quadrotor_common/geometry_eigen_conversions.h>
+#include <quadrotor_common/math_common.h>
 #include <quadrotor_msgs/ControlCommand.h>
 #include <quadrotor_msgs/Trajectory.h>
 #include <quadrotor_msgs/TrajectoryPoint.h>
 #include <std_msgs/Empty.h>
 
-namespace autopilot_helper
-{
+namespace autopilot_helper {
 
 AutoPilotHelper::AutoPilotHelper(const ros::NodeHandle& nh,
-                                 const ros::NodeHandle& pnh) :
-    autopilot_feedback_(), first_autopilot_feedback_received_(false), time_last_feedback_received_()
-{
-  pose_pub_ = nh_.advertise<geometry_msgs::PoseStamped>(
-      "autopilot/pose_command", 1);
+                                 const ros::NodeHandle& pnh)
+    : autopilot_feedback_(),
+      first_autopilot_feedback_received_(false),
+      time_last_feedback_received_() {
+  pose_pub_ =
+      nh_.advertise<geometry_msgs::PoseStamped>("autopilot/pose_command", 1);
   velocity_pub_ = nh_.advertise<geometry_msgs::TwistStamped>(
       "autopilot/velocity_command", 1);
   reference_state_pub_ = nh_.advertise<quadrotor_msgs::TrajectoryPoint>(
       "autopilot/reference_state", 1);
-  trajectory_pub_ = nh_.advertise<quadrotor_msgs::Trajectory>(
-      "autopilot/trajectory", 1);
+  trajectory_pub_ =
+      nh_.advertise<quadrotor_msgs::Trajectory>("autopilot/trajectory", 1);
   control_command_input_pub_ = nh_.advertise<quadrotor_msgs::ControlCommand>(
       "autopilot/control_command_input", 1);
 
@@ -32,34 +32,27 @@ AutoPilotHelper::AutoPilotHelper(const ros::NodeHandle& nh,
   land_pub_ = nh_.advertise<std_msgs::Empty>("autopilot/land", 1);
   off_pub_ = nh_.advertise<std_msgs::Empty>("autopilot/off", 1);
 
-  autopilot_feedback_sub_ = nh_.subscribe(
-      "autopilot/feedback", 10, &AutoPilotHelper::autopilotFeedbackCallback,
-      this);
+  autopilot_feedback_sub_ =
+      nh_.subscribe("autopilot/feedback", 10,
+                    &AutoPilotHelper::autopilotFeedbackCallback, this);
 }
 
-AutoPilotHelper::~AutoPilotHelper()
-{
-}
+AutoPilotHelper::~AutoPilotHelper() {}
 
-bool AutoPilotHelper::feedbackAvailable() const
-{
-  if (!first_autopilot_feedback_received_)
-  {
+bool AutoPilotHelper::feedbackAvailable() const {
+  if (!first_autopilot_feedback_received_) {
     return false;
   }
 
-  if (feedbackMessageAge() > kFeedbackValidTimeout_)
-  {
+  if (feedbackMessageAge() > kFeedbackValidTimeout_) {
     return false;
   }
 
   return true;
 }
 
-double AutoPilotHelper::feedbackMessageAge() const
-{
-  if (!first_autopilot_feedback_received_)
-  {
+double AutoPilotHelper::feedbackMessageAge() const {
+  if (!first_autopilot_feedback_received_) {
     // Just return a "very" large number
     return 100.0 * kFeedbackValidTimeout_;
   }
@@ -67,28 +60,23 @@ double AutoPilotHelper::feedbackMessageAge() const
   return (ros::Time::now() - time_last_feedback_received_).toSec();
 }
 
-bool AutoPilotHelper::stateEstimateAvailable() const
-{
-  if (getCurrentStateEstimate().coordinate_frame
-      == quadrotor_common::QuadStateEstimate::CoordinateFrame::INVALID)
-  {
+bool AutoPilotHelper::stateEstimateAvailable() const {
+  if (getCurrentStateEstimate().coordinate_frame ==
+      quadrotor_common::QuadStateEstimate::CoordinateFrame::INVALID) {
     return false;
   }
 
   return true;
 }
 
-bool AutoPilotHelper::waitForAutopilotFeedback(const double timeout_s,
-                                               const double loop_rate_hz) const
-{
+bool AutoPilotHelper::waitForAutopilotFeedback(
+    const double timeout_s, const double loop_rate_hz) const {
   const ros::Duration timeout(timeout_s);
   ros::Rate loop_rate(loop_rate_hz);
   const ros::Time start_wait = ros::Time::now();
-  while (ros::ok() && (ros::Time::now() - start_wait) <= timeout)
-  {
+  while (ros::ok() && (ros::Time::now() - start_wait) <= timeout) {
     ros::spinOnce();
-    if (feedbackAvailable())
-    {
+    if (feedbackAvailable()) {
       return true;
     }
     loop_rate.sleep();
@@ -99,16 +87,13 @@ bool AutoPilotHelper::waitForAutopilotFeedback(const double timeout_s,
 
 bool AutoPilotHelper::waitForSpecificAutopilotState(
     const autopilot::States& state, const double timeout_s,
-    const double loop_rate_hz) const
-{
+    const double loop_rate_hz) const {
   const ros::Duration timeout(timeout_s);
   ros::Rate loop_rate(loop_rate_hz);
   const ros::Time start_wait = ros::Time::now();
-  while (ros::ok() && (ros::Time::now() - start_wait) <= timeout)
-  {
+  while (ros::ok() && (ros::Time::now() - start_wait) <= timeout) {
     ros::spinOnce();
-    if (feedbackAvailable() && getCurrentAutopilotState() == state)
-    {
+    if (feedbackAvailable() && getCurrentAutopilotState() == state) {
       return true;
     }
     loop_rate.sleep();
@@ -117,10 +102,8 @@ bool AutoPilotHelper::waitForSpecificAutopilotState(
   return false;
 }
 
-autopilot::States AutoPilotHelper::getCurrentAutopilotState() const
-{
-  switch (autopilot_feedback_.autopilot_state)
-  {
+autopilot::States AutoPilotHelper::getCurrentAutopilotState() const {
+  switch (autopilot_feedback_.autopilot_state) {
     case autopilot_feedback_.OFF:
       return autopilot::States::OFF;
     case autopilot_feedback_.START:
@@ -150,117 +133,104 @@ autopilot::States AutoPilotHelper::getCurrentAutopilotState() const
   }
 }
 
-ros::Duration AutoPilotHelper::getCurrentControlCommandDelay() const
-{
+ros::Duration AutoPilotHelper::getCurrentControlCommandDelay() const {
   return autopilot_feedback_.control_command_delay;
 }
 
-ros::Duration AutoPilotHelper::getCurrentControlComputationTime() const
-{
+ros::Duration AutoPilotHelper::getCurrentControlComputationTime() const {
   return autopilot_feedback_.control_computation_time;
 }
 
-ros::Duration AutoPilotHelper::getCurrentTrajectoryExecutionLeftDuration() const
-{
+ros::Duration AutoPilotHelper::getCurrentTrajectoryExecutionLeftDuration()
+    const {
   return autopilot_feedback_.trajectory_execution_left_duration;
 }
 
-int AutoPilotHelper::getCurrentTrajectoriesLeftInQueue() const
-{
+int AutoPilotHelper::getCurrentTrajectoriesLeftInQueue() const {
   return autopilot_feedback_.trajectories_left_in_queue;
 }
 
-quadrotor_common::TrajectoryPoint AutoPilotHelper::getCurrentReferenceState() const
-{
+quadrotor_common::TrajectoryPoint AutoPilotHelper::getCurrentReferenceState()
+    const {
   return quadrotor_common::TrajectoryPoint(autopilot_feedback_.reference_state);
 }
 
-Eigen::Vector3d AutoPilotHelper::getCurrentReferencePosition() const
-{
+Eigen::Vector3d AutoPilotHelper::getCurrentReferencePosition() const {
   return quadrotor_common::geometryToEigen(
       autopilot_feedback_.reference_state.pose.position);
 }
 
-Eigen::Vector3d AutoPilotHelper::getCurrentReferenceVelocity() const
-{
+Eigen::Vector3d AutoPilotHelper::getCurrentReferenceVelocity() const {
   return quadrotor_common::geometryToEigen(
       autopilot_feedback_.reference_state.velocity.linear);
 }
 
-Eigen::Quaterniond AutoPilotHelper::getCurrentReferenceOrientation() const
-{
+Eigen::Quaterniond AutoPilotHelper::getCurrentReferenceOrientation() const {
   return quadrotor_common::geometryToEigen(
       autopilot_feedback_.reference_state.pose.orientation);
 }
 
-double AutoPilotHelper::getCurrentReferenceHeading() const
-{
+double AutoPilotHelper::getCurrentReferenceHeading() const {
   return quadrotor_common::quaternionToEulerAnglesZYX(
-      quadrotor_common::geometryToEigen(
-          autopilot_feedback_.reference_state.pose.orientation)).z();
+             quadrotor_common::geometryToEigen(
+                 autopilot_feedback_.reference_state.pose.orientation))
+      .z();
 }
 
-quadrotor_common::QuadStateEstimate AutoPilotHelper::getCurrentStateEstimate() const
-{
-  return quadrotor_common::QuadStateEstimate(autopilot_feedback_.state_estimate);
+quadrotor_common::QuadStateEstimate AutoPilotHelper::getCurrentStateEstimate()
+    const {
+  return quadrotor_common::QuadStateEstimate(
+      autopilot_feedback_.state_estimate);
 }
 
-Eigen::Vector3d AutoPilotHelper::getCurrentPositionEstimate() const
-{
+Eigen::Vector3d AutoPilotHelper::getCurrentPositionEstimate() const {
   return quadrotor_common::geometryToEigen(
       autopilot_feedback_.state_estimate.pose.pose.position);
 }
 
-Eigen::Vector3d AutoPilotHelper::getCurrentVelocityEstimate() const
-{
+Eigen::Vector3d AutoPilotHelper::getCurrentVelocityEstimate() const {
   return quadrotor_common::geometryToEigen(
       autopilot_feedback_.state_estimate.twist.twist.linear);
 }
 
-Eigen::Quaterniond AutoPilotHelper::getCurrentOrientationEstimate() const
-{
+Eigen::Quaterniond AutoPilotHelper::getCurrentOrientationEstimate() const {
   return quadrotor_common::geometryToEigen(
       autopilot_feedback_.state_estimate.pose.pose.orientation);
 }
 
-double AutoPilotHelper::getCurrentHeadingEstimate() const
-{
+double AutoPilotHelper::getCurrentHeadingEstimate() const {
   return quadrotor_common::quaternionToEulerAnglesZYX(
-      quadrotor_common::geometryToEigen(
-          autopilot_feedback_.state_estimate.pose.pose.orientation)).z();
+             quadrotor_common::geometryToEigen(
+                 autopilot_feedback_.state_estimate.pose.pose.orientation))
+      .z();
 }
 
-Eigen::Vector3d AutoPilotHelper::getCurrentPositionError() const
-{
+Eigen::Vector3d AutoPilotHelper::getCurrentPositionError() const {
   return getCurrentPositionEstimate() - getCurrentReferencePosition();
 }
 
-Eigen::Vector3d AutoPilotHelper::getCurrentVelocityError() const
-{
+Eigen::Vector3d AutoPilotHelper::getCurrentVelocityError() const {
   return getCurrentVelocityEstimate() - getCurrentReferenceVelocity();
 }
 
-Eigen::Quaterniond AutoPilotHelper::getCurrentOrientationError() const
-{
-  return getCurrentReferenceOrientation().inverse()
-      * getCurrentOrientationEstimate();
+Eigen::Quaterniond AutoPilotHelper::getCurrentOrientationError() const {
+  return getCurrentReferenceOrientation().inverse() *
+         getCurrentOrientationEstimate();
 }
 
-double AutoPilotHelper::getCurrentHeadingError() const
-{
-  return quadrotor_common::wrapMinusPiToPi(
-      getCurrentHeadingEstimate() - getCurrentReferenceHeading());
+double AutoPilotHelper::getCurrentHeadingError() const {
+  return quadrotor_common::wrapMinusPiToPi(getCurrentHeadingEstimate() -
+                                           getCurrentReferenceHeading());
 }
 
 void AutoPilotHelper::sendPoseCommand(const Eigen::Vector3d& position,
-                                      const double heading) const
-{
+                                      const double heading) const {
   geometry_msgs::PoseStamped pose_cmd;
   pose_cmd.pose.position.x = position.x();
   pose_cmd.pose.position.y = position.y();
   pose_cmd.pose.position.z = position.z();
-  pose_cmd.pose.orientation = quadrotor_common::eigenToGeometry(
-      Eigen::Quaterniond(
+  pose_cmd.pose.orientation =
+      quadrotor_common::eigenToGeometry(Eigen::Quaterniond(
           Eigen::AngleAxisd(quadrotor_common::wrapMinusPiToPi(heading),
                             Eigen::Vector3d::UnitZ())));
 
@@ -268,8 +238,7 @@ void AutoPilotHelper::sendPoseCommand(const Eigen::Vector3d& position,
 }
 
 void AutoPilotHelper::sendVelocityCommand(const Eigen::Vector3d& velocity,
-                                          const double heading_rate) const
-{
+                                          const double heading_rate) const {
   geometry_msgs::TwistStamped vel_cmd;
   vel_cmd.twist.linear.x = velocity.x();
   vel_cmd.twist.linear.y = velocity.y();
@@ -280,54 +249,41 @@ void AutoPilotHelper::sendVelocityCommand(const Eigen::Vector3d& velocity,
 }
 
 void AutoPilotHelper::sendReferenceState(
-    const quadrotor_common::TrajectoryPoint& trajectory_point) const
-{
+    const quadrotor_common::TrajectoryPoint& trajectory_point) const {
   reference_state_pub_.publish(trajectory_point.toRosMessage());
 }
 
 void AutoPilotHelper::sendTrajectory(
-    const quadrotor_common::Trajectory& trajectory) const
-{
+    const quadrotor_common::Trajectory& trajectory) const {
   trajectory_pub_.publish(trajectory.toRosMessage());
 }
 
 void AutoPilotHelper::sendControlCommandInput(
-    const quadrotor_common::ControlCommand& control_command) const
-{
+    const quadrotor_common::ControlCommand& control_command) const {
   control_command_input_pub_.publish(control_command.toRosMessage());
 }
 
-void AutoPilotHelper::sendStart() const
-{
+void AutoPilotHelper::sendStart() const {
   start_pub_.publish(std_msgs::Empty());
 }
 
-void AutoPilotHelper::sendForceHover() const
-{
+void AutoPilotHelper::sendForceHover() const {
   force_hover_pub_.publish(std_msgs::Empty());
 }
 
-void AutoPilotHelper::sendLand() const
-{
-  land_pub_.publish(std_msgs::Empty());
-}
+void AutoPilotHelper::sendLand() const { land_pub_.publish(std_msgs::Empty()); }
 
-void AutoPilotHelper::sendOff() const
-{
-  off_pub_.publish(std_msgs::Empty());
-}
+void AutoPilotHelper::sendOff() const { off_pub_.publish(std_msgs::Empty()); }
 
 void AutoPilotHelper::autopilotFeedbackCallback(
-    const quadrotor_msgs::AutopilotFeedback::ConstPtr& msg)
-{
+    const quadrotor_msgs::AutopilotFeedback::ConstPtr& msg) {
   time_last_feedback_received_ = ros::Time::now();
 
   autopilot_feedback_ = *msg;
 
-  if (!first_autopilot_feedback_received_)
-  {
+  if (!first_autopilot_feedback_received_) {
     first_autopilot_feedback_received_ = true;
   }
 }
 
-} // namespace autopilot_helper
+}  // namespace autopilot_helper

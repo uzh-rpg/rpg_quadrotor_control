@@ -1,15 +1,13 @@
 #pragma once
 
-#include <Eigen/Dense>
 #include <quadrotor_common/trajectory_point.h>
+#include <Eigen/Dense>
 
 #include "polynomial_trajectories/polynomial_trajectory.h"
 
-namespace polynomial_trajectories
-{
+namespace polynomial_trajectories {
 
-namespace constrained_polynomial_trajectories
-{
+namespace constrained_polynomial_trajectories {
 
 // order_of_continuity: 1 = position, 2 = velocity, ....
 
@@ -25,8 +23,7 @@ PolynomialTrajectory computeFixedTimeTrajectory(
     const double execution_time);
 
 // these functions should not be used from the outside
-namespace implementation
-{
+namespace implementation {
 Eigen::MatrixXd computeConstraintMatriceA(const int order_of_continuity,
                                           const double t);
 
@@ -42,9 +39,8 @@ std::vector<Eigen::MatrixXd> computeTrajectoryCoeff(
 Eigen::Vector3d computeMaximaGradient(const PolynomialTrajectory& trajectory,
                                       const Eigen::Vector3d& maxima,
                                       const double order_of_continuity);
-}
+}  // namespace implementation
 
-} // namespace polynomial_trajectories
+}  // namespace constrained_polynomial_trajectories
 
-} // namespace constrained_polynomial_trajectories
-
+}  // namespace polynomial_trajectories

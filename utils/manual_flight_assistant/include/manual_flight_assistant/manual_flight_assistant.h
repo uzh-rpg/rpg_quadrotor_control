@@ -5,20 +5,16 @@
 #include <sbus_bridge/SbusRosMessage.h>
 #include <sensor_msgs/Joy.h>
 
-namespace manual_flight_assistant
-{
+namespace manual_flight_assistant {
 
-class ManualFlightAssistant
-{
-public:
+class ManualFlightAssistant {
+ public:
   ManualFlightAssistant(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
-  ManualFlightAssistant() :
-      ManualFlightAssistant(ros::NodeHandle(), ros::NodeHandle("~"))
-  {
-  }
+  ManualFlightAssistant()
+      : ManualFlightAssistant(ros::NodeHandle(), ros::NodeHandle("~")) {}
   virtual ~ManualFlightAssistant();
 
-private:
+ private:
   void mainLoop(const ros::TimerEvent& time);
 
   void rcSbusCallback(const sbus_bridge::SbusRosMessage::ConstPtr& msg);
@@ -68,4 +64,4 @@ private:
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
 };
 
-} // namespace manual_flight_assistant
+}  // namespace manual_flight_assistant

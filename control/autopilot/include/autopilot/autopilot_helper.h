@@ -1,27 +1,23 @@
 #pragma once
 
-#include <Eigen/Dense>
 #include <quadrotor_common/control_command.h>
 #include <quadrotor_common/quad_state_estimate.h>
 #include <quadrotor_common/trajectory.h>
 #include <quadrotor_common/trajectory_point.h>
 #include <quadrotor_msgs/AutopilotFeedback.h>
 #include <ros/ros.h>
+#include <Eigen/Dense>
 
 #include "autopilot/autopilot_states.h"
 
-namespace autopilot_helper
-{
+namespace autopilot_helper {
 
-class AutoPilotHelper
-{
-public:
+class AutoPilotHelper {
+ public:
   AutoPilotHelper(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
-  AutoPilotHelper() :
-      AutoPilotHelper(ros::NodeHandle(), ros::NodeHandle("~"))
-  {
-  }
+  AutoPilotHelper()
+      : AutoPilotHelper(ros::NodeHandle(), ros::NodeHandle("~")) {}
 
   virtual ~AutoPilotHelper();
 
@@ -79,7 +75,7 @@ public:
   void sendLand() const;
   void sendOff() const;
 
-private:
+ private:
   void autopilotFeedbackCallback(
       const quadrotor_msgs::AutopilotFeedback::ConstPtr& msg);
 
@@ -108,4 +104,4 @@ private:
   static constexpr double kFeedbackValidTimeout_ = 2.0;
 };
 
-} // namespace autopilot_helper
+}  // namespace autopilot_helper

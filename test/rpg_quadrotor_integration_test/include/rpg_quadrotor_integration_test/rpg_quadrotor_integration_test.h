@@ -4,19 +4,16 @@
 #include <quadrotor_msgs/AutopilotFeedback.h>
 #include <ros/ros.h>
 
-namespace rpg_quadrotor_integration_test
-{
+namespace rpg_quadrotor_integration_test {
 
-class QuadrotorIntegrationTest
-{
-public:
+class QuadrotorIntegrationTest {
+ public:
   QuadrotorIntegrationTest();
   virtual ~QuadrotorIntegrationTest();
 
   void run();
 
-private:
-
+ private:
   void measureTracking(const ros::TimerEvent& time);
 
   ros::NodeHandle nh_;
@@ -40,4 +37,4 @@ private:
   static constexpr double kExecLoopRate_ = 50.0;
 };
 
-} // namespace rpg_quadrotor_integration_test
+}  // namespace rpg_quadrotor_integration_test

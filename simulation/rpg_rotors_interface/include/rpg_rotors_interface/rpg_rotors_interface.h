@@ -1,36 +1,31 @@
 #pragma once
 
-#include <Eigen/Dense>
 #include <mav_msgs/Actuators.h>
 #include <nav_msgs/Odometry.h>
-#include <quadrotor_msgs/ControlCommand.h>
 #include <quadrotor_common/control_command.h>
+#include <quadrotor_msgs/ControlCommand.h>
 #include <ros/ros.h>
 #include <std_msgs/Bool.h>
+#include <Eigen/Dense>
 
-namespace rpg_rotors_interface
-{
+namespace rpg_rotors_interface {
 
-struct TorquesAndThrust
-{
+struct TorquesAndThrust {
   Eigen::Vector3d body_torques;
   double collective_thrust;
 };
 
-class RPGRotorsInterface
-{
-public:
+class RPGRotorsInterface {
+ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   RPGRotorsInterface(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
-  RPGRotorsInterface() :
-      RPGRotorsInterface(ros::NodeHandle(), ros::NodeHandle("~"))
-  {
-  }
+  RPGRotorsInterface()
+      : RPGRotorsInterface(ros::NodeHandle(), ros::NodeHandle("~")) {}
   ~RPGRotorsInterface();
 
-private:
+ private:
   void lowLevelControlLoop(const ros::TimerEvent& time);
 
   void rotorsOdometryCallback(const nav_msgs::Odometry::ConstPtr& msg);
@@ -83,5 +78,4 @@ private:
   double max_rotor_speed_;
 };
 
-} // namespace rpg_rotors_interface
-
+}  // namespace rpg_rotors_interface

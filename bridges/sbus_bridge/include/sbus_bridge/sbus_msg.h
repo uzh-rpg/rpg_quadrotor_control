@@ -4,26 +4,18 @@
 
 #include "sbus_bridge/SbusRosMessage.h"
 
-namespace sbus_bridge
-{
+namespace sbus_bridge {
 
-enum class ControlMode
-{
-  NONE, ATTITUDE, BODY_RATES
-};
+enum class ControlMode { NONE, ATTITUDE, BODY_RATES };
 
-enum class ArmState
-{
-  DISARMED, ARMED
-};
+enum class ArmState { DISARMED, ARMED };
 
-struct SBusMsg
-{
+struct SBusMsg {
   // Constants
   static constexpr int kNChannels = 16;
-  static constexpr uint16_t kMinCmd = 192; // corresponds to 1000 on FC
-  static constexpr uint16_t kMeanCmd = 992; // corresponds to 1500 on FC
-  static constexpr uint16_t kMaxCmd = 1792; // corresponds to 2000 on FC
+  static constexpr uint16_t kMinCmd = 192;   // corresponds to 1000 on FC
+  static constexpr uint16_t kMeanCmd = 992;  // corresponds to 1500 on FC
+  static constexpr uint16_t kMaxCmd = 1792;  // corresponds to 2000 on FC
 
   ros::Time timestamp;
 
@@ -64,4 +56,4 @@ struct SBusMsg
   ControlMode getControlMode() const;
 };
 
-} // namespace sbus_bridge
+}  // namespace sbus_bridge
