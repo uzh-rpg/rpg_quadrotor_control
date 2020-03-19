@@ -5,7 +5,7 @@
   <arg name="mav_name" default="$(arg quad_name)"/>
   <!--<arg name="model" value="$(find rotors_description)/urdf/mav_generic_odometry_sensor.gazebo"/>-->
   <arg name="model" value="$(find rpg_rotors_interface)/vehicles/hummingbird_downlooking_camera.gazebo"/>
-  <arg name="world_name" default="$(find rotors_gazebo)/worlds/outdoor.world"/>
+  <arg name="world_name" default="$(find rotors_gazebo)/worlds/empty.world"/>
 
   <arg name="x_init" default="0"/>
   <arg name="y_init" default="0"/>
