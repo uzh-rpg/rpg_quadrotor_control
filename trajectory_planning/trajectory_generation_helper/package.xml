@@ -13,12 +13,13 @@
   <buildtool_depend>catkin_simple</buildtool_depend>
 
   <depend>eigen_catkin</depend>
+  <depend>minimum_jerk_trajectories</depend>
   <depend>polynomial_trajectories</depend>
   <depend>quadrotor_common</depend>
   <depend>roscpp</depend>
 
   <export>
-    
+
   </export>
 </package>
 

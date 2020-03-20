@@ -8,30 +8,121 @@ namespace heading {
 
 void addConstantHeading(const double heading,
                         quadrotor_common::Trajectory* trajectory) {
-  for (auto point : trajectory->points) {
-    point.heading = heading;
-    point.heading_rate = 0.0;
-    point.heading_acceleration = 0.0;
+  auto iterator(trajectory->points.begin());
+  auto iterator_prev(trajectory->points.begin());
+  iterator_prev = std::prev(iterator_prev);
+  auto iterator_next(trajectory->points.begin());
+  iterator_next = std::next(iterator_next);
+  auto last_element = trajectory->points.end();
+  last_element = std::prev(last_element);
+  double time_step;
 
-    double time_step = 0.02;
-    Eigen::Vector3d acc1 = point.acceleration;
-    Eigen::Vector3d acc2 =
-        point.acceleration +
-        time_step *
-            point.jerk;  // should be acceleration at next trajectory point
+  for (int i = 0; i < trajectory->points.size(); i++) {
+    // do orientation first, since bodyrate conversion will depend on it
+    Eigen::Vector3d I_eZ_I(0.0, 0.0, 1.0);
+    Eigen::Quaterniond quatDes = Eigen::Quaterniond::FromTwoVectors(
+        I_eZ_I, iterator->acceleration + Eigen::Vector3d(0.0, 0.0, 9.81));
 
-    acc1.normalize();
-    acc2.normalize();
+    // set full orientation and heading to zero
+    Eigen::Quaternion<double> q_heading =
+        Eigen::Quaternion<double>(Eigen::AngleAxis<double>(
+            heading, Eigen::Matrix<double, 3, 1>::UnitZ()));
+    Eigen::Quaternion<double> q_orientation = quatDes * q_heading;
+    iterator->orientation = q_orientation;
+    iterator->heading = 0.0;  // heading is now absorbed in orientation
+    iterator->heading_rate = 0.0;
+    iterator->heading_acceleration = 0.0;
+
+    Eigen::Vector3d thrust_1;
+    Eigen::Vector3d thrust_2;
+    // catch case of first and last element
+    if (i == 0) {
+      thrust_1 = iterator->acceleration + Eigen::Vector3d(0.0, 0.0, 9.81);
+      time_step =
+          (iterator_next->time_from_start - iterator->time_from_start).toSec();
+      thrust_2 = iterator_next->acceleration + Eigen::Vector3d(0.0, 0.0, 9.81);
+    } else if (i < trajectory->points.size() - 1) {
+      thrust_1 = iterator_prev->acceleration + Eigen::Vector3d(0.0, 0.0, 9.81);
+      time_step =
+          (iterator_next->time_from_start - iterator_prev->time_from_start)
+              .toSec();
+      thrust_2 = iterator_next->acceleration + Eigen::Vector3d(0.0, 0.0, 9.81);
+    } else {
+      // at the last point, we extrapolate the acceleration
+      thrust_1 = iterator_prev->acceleration + Eigen::Vector3d(0.0, 0.0, 9.81);
+      thrust_2 = iterator->acceleration + Eigen::Vector3d(0.0, 0.0, 9.81) +
+                 time_step / 2.0 * iterator->jerk;
+    }
+
+    thrust_1.normalize();
+    thrust_2.normalize();
 
     Eigen::Vector3d crossProd =
-        acc1.cross(acc2);  // direction of omega, in inertial axes
+        thrust_1.cross(thrust_2);  // direction of omega, in inertial axes
     Eigen::Vector3d bodyrates_wf = Eigen::Vector3d(0, 0, 0);
-    if (crossProd.norm()) {
-      bodyrates_wf = acos(acc1.dot(acc2)) / time_step) * crossProd.normalize();
+    if (crossProd.norm() > 0.0) {
+      bodyrates_wf = std::acos(thrust_1.dot(thrust_2)) / time_step * crossProd /
+                     crossProd.norm();
     }
-    // rotate bodyrates to bodyframe this is only valid if heading is zero!!!
-    point.bodyrates = bodyrates_wf * point.orientation;
+    // rotate bodyrates to bodyframe
+    iterator->bodyrates = q_orientation.inverse() * bodyrates_wf;
+
+    iterator_prev++;
+    iterator++;
+    iterator_next++;
   }
+
+  // for (auto& point : trajectory->points) {
+  //   // do orientation first, since bodyrate conversion will depend on it
+  //   Eigen::Vector3d I_eZ_I(0.0, 0.0, 1.0);
+  //   Eigen::Quaterniond quatDes = Eigen::Quaterniond::FromTwoVectors(
+  //       I_eZ_I, point.acceleration + Eigen::Vector3d(0.0, 0.0, 9.81));
+
+  //   // set full orientation and heading to zero
+  //   Eigen::Quaternion<double> q_heading =
+  //       Eigen::Quaternion<double>(Eigen::AngleAxis<double>(
+  //           heading, Eigen::Matrix<double, 3, 1>::UnitZ()));
+  //   Eigen::Quaternion<double> q_orientation = quatDes * q_heading;
+  //   point.orientation = q_orientation;
+  //   point.heading = 0.0;  // heading is now absorbed in orientation
+  //   point.heading_rate = 0.0;
+  //   point.heading_acceleration = 0.0;
+
+  //   // since we know the heading at this point, we can compute the
+  //   feedforward
+  //   // bodyrates
+  //   // Eigen::Quaterniond numeric_bodyrates_q = q_start_test.inverse() *
+  //   // q_end_test;
+  //   // auto next_point = *(&point + 1);
+  //   // auto next_point = std::next(point);
+
+  //   // this was the old method
+  //   double time_step = 0.002;
+  //   // double time_step = (next_point.time_from_start -
+  //   // point.time_from_start).toSec();
+  //   Eigen::Vector3d thrust_1 =
+  //       point.acceleration + Eigen::Vector3d(0.0, 0.0, 9.81);
+  //   Eigen::Vector3d thrust_2 =
+  //       point.acceleration + Eigen::Vector3d(0.0, 0.0, 9.81) +
+  //       time_step *
+  //           point.jerk;  // should be acceleration at next trajectory point
+  //   // Eigen::Vector3d thrust_2 =
+  //   // next_point.acceleration + Eigen::Vector3d(0.0, 0.0, 9.81);
+
+  //   thrust_1.normalize();
+  //   thrust_2.normalize();
+
+  //   Eigen::Vector3d crossProd =
+  //       thrust_1.cross(thrust_2);  // direction of omega, in inertial axes
+  //   Eigen::Vector3d bodyrates_wf = Eigen::Vector3d(0, 0, 0);
+  //   if (crossProd.norm() > 0.0) {
+  //     bodyrates_wf = std::acos(thrust_1.dot(thrust_2)) / time_step *
+  //     crossProd /
+  //                    crossProd.norm();
+  //   }
+  //   // rotate bodyrates to bodyframe
+  //   point.bodyrates = q_orientation.inverse() * bodyrates_wf;
+  // }
 }
 
 void addConstantHeadingRate(const double initial_heading,
@@ -41,23 +132,57 @@ void addConstantHeadingRate(const double initial_heading,
     return;
   }
   const double delta_angle =
-      quadrotor_common::wrapAngleDifference(initial_heading, final_heading);
+      final_heading -
+      initial_heading;  // quadrotor_common::wrapAngleDifference(initial_heading,
+                        // final_heading);
   const double trajectory_duration =
       (trajectory->points.back().time_from_start -
        trajectory->points.front().time_from_start)
           .toSec();
-
   const double heading_rate = delta_angle / trajectory_duration;
+  const double delta_heading = delta_angle / trajectory->points.size();
 
+  double heading = initial_heading;
   std::list<quadrotor_common::TrajectoryPoint>::iterator it;
-  for (it = trajectory->points.begin(); it != trajectory->points.end(); it++) {
-    const double duration_ratio =
-        (it->time_from_start - trajectory->points.front().time_from_start)
-            .toSec() /
-        trajectory_duration;
-    it->heading = initial_heading + duration_ratio * delta_angle;
-    it->heading_rate = heading_rate;
-    it->heading_acceleration = 0.0;
+  for (auto& point : trajectory->points) {
+    // do orientation first, since bodyrate conversion will depend on it
+    Eigen::Vector3d I_eZ_I(0.0, 0.0, 1.0);
+    Eigen::Quaterniond quatDes = Eigen::Quaterniond::FromTwoVectors(
+        I_eZ_I, point.acceleration + Eigen::Vector3d(0.0, 0.0, 9.81));
+
+    // set full orientation and heading to zero
+    Eigen::Quaternion<double> q_heading =
+        Eigen::Quaternion<double>(Eigen::AngleAxis<double>(
+            heading, Eigen::Matrix<double, 3, 1>::UnitZ()));
+    Eigen::Quaternion<double> q_orientation = quatDes * q_heading;
+    point.orientation = q_orientation;
+    point.heading = 0.0;  // heading is now absorbed in orientation
+    point.heading_rate = 0.0;
+    point.heading_acceleration = 0.0;
+
+    heading += delta_heading;
+
+    // since we know the full orientation at this point, we can compute the
+    // feedforward bodyrates
+    double time_step = 0.02;
+    Eigen::Vector3d acc1 = point.acceleration + Eigen::Vector3d(0.0, 0.0, 9.81);
+    Eigen::Vector3d acc2 =
+        point.acceleration + Eigen::Vector3d(0.0, 0.0, 9.81) +
+        time_step *
+            point.jerk;  // should be acceleration at next trajectory point
+
+    acc1.normalize();
+    acc2.normalize();
+
+    Eigen::Vector3d crossProd =
+        acc1.cross(acc2);  // direction of omega, in inertial axes
+    Eigen::Vector3d bodyrates_wf = Eigen::Vector3d(0, 0, 0);
+    if (crossProd.norm() > 0.0) {
+      bodyrates_wf =
+          std::acos(acc1.dot(acc2)) / time_step * crossProd / crossProd.norm();
+    }
+    // rotate angular rates to bodyframe
+    point.bodyrates = q_orientation.inverse() * bodyrates_wf;
   }
 }
 
