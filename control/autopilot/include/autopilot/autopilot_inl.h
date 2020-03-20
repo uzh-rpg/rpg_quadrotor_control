@@ -980,8 +980,11 @@ quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::breakVelocity(
     } else {
       // Breaking is not necessary so we do not update the reference position
       // but set all derivatives to zero
-      const Eigen::Vector3d current_position = reference_state_.position;
-      const double current_heading = reference_state_.heading;
+      const Eigen::Vector3d current_position = state_estimate.position;
+      const double current_heading =
+          quadrotor_common::quaternionToEulerAnglesZYX(
+              state_estimate.orientation)
+              .z();
       reference_state_ = quadrotor_common::TrajectoryPoint();
       reference_state_.position = current_position;
       reference_state_.heading = current_heading;
