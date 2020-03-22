@@ -281,6 +281,35 @@ bool AcrobaticSequence::appendRandomStraight(const double& velocity,
            quadrotor_common::Trajectory::TrajectoryType::UNDEFINED);
 }
 
+bool AcrobaticSequence::appendStraight(const Eigen::Vector3d& end_position,
+                                       const double& end_yaw,
+                                       const double& max_velocity,
+                                       const double& traj_sampling_freq) {
+  // get start state
+  quadrotor_common::TrajectoryPoint init_state =
+      maneuver_list_.back().points.back();
+
+  const double exec_loop_rate = traj_sampling_freq;
+
+  quadrotor_common::TrajectoryPoint end_state;
+  end_state.position = end_position;
+
+  const double max_thrust = 20.0;
+  const double max_roll_pitch_rate = 3.0;
+
+  quadrotor_common::Trajectory trajectory =
+      trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
+          init_state, end_state, 4,
+          1.1 * std::max(init_state.velocity.norm(), max_velocity), max_thrust,
+          max_roll_pitch_rate, exec_loop_rate);
+  trajectory_generation_helper::heading::addConstantHeading(0.0, &trajectory);
+
+  maneuver_list_.push_back(trajectory);
+
+  return !(trajectory.trajectory_type ==
+           quadrotor_common::Trajectory::TrajectoryType::UNDEFINED);
+}
+
 bool AcrobaticSequence::appendCorkScrew(
     const int n_loops, const double& circle_velocity, const double& radius,
     const Eigen::Vector3d& circle_center_offset,
