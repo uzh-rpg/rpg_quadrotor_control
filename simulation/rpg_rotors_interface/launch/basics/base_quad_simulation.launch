@@ -72,6 +72,7 @@
           <param name="control_command_delay" value="0.05" />
           
           <remap from="autopilot/state_estimate" to="ground_truth/odometry" />
+          <remap from="autopilot/pose_command" to="autopilot/goal" />
         </node>
       </group>
       <group if="$(arg use_mpc)">
