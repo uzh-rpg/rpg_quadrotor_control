@@ -512,7 +512,7 @@ void AutoPilot<Tcontroller, Tparams>::poseCommandCallback(
   // Idea: A trajectory is planned to the desired pose in a separate
   // thread. Once the thread is done it pushes the computed trajectory into the
   // trajectory queue and switches to TRAJECTORY_CONTROL mode
-  if (autopilot_state_ == States::HOVER)
+  if (true) //(autopilot_state_ == States::HOVER)
   {
     setAutoPilotState(States::GO_TO_POSE);
     requested_go_to_pose_ = *msg;
