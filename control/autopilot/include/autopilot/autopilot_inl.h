@@ -512,7 +512,7 @@ void AutoPilot<Tcontroller, Tparams>::poseCommandCallback(
   // Idea: A trajectory is planned to the desired pose in a separate
   // thread. Once the thread is done it pushes the computed trajectory into the
   // trajectory queue and switches to TRAJECTORY_CONTROL mode
-  if (true) //(autopilot_state_ == States::HOVER)
+  if (autopilot_state_ == States::HOVER)
   {
     setAutoPilotState(States::GO_TO_POSE);
     requested_go_to_pose_ = *msg;
@@ -520,9 +520,14 @@ void AutoPilot<Tcontroller, Tparams>::poseCommandCallback(
   }
   else
   {
-    ROS_WARN("[%s] Will not execute go to pose action since autopilot is "
-             "not in HOVER",
-             pnh_.getNamespace().c_str());
+    setAutoPilotState(States::HOVER);
+    setAutoPilotState(States::GO_TO_POSE);
+    requested_go_to_pose_ = *msg;
+    received_go_to_pose_command_ = true;
+
+    // ROS_WARN("[%s] Will not execute go to pose action since autopilot is "
+    //         "not in HOVER",
+    //         pnh_.getNamespace().c_str());
   }
 
   // Mutexes are unlocked because they go out of scope here
