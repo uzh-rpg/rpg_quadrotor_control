@@ -48,7 +48,8 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh,
       time_started_emergency_landing_(),
       destructor_invoked_(false),
       time_last_autopilot_feedback_published_(),
-      time_last_control_command_published_() {
+      time_last_control_command_published_(),
+      time_last_control_command_computed_() {
   if (!loadParameters()) {
     ROS_ERROR("[%s] Could not load parameters.", pnh_.getNamespace().c_str());
     ros::shutdown();
@@ -326,6 +327,13 @@ void AutoPilot<Tcontroller, Tparams>::stateEstimateCallback(
   if (destructor_invoked_) {
     return;
   }
+
+  if ((ros::Time::now() - time_last_control_command_computed_).toSec() <
+      min_control_period_comp_) {
+    return;
+  }
+
+  time_last_control_command_computed_ = ros::Time::now();
 
   std::lock_guard<std::mutex> main_lock(main_mutex_);
 
@@ -1343,7 +1351,7 @@ void AutoPilot<Tcontroller, Tparams>::publishControlCommand(
     // in optitrack flight, the laird module can only handle control commands at
     // 50-60Hz. Limit publishing frequency here
     if ((ros::Time::now() - time_last_control_command_published_).toSec() >
-        min_control_period_) {
+        min_control_period_pub_) {
       control_command_pub_.publish(control_cmd_msg);
       time_last_control_command_published_ = ros::Time::now();
     }
@@ -1446,7 +1454,8 @@ bool AutoPilot<Tcontroller, Tparams>::loadParameters() {
   GET_PARAM(control_command_input_timeout);
   GET_PARAM(enable_command_feedthrough);
   GET_PARAM(predictive_control_lookahead);
-  GET_PARAM(min_control_period);
+  GET_PARAM(min_control_period_comp);
+  GET_PARAM(min_control_period_pub);
 
   if (!base_controller_params_.loadParameters(pnh_)) {
     return false;

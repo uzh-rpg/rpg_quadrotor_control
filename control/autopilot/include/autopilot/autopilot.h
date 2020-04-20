@@ -188,6 +188,7 @@ class AutoPilot {
 
   ros::Time time_last_autopilot_feedback_published_;
   ros::Time time_last_control_command_published_;
+  ros::Time time_last_control_command_computed_;
 
   // Parameters
   double state_estimate_timeout_;
@@ -214,7 +215,8 @@ class AutoPilot {
   double control_command_input_timeout_;
   bool enable_command_feedthrough_;
   double predictive_control_lookahead_;
-  double min_control_period_;
+  double min_control_period_pub_;
+  double min_control_period_comp_;
 
   // Constants
   static constexpr double kVelocityCommandZeroThreshold_ = 0.03;
