@@ -282,6 +282,7 @@ bool AcrobaticSequence::appendRandomStraight(const double& velocity,
 }
 
 bool AcrobaticSequence::appendStraight(const Eigen::Vector3d& end_position,
+                                       const Eigen::Vector3d& end_velocity,
                                        const double& end_yaw,
                                        const double& max_velocity,
                                        const double& traj_sampling_freq) {
@@ -293,6 +294,7 @@ bool AcrobaticSequence::appendStraight(const Eigen::Vector3d& end_position,
 
   quadrotor_common::TrajectoryPoint end_state;
   end_state.position = end_position;
+  end_state.velocity = end_velocity;
 
   const double max_thrust = 20.0;
   const double max_roll_pitch_rate = 3.0;

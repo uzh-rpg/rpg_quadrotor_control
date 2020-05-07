@@ -25,6 +25,7 @@ class AcrobaticSequence {
                             const double& traj_sampling_freq);
 
   bool appendStraight(const Eigen::Vector3d& end_position,
+                      const Eigen::Vector3d& end_velocity,
                       const double& end_yaw, const double& max_velocity,
                       const double& traj_sampling_freq);
 
