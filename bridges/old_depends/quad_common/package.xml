@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="2">
+	<name>quad_common</name>
+	<version>0.0.0</version>
+	<description>
+		Common stuff for the quadrotors. For example conversions, special angle math, .....
+	</description>
+	
+	<maintainer email="matfaessler@gmail.com">Matthias Fässler</maintainer>
+	<maintainer email="fly.fontana@gmail.com">Flavio Fontana</maintainer>
+	<license>GNU GPL</license>
+	
+	<buildtool_depend>catkin</buildtool_depend>
+	<buildtool_depend>catkin_simple</buildtool_depend>
+	
+	<depend>eigen_catkin</depend>
+	<depend>geometry_msgs</depend>
+	<depend>quad_cmake</depend>
+	<depend>quad_msgs</depend>
+	<depend>roscpp</depend>
+	
+	<export>
+		
+	</export>
+</package>

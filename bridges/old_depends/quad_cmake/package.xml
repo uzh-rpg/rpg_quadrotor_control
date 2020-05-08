@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<package format="2">
+	<name>quad_cmake</name>
+	<version>0.0.0</version>
+	<description>cmake modules used all over the quad package</description>
+	
+	<maintainer email="matfaessler@gmail.com">Matthias Fässler</maintainer>
+	<maintainer email="fly.fontana@gmail.com">Flavio Fontana</maintainer>
+	<license>GNU GPL</license>
+	
+	<buildtool_depend>catkin</buildtool_depend>
+	<buildtool_depend>catkin_simple</buildtool_depend>
+	<depend>catkin</depend>
+</package>

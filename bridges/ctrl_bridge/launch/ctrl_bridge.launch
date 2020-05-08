@@ -1,0 +1,8 @@
+<launch>
+<arg name="quad_name" default="eminem"/>
+<group ns="$(arg quad_name)" >
+  <node pkg="ctrl_bridge" name="ctrl_bridge" type="ctrl_bridge_node" output="screen">
+    <rosparam file="$(find ctrl_bridge)/parameters/default.yaml"/>
+  </node>
+</group>
+</launch>

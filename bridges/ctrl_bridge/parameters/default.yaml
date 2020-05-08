@@ -1,0 +1,6 @@
+# Quadrotor
+mass: 0.610                 # quadrotor mass in [kg]
+
+# Serial
+port_name: /dev/ttyUSB0     # serial port to use
+baud_rate: 921600           # serial port baudrate in [b/s]
