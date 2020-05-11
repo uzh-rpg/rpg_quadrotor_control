@@ -11,10 +11,10 @@ manufacturer_id
 
 # resources
 resource BEEPER 1 NONE
-resource MOTOR 1 A02
-resource MOTOR 2 A03
-resource MOTOR 3 A10
-resource MOTOR 4 A15
+resource MOTOR 1 A10
+resource MOTOR 2 A15
+resource MOTOR 3 A02
+resource MOTOR 4 A03
 resource MOTOR 5 C08
 resource MOTOR 6 B00
 resource MOTOR 7 NONE
