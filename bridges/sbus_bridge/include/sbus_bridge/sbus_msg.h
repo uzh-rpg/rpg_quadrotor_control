@@ -10,6 +10,8 @@ enum class ControlMode { NONE, ATTITUDE, BODY_RATES };
 
 enum class ArmState { DISARMED, ARMED };
 
+#pragma pack(push)
+#pragma pack(1)
 struct SBusMsg {
   // Constants
   static constexpr int kNChannels = 16;
@@ -55,5 +57,5 @@ struct SBusMsg {
   bool isArmed() const;
   ControlMode getControlMode() const;
 };
-
+#pragma pack(pop)
 }  // namespace sbus_bridge
