@@ -13,19 +13,29 @@
 #include "sbus_bridge/sbus_msg.h"
 #include "sbus_bridge/thrust_mapping.h"
 
-namespace sbus_bridge {
+namespace sbus_bridge
+{
 
-enum class BridgeState { OFF, ARMING, AUTONOMOUS_FLIGHT, RC_FLIGHT };
+enum class BridgeState
+{
+  OFF, ARMING, AUTONOMOUS_FLIGHT, RC_FLIGHT
+};
 
-class SBusBridge : public SBusSerialPort {
- public:
+class SBusBridge : public SBusSerialPort
+{
+public:
+
   SBusBridge(const ros::NodeHandle& nh, const ros::NodeHandle& pnh);
 
-  SBusBridge() : SBusBridge(ros::NodeHandle(), ros::NodeHandle("~")) {}
+  SBusBridge() :
+      SBusBridge(ros::NodeHandle(), ros::NodeHandle("~"))
+  {
+  }
 
   virtual ~SBusBridge();
 
- private:
+private:
+
   void watchdogThread();
 
   void handleReceivedSbusMessage(const SBusMsg& received_sbus_msg) override;
@@ -131,4 +141,4 @@ class SBusBridge : public SBusSerialPort {
   static constexpr double kBatteryVoltageTimeout_ = 1.0;
 };
 
-}  // namespace sbus_bridge
+} // namespace sbus_bridge
