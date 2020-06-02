@@ -273,8 +273,10 @@ class AutopilotWidget(QWidget):
 
     @Slot(bool)
     def on_button_off_clicked(self):
-        start_message = std_msgs.Empty()
-        self._off_pub.publish(start_message)
+        off_message = std_msgs.Empty()
+        self._off_pub.publish(off_message)
+        arm_message = std_msgs.Bool(False)
+        self._arm_bridge_pub.publish(arm_message)
 
     @Slot(bool)
     def on_button_force_hover_clicked(self):

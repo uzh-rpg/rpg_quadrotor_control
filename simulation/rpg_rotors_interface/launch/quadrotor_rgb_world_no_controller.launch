@@ -3,32 +3,29 @@
   <arg name="quad_name" default="hummingbird"/>
 
   <arg name="mav_name" default="$(arg quad_name)"/>
-  <arg name="model" value="$(find rotors_description)/urdf/mav_generic_odometry_sensor.gazebo"/>
+  <arg name="model" value="$(find rotors_description)/urdf/mav_generic_odometry_sensor_rgb.gazebo"/>
+  <!-- arg name="model" value="$(find fpv_data_generation)/vehicles/hummingbird_rgb_camera.gazebo"/ -->
   <arg name="world_name" default="$(find rotors_gazebo)/worlds/basic.world"/>
 
   <arg name="x_init" default="0"/>
   <arg name="y_init" default="0"/>
 
-  <arg name="use_mpc" default="false"/>
   <arg name="enable_logging" default="false" />
   <arg name="enable_ground_truth" default="true" />
-  <arg name="enable_command_feedthrough" default="false"/>
   <arg name="log_file" default="$(arg mav_name)" />
   <arg name="paused" value="true"/>
-  <arg name="gui" value="false"/>
+  <arg name="gui" default="true"/>
   <arg name="use_ground_truth" value="true"/>
   <arg name="verbose" default="false"/>
   <arg name="debug" default="false"/>
 
   <!-- Basic simulation environment !-->
-  <include file="$(find rpg_rotors_interface)/launch/basics/base_quad_simulation.launch">
+  <include file="$(find rpg_rotors_interface)/launch/basics/base_quad_simulation_no_controller.launch">
     <arg name="quad_name" value="$(arg quad_name)"/>
     <arg name="world_name" value="$(arg world_name)"/>
     <arg name="paused" value="$(arg paused)"/>
     <arg name="gui" value="$(arg gui)"/>
     <arg name="use_ground_truth" value="$(arg use_ground_truth)"/>
-    <arg name="use_mpc" value="$(arg use_mpc)"/>
-    <arg name="enable_command_feedthrough" value="$(arg enable_command_feedthrough)" />
 
     <arg name="mav_name" value="$(arg mav_name)"/>
     <arg name="model" value="$(arg model)"/>

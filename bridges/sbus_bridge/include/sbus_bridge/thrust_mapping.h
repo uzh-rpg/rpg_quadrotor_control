@@ -2,10 +2,12 @@
 
 #include <stdint.h>
 
-namespace thrust_mapping {
+namespace thrust_mapping
+{
 
-class CollectiveThrustMapping {
- public:
+class CollectiveThrustMapping
+{
+public:
   CollectiveThrustMapping();
   CollectiveThrustMapping(const double thrust_map_a, const double thrust_map_b,
                           const double thrust_map_c,
@@ -21,7 +23,7 @@ class CollectiveThrustMapping {
 
   bool loadParameters();
 
- private:
+private:
   double thrust_map_a_;
   double thrust_map_b_;
   double thrust_map_c_;
@@ -36,4 +38,4 @@ class CollectiveThrustMapping {
   static constexpr double kMaxBatteryCompensationVoltagePerCell_ = 4.2;
 };
 
-}  // namespace thrust_mapping
+} // thrust_mapping

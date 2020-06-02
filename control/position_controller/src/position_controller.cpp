@@ -93,6 +93,7 @@ PositionController::computeNominalReferenceInputs(
   const Eigen::Quaterniond q_heading = Eigen::Quaterniond(
       Eigen::AngleAxisd(reference_state.heading, Eigen::Vector3d::UnitZ()));
 
+  // Rotate world frame by the reference heading --> C-coordinate system
   const Eigen::Vector3d x_C = q_heading * Eigen::Vector3d::UnitX();
   const Eigen::Vector3d y_C = q_heading * Eigen::Vector3d::UnitY();
 
