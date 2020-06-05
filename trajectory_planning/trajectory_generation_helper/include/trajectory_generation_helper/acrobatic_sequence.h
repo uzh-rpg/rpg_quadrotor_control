@@ -29,6 +29,8 @@ class AcrobaticSequence {
                       const double& end_yaw, const double& max_velocity,
                       const double& traj_sampling_freq);
 
+  void manualAddTrajectory(const quadrotor_common::Trajectory trajectory);
+
   bool appendCorkScrew(const int n_loops, const double& circle_velocity,
                        const double& radius,
                        const Eigen::Vector3d& circle_center_offset,

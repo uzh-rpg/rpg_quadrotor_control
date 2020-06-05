@@ -312,6 +312,11 @@ bool AcrobaticSequence::appendStraight(const Eigen::Vector3d& end_position,
            quadrotor_common::Trajectory::TrajectoryType::UNDEFINED);
 }
 
+void AcrobaticSequence::manualAddTrajectory(
+    const quadrotor_common::Trajectory trajectory) {
+  maneuver_list_.push_back(trajectory);
+}
+
 bool AcrobaticSequence::appendCorkScrew(
     const int n_loops, const double& circle_velocity, const double& radius,
     const Eigen::Vector3d& circle_center_offset,
