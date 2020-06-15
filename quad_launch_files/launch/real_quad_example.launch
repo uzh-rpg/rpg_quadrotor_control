@@ -53,7 +53,7 @@
 
         <param name="velocity_estimate_in_world_frame" value="False" />
         <param name="state_estimate_timeout" value="0.1" />
-        <param name="control_command_delay" value="0.0" />
+        <param name="control_command_delay" value="0.02" />
 	<param name="enable_command_feedthrough" value="$(arg enable_command_feedthrough)" />
 
 	<!-- remap from="autopilot/state_estimate" to="state_estimate" / -->

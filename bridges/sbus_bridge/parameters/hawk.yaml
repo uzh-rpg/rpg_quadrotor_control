@@ -3,14 +3,14 @@ enable_receiving_sbus_messages: true
 control_command_timeout: 0.5 # [s] (Must be larger than 'state_estimate_timeout'
 # set in the 'flight_controller'!)
 rc_timeout: 0.1 # [s]
-mass: 1.095   # 0.856 without realsense [kg]
+mass: 0.845   # 0.856 without realsense [kg]
 disable_thrust_mapping: false
 # Note: When updating the thrust mapping also the voltage dependency mapping 
 # has to be updated!
 # thrust = thrust_map_a * u^2 + thrust_map_b * u + thrust_map_c
-thrust_map_a: 1.516032227723709e-05
-thrust_map_b: 0.006784808534945
-thrust_map_c: -4.338549160608596
+thrust_map_a: 1.21002232e-05
+thrust_map_b: 0.01400266
+thrust_map_c: -7.162487
 # Maximum values for body rates and roll and pitch angles as they are set
 # on the Flight Controller. The max roll an pitch angles are only active
 # when flying in angle mode
