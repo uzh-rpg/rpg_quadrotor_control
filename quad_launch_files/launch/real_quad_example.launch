@@ -2,7 +2,7 @@
 <launch>
 
   <arg name="quad_name"/>
-  <arg name="use_mpc" default="false"/>
+  <arg name="use_mpc" default="true"/>
   <arg name="enable_command_feedthrough" default="false" />
 
   <group ns="$(arg quad_name)" >
@@ -13,13 +13,16 @@
         frequency you want the controller to run. (Control loop runs upon
         receiving a state estimate)
     -->
+    <include file="$(find realsense2_camera)/launch/rs_t265.launch">
+	    <!-- remap from="/$(arg quad_name)/camera/odom/sample" to="/$(arg quad_name)/state_estimate"/ -->
+    </include>
 
     <!-- Bridge -->
     <node pkg="sbus_bridge" name="sbus_bridge" type="sbus_bridge" 
         output="screen" >
-      <rosparam file="$(find sbus_bridge)/parameters/default.yaml"/>
+      <rosparam file="$(find sbus_bridge)/parameters/hawk.yaml"/>
             
-      <param name="port_name" value="/dev/ttyS1" />
+      <param name="port_name" value="/dev/ttyTHS2" />
 
       <!-- make it compatible with quad gui -->
       <remap from="sbus_bridge/arm" to="bridge/arm" />
@@ -48,12 +51,13 @@
         <rosparam file="$(find rpg_mpc)/parameters/default.yaml" />
         <rosparam file="$(find autopilot)/parameters/default.yaml" />
 
-        <param name="velocity_estimate_in_world_frame" value="True" />
+        <param name="velocity_estimate_in_world_frame" value="False" />
         <param name="state_estimate_timeout" value="0.1" />
-        <param name="control_command_delay" value="0.0" />
+        <param name="control_command_delay" value="0.02" />
 	<param name="enable_command_feedthrough" value="$(arg enable_command_feedthrough)" />
 
-        <remap from="autopilot/state_estimate" to="state_estimate" />
+	<!-- remap from="autopilot/state_estimate" to="state_estimate" / -->
+	<remap from="autopilot/state_estimate" to="camera/odom/sample"/>
       </node>
     </group>
 
