@@ -25,6 +25,115 @@ AcrobaticSequence::AcrobaticSequence(
 
 AcrobaticSequence::~AcrobaticSequence() {}
 
+bool AcrobaticSequence::appendMinJerk(
+    const quadrotor_common::TrajectoryPoint& end_state, const double& duration,
+    const double& traj_sampling_freq) {
+  bool success = false;
+  quadrotor_common::TrajectoryPoint start_state =
+      maneuver_list_.back().points.back();
+  Vec3 pos0 = Vec3(start_state.position(0), start_state.position(1),
+                   start_state.position(2));
+  Vec3 vel0 = Vec3(start_state.velocity(0), start_state.velocity(1),
+                   start_state.velocity(2));
+  Vec3 acc0 = Vec3(start_state.acceleration(0), start_state.acceleration(1),
+                   start_state.acceleration(2));
+
+  // Define how gravity lies in our coordinate system
+  Vec3 gravity = Vec3(0, 0, -9.81);  //[m/s**2]
+
+  minimum_jerk_trajectories::RapidTrajectoryGenerator traj =
+      minimum_jerk_trajectories::RapidTrajectoryGenerator(pos0, vel0, acc0,
+                                                          gravity);
+
+  Vec3 posf =
+      Vec3(end_state.position(0), end_state.position(1), end_state.position(2));
+  Vec3 velf =
+      Vec3(end_state.velocity(0), end_state.velocity(1), end_state.velocity(2));
+  Vec3 accf = Vec3(end_state.acceleration(0), end_state.acceleration(1),
+                   end_state.acceleration(2));
+
+  traj.SetGoalPosition(posf);
+  traj.SetGoalVelocity(velf);
+  traj.SetGoalAcceleration(accf);
+
+  traj.Generate(duration);
+
+  double min_normalized_thrust = 2.0;
+  double max_normalized_thrust = 20.0;
+  double max_roll_pitch_rate = 6.9;
+  double min_traj_sampling_time = 1.0 / traj_sampling_freq;
+
+  minimum_jerk_trajectories::RapidTrajectoryGenerator::InputFeasibilityResult
+      res = traj.CheckInputFeasibility(
+          min_normalized_thrust, max_normalized_thrust, max_roll_pitch_rate,
+          min_traj_sampling_time);
+  if (res ==
+      minimum_jerk_trajectories::RapidTrajectoryGenerator::InputFeasible) {
+    // check also for floor/ceiling feasibility
+    Vec3 boundary_point = Vec3(0.0, 0.0, 0.0);  // a point on the floor
+    Vec3 boundary_normal =
+        Vec3(0.0, 0.0,
+             1.0);  // we want to be in this direction of the point (upwards)
+    minimum_jerk_trajectories::RapidTrajectoryGenerator::StateFeasibilityResult
+        positionFeasible_floor =
+            traj.CheckPositionFeasibility(boundary_point, boundary_normal);
+    boundary_point = Vec3(0.0, 0.0, 100);  // a point on the floor
+    boundary_normal =
+        Vec3(0.0, 0.0,
+             -1.0);  // we want to be in this direction of the point (upwards)
+    minimum_jerk_trajectories::RapidTrajectoryGenerator::StateFeasibilityResult
+        positionFeasible_ceiling =
+            traj.CheckPositionFeasibility(boundary_point, boundary_normal);
+    if (positionFeasible_ceiling ==
+            minimum_jerk_trajectories::RapidTrajectoryGenerator::
+                StateFeasible &&
+        positionFeasible_floor == minimum_jerk_trajectories::
+                                      RapidTrajectoryGenerator::StateFeasible) {
+      success = true;
+    }
+  } else {
+    ROS_WARN("[%s] Trajectory not input feasible.",
+             ros::this_node::getName().c_str());
+  }
+
+  if (!success) {
+    ROS_WARN("[%s] Failed to calculate trajectory.",
+             ros::this_node::getName().c_str());
+    ROS_WARN("[%s] Start: [%f, %f, %f].", ros::this_node::getName().c_str(),
+             start_state.position.x(), start_state.position.y(),
+             start_state.position.z());
+    ROS_WARN("[%s] End: [%f, %f, %f].", ros::this_node::getName().c_str(),
+             end_state.position.x(), end_state.position.y(),
+             end_state.position.z());
+  }
+
+  // sample trajectory
+  quadrotor_common::Trajectory min_jerk_trajectory;
+
+  double t_temp = 0.0;
+
+  while (t_temp <= duration) {
+    Vec3 position = traj.GetPosition(t_temp);
+    Vec3 velocity = traj.GetVelocity(t_temp);
+    Vec3 acceleration = traj.GetAcceleration(t_temp);
+
+    quadrotor_common::TrajectoryPoint point;
+    point.time_from_start = ros::Duration(t_temp);
+    point.position = Eigen::Vector3d(position.x, position.y, position.z);
+    point.velocity = Eigen::Vector3d(velocity.x, velocity.y, velocity.z);
+    point.acceleration =
+        Eigen::Vector3d(acceleration.x, acceleration.y, acceleration.z);
+
+    min_jerk_trajectory.points.push_back(point);
+    t_temp += 1.0 / traj_sampling_freq;
+  }
+  trajectory_generation_helper::heading::addConstantHeading(
+      0.0, &min_jerk_trajectory);
+
+  maneuver_list_.push_back(min_jerk_trajectory);
+  return success;
+}
+
 bool AcrobaticSequence::appendLoopli(const int n_loops,
                                      const double& circle_velocity,
                                      const double& radius,

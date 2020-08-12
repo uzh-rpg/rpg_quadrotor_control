@@ -11,6 +11,9 @@ class AcrobaticSequence {
 
   virtual ~AcrobaticSequence();
 
+  bool appendMinJerk(const quadrotor_common::TrajectoryPoint& end_state,
+                     const double& duration, const double& traj_sampling_freq);
+
   bool appendLoops(const int n_loops, const double& circle_velocity,
                    const double& radius,
                    const Eigen::Vector3d& circle_center_offset,
@@ -40,9 +43,11 @@ class AcrobaticSequence {
   bool appendLoopli(const int n_loops, const double& circle_velocity,
                     const double& radius, const double& traj_sampling_freq);
 
-  bool appendHorizontalCircle(const int n_loops, const double& circle_velocity, const double& radius,
+  bool appendHorizontalCircle(const int n_loops, const double& circle_velocity,
+                              const double& radius,
                               const Eigen::Vector3d& circle_center_offset,
-                              const Eigen::Vector3d& circle_center_offset_end, const bool break_at_end,
+                              const Eigen::Vector3d& circle_center_offset_end,
+                              const bool break_at_end,
                               const double& traj_sampling_freq);
 
   bool appendHover(const double& hover_time, const double& traj_sampling_freq);
