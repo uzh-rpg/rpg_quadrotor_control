@@ -261,8 +261,8 @@ bool AcrobaticSequence::appendHorizontalCircle(
 
   quadrotor_common::Trajectory circle_trajectory =
       trajectory_generation_helper::circles::computeHorizontalCircleTrajectory(
-          circle_center, radius, circle_velocity, 0.0,
-          -(2.0 + 2 * (n_loops - 1)) * M_PI, exec_loop_rate);
+          circle_center, radius, circle_velocity, M_PI_2,
+          -(0.5 + 2 * n_loops) * M_PI, exec_loop_rate);
   trajectory_generation_helper::heading::addForwardHeading(&circle_trajectory);
 
   quadrotor_common::TrajectoryPoint circle_enter_state =
@@ -298,8 +298,8 @@ bool AcrobaticSequence::appendHorizontalCircle(
   printf("compute exit trajectory\n");
   const Eigen::Vector3d end_pos_P = circle_center_offset_end;
   quadrotor_common::TrajectoryPoint end_state;
-  end_state.position = end_pos_P + circle_center;
-  end_state.velocity = Eigen::Vector3d(circle_velocity, 0.0, 0.0);
+  end_state.position = circle_exit_state.position + circle_exit_state.velocity;
+  end_state.velocity = circle_exit_state.velocity;
 
   quadrotor_common::Trajectory exit_trajectory =
       trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
@@ -320,7 +320,7 @@ bool AcrobaticSequence::appendHorizontalCircle(
     // append breaking trajectory at end
     quadrotor_common::TrajectoryPoint end_state_hover;
     end_state_hover.position =
-        (end_state.position + Eigen::Vector3d(2.0, 0.0, 0.0));
+        (end_state.position + end_state.velocity);
     end_state_hover.velocity = Eigen::Vector3d::Zero();
     breaking_trajectory =
         trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
