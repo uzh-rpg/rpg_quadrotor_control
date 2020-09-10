@@ -937,7 +937,7 @@ quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::land(
   reference_trajectory_ = quadrotor_common::Trajectory(reference_state_);
   command = base_controller_.run(state_estimate, reference_trajectory_,
                                  base_controller_params_);
-
+  /*
   if (received_state_est_.coordinate_frame ==
           quadrotor_common::QuadStateEstimate::CoordinateFrame::WORLD ||
       received_state_est_.coordinate_frame ==
@@ -962,6 +962,7 @@ quadrotor_common::ControlCommand AutoPilot<Tcontroller, Tparams>::land(
         initial_drop_thrust_ / propeller_ramp_down_timeout_ *
             (ros::Time::now() - time_started_ramping_down_).toSec();
   }
+  */
 
   if (command.collective_thrust <= 0.2) {
     setAutoPilotState(States::OFF);
