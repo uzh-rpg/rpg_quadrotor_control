@@ -57,6 +57,7 @@ class AutoPilot {
   void forceHoverCallback(const std_msgs::Empty::ConstPtr& msg);
   void landCallback(const std_msgs::Empty::ConstPtr& msg);
   void offCallback(const std_msgs::Empty::ConstPtr& msg);
+  void resetParametersCallback(const std_msgs::Empty::ConstPtr& msg);
 
   quadrotor_common::ControlCommand start(
       const quadrotor_common::QuadStateEstimate& state_estimate);
@@ -129,6 +130,7 @@ class AutoPilot {
   ros::Subscriber force_hover_sub_;
   ros::Subscriber land_sub_;
   ros::Subscriber off_sub_;
+  ros::Subscriber reset_parameters_sub_;
 
   state_predictor::StatePredictor state_predictor_;
 
