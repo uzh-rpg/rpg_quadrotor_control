@@ -95,8 +95,13 @@ AutoPilot<Tcontroller, Tparams>::AutoPilot(const ros::NodeHandle& nh,
   land_sub_ =
       nh_.subscribe("autopilot/land", 1,
                     &AutoPilot<Tcontroller, Tparams>::landCallback, this);
+
   off_sub_ = nh_.subscribe("autopilot/off", 1,
                            &AutoPilot<Tcontroller, Tparams>::offCallback, this);
+
+  reset_parameters_sub_ = nh_.subscribe(
+      "autopilot/reset", 1,
+      &AutoPilot<Tcontroller, Tparams>::resetParametersCallback, this);
 
   // Start watchdog thread
   try {
@@ -774,6 +779,22 @@ void AutoPilot<Tcontroller, Tparams>::offCallback(
     // Allow user to take over manually and land the vehicle, then off the
     // controller and disable the RC without the vehicle going back to hover
     state_before_rc_manual_flight_ = States::OFF;
+  }
+
+  // Mutex is unlocked because it goes out of scope here
+}
+
+template <typename Tcontroller, typename Tparams>
+void AutoPilot<Tcontroller, Tparams>::resetParametersCallback(
+    const std_msgs::Empty::ConstPtr& msg) {
+  if (destructor_invoked_) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> main_lock(main_mutex_);
+
+  if (!base_controller_params_.loadParameters(pnh_)) {
+    return;
   }
 
   // Mutex is unlocked because it goes out of scope here
