@@ -1,5 +1,5 @@
 # version
-# Betaflight / RADIX (RADIX) 4.1.4 Feb 17 2020 / 17:07:59 (790cb8652) MSP API: 1.42
+# Betaflight / RADIX (RADIX) 4.2.0 Jun 17 2020 / 13:04:07 (4064a2fb5) MSP API: 1.43
 
 # start the command batch
 batch start
@@ -201,11 +201,11 @@ feature -CHANNEL_FORWARDING
 feature -TRANSPONDER
 feature -AIRMODE
 feature -RX_SPI
-feature -SOFTSPI
 feature -ESC_SENSOR
 feature -ANTI_GRAVITY
 feature -DYNAMIC_FILTER
 feature RX_SERIAL
+feature TELEMETRY
 feature OSD
 feature AIRMODE
 feature ANTI_GRAVITY
@@ -249,7 +249,7 @@ serial 20 1 115200 57600 0 115200
 serial 0 64 115200 57600 0 115200
 serial 2 0 115200 57600 0 115200
 serial 3 0 115200 57600 0 115200
-serial 5 0 115200 57600 0 115200
+serial 5 512 115200 57600 115200 115200
 
 # led
 led 0 0,0::C:0
@@ -454,7 +454,6 @@ rxfail 17 h
 
 # master
 set gyro_hardware_lpf = NORMAL
-set gyro_sync_denom = 2
 set gyro_lowpass_type = PT1
 set gyro_lowpass_hz = 200
 set gyro_lowpass2_type = PT1
@@ -469,10 +468,10 @@ set gyro_offset_yaw = 0
 set gyro_overflow_detect = ALL
 set yaw_spin_recovery = ON
 set yaw_spin_threshold = 1950
-set dyn_notch_range = MEDIUM
 set dyn_notch_width_percent = 8
 set dyn_notch_q = 120
 set dyn_notch_min_hz = 150
+set dyn_notch_max_hz = 600
 set dyn_lpf_gyro_min_hz = 200
 set dyn_lpf_gyro_max_hz = 500
 set gyro_filter_debug_axis = ROLL
@@ -480,7 +479,7 @@ set acc_hardware = AUTO
 set acc_lpf_hz = 10
 set acc_trim_pitch = 0
 set acc_trim_roll = 0
-set acc_calibration = 0,0,0
+set acc_calibration = -366,19,-43,1
 set baro_bustype = SPI
 set baro_spi_device = 3
 set baro_i2c_device = 0
@@ -517,6 +516,7 @@ set spektrum_sat_bind_autoreset = ON
 set srxl2_unit_id = 1
 set srxl2_baud_fast = ON
 set sbus_baud_fast = OFF
+set crsf_use_rx_snr = OFF
 set airmode_start_throttle_percent = 25
 set rx_min_usec = 885
 set rx_max_usec = 2115
@@ -569,7 +569,8 @@ set use_cbat_alerts = OFF
 set cbat_alert_percent = 10
 set vbat_cutoff_percent = 100
 set force_battery_cell_count = 0
-set vbat_lpf_period = 30
+set vbat_display_lpf_period = 30
+set vbat_sag_lpf_period = 2
 set ibat_lpf_period = 10
 set vbat_duration_for_warning = 0
 set vbat_duration_for_critical = 0
@@ -586,6 +587,7 @@ set beeper_frequency = 0
 set beeper_dshot_beacon_tone = 1
 set yaw_motors_reversed = OFF
 set crashflip_motor_percent = 0
+set crashflip_expo = 35
 set 3d_deadband_low = 1406
 set 3d_deadband_high = 1514
 set 3d_neutral = 1460
@@ -607,9 +609,11 @@ set auto_disarm_delay = 5
 set gyro_cal_on_first_arm = OFF
 set gps_provider = NMEA
 set gps_sbas_mode = AUTO
+set gps_sbas_integrity = OFF
 set gps_auto_config = ON
 set gps_auto_baud = OFF
 set gps_ublox_use_galileo = OFF
+set gps_ublox_mode = AIRBORNE
 set gps_set_home_point_once = OFF
 set gps_use_3d_speed = OFF
 set gps_rescue_angle = 32
@@ -705,11 +709,13 @@ set osd_warn_no_gps_rescue = ON
 set osd_warn_gps_rescue_disabled = ON
 set osd_warn_rssi = OFF
 set osd_warn_link_quality = OFF
+set osd_warn_over_cap = OFF
 set osd_rssi_alarm = 70
 set osd_link_quality_alarm = 80
-set osd_rssi_dbm_alarm = 60
+set osd_rssi_dbm_alarm = -60
 set osd_cap_alarm = 2200
 set osd_alt_alarm = 100
+set osd_distance_alarm = 0
 set osd_esc_temp_alarm = -128
 set osd_esc_rpm_alarm = -1
 set osd_esc_current_alarm = -1
@@ -717,6 +723,8 @@ set osd_core_temp_alarm = 70
 set osd_ah_max_pit = 20
 set osd_ah_max_rol = 40
 set osd_ah_invert = OFF
+set osd_logo_on_arming = ON
+set osd_logo_on_arming_duration = 10
 set osd_tim1 = 2560
 set osd_tim2 = 2561
 set osd_vbat_pos = 14380
@@ -776,6 +784,9 @@ set osd_stick_overlay_radio_mode = 2
 set osd_rate_profile_name_pos = 234
 set osd_pid_profile_name_pos = 234
 set osd_profile_name_pos = 234
+set osd_rcchannels_pos = 234
+set osd_camera_frame_pos = 35
+set osd_efficiency_pos = 234
 set osd_stat_rtc_date_time = OFF
 set osd_stat_tim_1 = OFF
 set osd_stat_tim_2 = ON
@@ -805,12 +816,17 @@ set osd_profile_1_name = -
 set osd_profile_2_name = -
 set osd_profile_3_name = -
 set osd_gps_sats_show_hdop = OFF
+set osd_displayport_device = AUTO
+set osd_rcchannels = -1,-1,-1,-1
+set osd_camera_frame_width = 24
+set osd_camera_frame_height = 11
 set system_hse_mhz = 16
 set task_statistics = ON
 set debug_mode = NONE
 set rate_6pos_switch = OFF
 set pwr_on_arm_grace = 5
 set scheduler_optimize_rate = AUTO
+set enable_stick_arming = OFF
 set vtx_band = 0
 set vtx_channel = 0
 set vtx_power = 0
@@ -826,6 +842,9 @@ set max7456_spi_bus = 0
 set max7456_preinit_opu = OFF
 set displayport_msp_col_adjust = 0
 set displayport_msp_row_adjust = 0
+set displayport_msp_serial = 0
+set displayport_msp_attrs = 0,0,0,0
+set displayport_msp_use_device_blink = OFF
 set displayport_max7456_col_adjust = 0
 set displayport_max7456_row_adjust = 0
 set displayport_max7456_inv = OFF
@@ -885,7 +904,6 @@ set brainfpv_speed_scale = 1
 set brainfpv_map = 1
 set brainfpv_map_max_dist_m = 500
 set brainfpv_sticks_display = 0
-set brainfpv_show_logo_on_arm = 1
 set brainfpv_show_pilot_logo = 1
 set brainfpv_hd_frame_mode = 0
 set brainfpv_hd_frame_width = 100
@@ -905,6 +923,10 @@ set stats_total_dist_m = 0
 set name = -
 set display_name = -
 set position_alt_source = DEFAULT
+set box_user_1_name = -
+set box_user_2_name = -
+set box_user_3_name = -
+set box_user_4_name = -
 
 profile 0
 
@@ -912,6 +934,7 @@ profile 0
 set profile_name = -
 set dyn_lpf_dterm_min_hz = 70
 set dyn_lpf_dterm_max_hz = 170
+set dyn_lpf_dterm_curve_expo = 5
 set dterm_lowpass_type = PT1
 set dterm_lowpass_hz = 150
 set dterm_lowpass2_type = PT1
@@ -919,6 +942,7 @@ set dterm_lowpass2_hz = 150
 set dterm_notch_hz = 0
 set dterm_notch_cutoff = 0
 set vbat_pid_gain = OFF
+set vbat_sag_compensation = 0
 set pid_at_min_throttle = ON
 set anti_gravity_mode = SMOOTH
 set anti_gravity_threshold = 250
@@ -986,15 +1010,17 @@ set launch_trigger_allow_reset = ON
 set launch_trigger_throttle_percent = 20
 set launch_angle_limit = 0
 set launch_control_gain = 40
-set ff_interpolate_sp = AVERAGED
+set ff_interpolate_sp = AVERAGED_2
 set ff_spike_limit = 60
 set ff_max_rate_limit = 100
+set ff_smooth_factor = 37
 set ff_boost = 15
 set idle_min_rpm = 0
 set idle_adjustment_speed = 50
 set idle_p = 50
 set idle_pid_limit = 200
 set idle_max_increase = 150
+set level_race_mode = OFF
 
 rateprofile 0
 
@@ -1003,15 +1029,15 @@ set rateprofile_name = -
 set thr_mid = 50
 set thr_expo = 0
 set rates_type = BETAFLIGHT
-set roll_rc_rate = 100
-set pitch_rc_rate = 100
-set yaw_rc_rate = 100
+set roll_rc_rate = 220
+set pitch_rc_rate = 220
+set yaw_rc_rate = 204
 set roll_expo = 0
 set pitch_expo = 0
 set yaw_expo = 0
-set roll_srate = 70
-set pitch_srate = 70
-set yaw_srate = 70
+set roll_srate = 0
+set pitch_srate = 0
+set yaw_srate = 0
 set tpa_rate = 65
 set tpa_breakpoint = 1250
 set tpa_mode = D
@@ -1023,5 +1049,3 @@ set yaw_rate_limit = 1998
 
 # end the command batch
 batch end
-
-# 
