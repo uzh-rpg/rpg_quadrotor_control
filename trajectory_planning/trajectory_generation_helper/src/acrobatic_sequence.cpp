@@ -319,8 +319,7 @@ bool AcrobaticSequence::appendHorizontalCircle(
   if (break_at_end) {
     // append breaking trajectory at end
     quadrotor_common::TrajectoryPoint end_state_hover;
-    end_state_hover.position =
-        (end_state.position + end_state.velocity);
+    end_state_hover.position = (end_state.position + end_state.velocity);
     end_state_hover.velocity = Eigen::Vector3d::Zero();
     breaking_trajectory =
         trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
@@ -509,7 +508,8 @@ bool AcrobaticSequence::appendStraight(const Eigen::Vector3d& end_position,
                                        const Eigen::Vector3d& end_velocity,
                                        const double& end_yaw,
                                        const double& max_velocity,
-                                       const double& traj_sampling_freq) {
+                                       const double& traj_sampling_freq,
+                                       const bool& minimum_snap) {
   // get start state
   quadrotor_common::TrajectoryPoint init_state =
       maneuver_list_.back().points.back();
@@ -519,15 +519,42 @@ bool AcrobaticSequence::appendStraight(const Eigen::Vector3d& end_position,
   quadrotor_common::TrajectoryPoint end_state;
   end_state.position = end_position;
   end_state.velocity = end_velocity;
+  double execution_time =
+      (end_position - init_state.position).norm() / max_velocity;
 
   const double max_thrust = 20.0;
   const double max_roll_pitch_rate = 3.0;
 
-  quadrotor_common::Trajectory trajectory =
-      trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
-          init_state, end_state, 4,
-          1.1 * std::max(init_state.velocity.norm(), max_velocity), max_thrust,
-          max_roll_pitch_rate, exec_loop_rate);
+  quadrotor_common::Trajectory trajectory;
+  if (!minimum_snap) {
+    trajectory =
+        trajectory_generation_helper::polynomials::computeFixedTimeTrajectory(
+            init_state, end_state, 4, execution_time, exec_loop_rate);
+  } else {
+    Eigen::VectorXd segment_times = Eigen::VectorXd::Ones(1);
+    segment_times[0] = execution_time;
+    Eigen::VectorXd minimization_weights(4);
+    minimization_weights << 0.0, 0.0, 100.0, 100.0;
+    std::vector<Eigen::Vector3d> waypoints;
+
+    polynomial_trajectories::PolynomialTrajectorySettings trajectory_settings;
+    trajectory_settings.way_points = waypoints;
+    trajectory_settings.minimization_weights = minimization_weights;
+    trajectory_settings.polynomial_order = 11;
+    trajectory_settings.continuity_order = 4;
+    trajectory = trajectory_generation_helper::polynomials::
+        generateMinimumSnapTrajectory(
+            segment_times, init_state, end_state, trajectory_settings,
+            max_velocity, max_thrust, max_roll_pitch_rate, exec_loop_rate);
+  }
+  //      trajectory_generation_helper::polynomials::computeFixedTimeTrajectory(
+  //          init_state, end_state, 4, execution_time, exec_loop_rate);
+
+  //  quadrotor_common::Trajectory trajectory =
+  //      trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
+  //          init_state, end_state, 4,
+  //          1.1 * std::max(init_state.velocity.norm(), max_velocity),
+  //          max_thrust, max_roll_pitch_rate, exec_loop_rate);
   trajectory_generation_helper::heading::addConstantHeading(0.0, &trajectory);
 
   maneuver_list_.push_back(trajectory);

@@ -17,6 +17,7 @@
   <depend>polynomial_trajectories</depend>
   <depend>quadrotor_common</depend>
   <depend>roscpp</depend>
+  <depend>rpg_common</depend>
 
   <export>
 

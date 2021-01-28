@@ -26,7 +26,8 @@ class AcrobaticSequence {
   bool appendStraight(const Eigen::Vector3d& end_position,
                       const Eigen::Vector3d& end_velocity,
                       const double& end_yaw, const double& max_velocity,
-                      const double& traj_sampling_freq);
+                      const double& traj_sampling_freq,
+                      const bool& minimum_snap = true);
 
   void manualAddTrajectory(const quadrotor_common::Trajectory trajectory);
 

@@ -1259,7 +1259,8 @@ Eigen::VectorXd solveQuadraticProgram(const Eigen::MatrixXd& H,
   b_lagrange.segment(0, H.rows()) = -f;
   b_lagrange.segment(H.rows(), A_eq.rows()) = b_eq;
 
-  Eigen::VectorXd x = A_lagrange.colPivHouseholderQr().solve(b_lagrange);
+//  Eigen::VectorXd x = A_lagrange.colPivHouseholderQr().solve(b_lagrange);
+  Eigen::VectorXd x = A_lagrange.householderQr().solve(b_lagrange);
   solution = x.segment(0, H.rows());
 
   *objective_value = solution.transpose() * H * solution + f.dot(solution);

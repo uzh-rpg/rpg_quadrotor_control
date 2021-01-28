@@ -144,13 +144,14 @@ quadrotor_common::ControlCommand RPGRotorsInterface::attitudeControl(
 TorquesAndThrust RPGRotorsInterface::bodyRateControl(
     const quadrotor_common::ControlCommand& rate_cmd,
     const Eigen::Vector3d& body_rate_estimate) {
-  Eigen::MatrixXd H = Eigen::MatrixXd::Zero(3, 3);
+  //  Eigen::MatrixXd H = Eigen::MatrixXd::Zero(3, 3);
   Eigen::VectorXd control_error = Eigen::VectorXd::Zero(6);
   control_error.segment(0, 3) = rate_cmd.bodyrates - body_rate_estimate;
+//  control_error.segment(3, 3) = Eigen::Vector3d::Zero();
   control_error.segment(3, 3) =
-      rate_cmd.bodyrates.cross(inertia_ * rate_cmd.bodyrates) +
-      inertia_ * rate_cmd.angular_accelerations -
-      torques_and_thrust_estimate_.body_torques;
+            rate_cmd.bodyrates.cross(inertia_ * rate_cmd.bodyrates) +
+        inertia_ * rate_cmd.angular_accelerations -
+        torques_and_thrust_estimate_.body_torques;
 
   TorquesAndThrust torques_and_thrust;
   torques_and_thrust.body_torques =

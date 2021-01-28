@@ -14,5 +14,9 @@ cs_add_library(${PROJECT_NAME} src/polynomial_trajectory_helper.cpp
 cs_add_library(acrobatic_sequence src/acrobatic_sequence)
 target_link_libraries(acrobatic_sequence trajectory_generation_helper)
 
+catkin_add_gtest(heading_test tests/heading_test.cpp)
+target_link_libraries(heading_test trajectory_generation_helper
+		${catkin_LIBRARIES})
+
 cs_install()
 cs_export()

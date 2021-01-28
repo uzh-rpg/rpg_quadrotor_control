@@ -23,10 +23,41 @@ void addConstantHeading(const double heading,
     Eigen::Quaterniond quatDes = Eigen::Quaterniond::FromTwoVectors(
         I_eZ_I, iterator->acceleration + Eigen::Vector3d(0.0, 0.0, 9.81));
 
+//    double adapted_heading = 0.0;
+//    double angle_error = 0.0;
+//    int iter_counter = 0;
+//    Eigen::Vector3d x_body_world;
+//    do {
+//      //      std::printf("iter_counter: %d\n", iter_counter);
+//      Eigen::Quaternion<double> q_heading_adapt =
+//          Eigen::Quaternion<double>(Eigen::AngleAxis<double>(
+//              adapted_heading, Eigen::Matrix<double, 3, 1>::UnitZ()));
+//      Eigen::Quaterniond q_combined = quatDes * q_heading_adapt;
+//      // TODO: set yaw such that the projection of the body-x axis on the
+//      // world xy plane aligns with the world x-axis
+//      // 1. compute angle between the two axes
+//      x_body_world = q_combined * Eigen::Vector3d::UnitX();
+//      x_body_world[2] = 0.0;  // project on xy-plane
+//      x_body_world.normalize();
+//      angle_error = std::acos(x_body_world.dot(Eigen::Vector3d::UnitX()));
+//
+//      //      std::printf("angle_error: %.5f\n", angle_error);
+//      adapted_heading += 0.001;
+//      iter_counter++;
+//    } while (angle_error > 0.01);
+//    std::printf(
+//        "body heading of %.2f resulted in %.3f angle error (found solution in "
+//        "%d steps)\n",
+//        adapted_heading, angle_error, iter_counter);
+//    std::printf("body_x_world: %.4f, %.4f, %.4f\n", x_body_world.x(),
+//                x_body_world.y(), x_body_world.z());
     // set full orientation and heading to zero
     Eigen::Quaternion<double> q_heading =
         Eigen::Quaternion<double>(Eigen::AngleAxis<double>(
             heading, Eigen::Matrix<double, 3, 1>::UnitZ()));
+//    Eigen::Quaternion<double> q_heading =
+//        Eigen::Quaternion<double>(Eigen::AngleAxis<double>(
+//            adapted_heading, Eigen::Matrix<double, 3, 1>::UnitZ()));
     Eigen::Quaternion<double> q_orientation = quatDes * q_heading;
     iterator->orientation = q_orientation;
     iterator->heading = 0.0;  // heading is now absorbed in orientation
