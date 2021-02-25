@@ -93,7 +93,7 @@ void RPGRotorsInterface::lowLevelControlLoop(const ros::TimerEvent& time) {
             control_command_.rotor_thrusts[i] / rotor_thrust_coeff_;
         quadrotor_common::limit(&motor_speed_squared, 0.0,
                                 pow(max_rotor_speed_, 2.0));
-        desired_motor_speed.angular_velocities[i] = sqrt(motor_speed_squared);
+        desired_motor_speed.angular_velocities.push_back(sqrt(motor_speed_squared));
       }
     } else {
       ROS_ERROR_THROTTLE(1,
