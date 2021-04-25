@@ -547,15 +547,8 @@ bool AcrobaticSequence::appendStraight(const Eigen::Vector3d& end_position,
             segment_times, init_state, end_state, trajectory_settings,
             max_velocity, max_thrust, max_roll_pitch_rate, exec_loop_rate);
   }
-  //      trajectory_generation_helper::polynomials::computeFixedTimeTrajectory(
-  //          init_state, end_state, 4, execution_time, exec_loop_rate);
 
-  //  quadrotor_common::Trajectory trajectory =
-  //      trajectory_generation_helper::polynomials::computeTimeOptimalTrajectory(
-  //          init_state, end_state, 4,
-  //          1.1 * std::max(init_state.velocity.norm(), max_velocity),
-  //          max_thrust, max_roll_pitch_rate, exec_loop_rate);
-  trajectory_generation_helper::heading::addConstantHeading(0.0, &trajectory);
+  trajectory_generation_helper::heading::addConstantHeading(end_yaw, &trajectory);
 
   maneuver_list_.push_back(trajectory);
 
